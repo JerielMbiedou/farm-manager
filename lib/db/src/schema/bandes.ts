@@ -62,3 +62,54 @@ export type ChargesFixe = typeof chargesFixesTable.$inferSelect;
 export const insertDepenseVenteSchema = createInsertSchema(depensesVenteTable).omit({ id: true });
 export type InsertDepenseVente = z.infer<typeof insertDepenseVenteSchema>;
 export type DepenseVente = typeof depensesVenteTable.$inferSelect;
+
+export const mortaliteJournaliereTable = pgTable("mortalite_journaliere", {
+  id: serial("id").primaryKey(),
+  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  ageJours: integer("age_jours").notNull(),
+  decesJour: integer("deces_jour").notNull().default(0),
+});
+
+export const peseesTable = pgTable("pesees", {
+  id: serial("id").primaryKey(),
+  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  ageJours: integer("age_jours").notNull(),
+  poidsMoyenG: numeric("poids_moyen_g", { precision: 10, scale: 2 }).notNull(),
+  objectifPoidsG: numeric("objectif_poids_g", { precision: 10, scale: 2 }),
+});
+
+export const consommationAlimentTable = pgTable("consommation_aliment", {
+  id: serial("id").primaryKey(),
+  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  quantiteKg: numeric("quantite_kg", { precision: 10, scale: 2 }).notNull(),
+});
+
+export const vaccinationsTable = pgTable("vaccinations", {
+  id: serial("id").primaryKey(),
+  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+  jourPrevu: integer("jour_prevu").notNull(),
+  nom: text("nom").notNull(),
+  description: text("description"),
+  fait: text("fait").notNull().default("non"),
+  dateFait: date("date_fait"),
+  commentaire: text("commentaire"),
+});
+
+export const insertMortaliteSchema = createInsertSchema(mortaliteJournaliereTable).omit({ id: true });
+export type InsertMortalite = z.infer<typeof insertMortaliteSchema>;
+export type Mortalite = typeof mortaliteJournaliereTable.$inferSelect;
+
+export const insertPeseeSchema = createInsertSchema(peseesTable).omit({ id: true });
+export type InsertPesee = z.infer<typeof insertPeseeSchema>;
+export type Pesee = typeof peseesTable.$inferSelect;
+
+export const insertConsommationSchema = createInsertSchema(consommationAlimentTable).omit({ id: true });
+export type InsertConsommation = z.infer<typeof insertConsommationSchema>;
+export type Consommation = typeof consommationAlimentTable.$inferSelect;
+
+export const insertVaccinationSchema = createInsertSchema(vaccinationsTable).omit({ id: true });
+export type InsertVaccination = z.infer<typeof insertVaccinationSchema>;
+export type Vaccination = typeof vaccinationsTable.$inferSelect;

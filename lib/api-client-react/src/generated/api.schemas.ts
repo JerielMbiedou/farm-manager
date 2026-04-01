@@ -292,3 +292,163 @@ export interface DashboardSummary {
   alerteDepassementBudget: boolean;
   depensesParCategorie: CategorieDepense[];
 }
+
+export interface Remboursement {
+  id: number;
+  investisseurNom: string;
+  montant: number;
+  date: string;
+  commentaire?: string | null;
+  createdAt?: string;
+}
+
+export interface CreateRemboursementBody {
+  investisseurNom: string;
+  montant: number;
+  date: string;
+  commentaire?: string;
+}
+
+export interface SoldeInvestisseur {
+  nom: string;
+  totalInvesti: number;
+  totalRembourse: number;
+  soldeRestant: number;
+}
+
+export interface RemboursementsResponse {
+  remboursements: Remboursement[];
+  soldesInvestisseurs: SoldeInvestisseur[];
+}
+
+export interface MortaliteEntry {
+  id: number;
+  bandeId: number;
+  date: string;
+  ageJours: number;
+  decesJour: number;
+  decesCumules?: number;
+  tauxMortalite?: number;
+  alerteRouge?: boolean;
+}
+
+export interface CreateMortaliteBody {
+  date: string;
+  ageJours: number;
+  decesJour: number;
+}
+
+export interface PeseeEntry {
+  id: number;
+  bandeId: number;
+  date: string;
+  ageJours: number;
+  poidsMoyenG: number;
+  objectifPoidsG?: number | null;
+  ecart?: number | null;
+  alertePoids?: boolean;
+}
+
+export interface CreatePeseeBody {
+  date: string;
+  ageJours: number;
+  poidsMoyenG: number;
+  objectifPoidsG?: number;
+}
+
+export interface ConsommationEntry {
+  id: number;
+  bandeId: number;
+  date: string;
+  quantiteKg: number;
+}
+
+export interface CreateConsommationBody {
+  date: string;
+  quantiteKg: number;
+}
+
+export interface ConsommationResponse {
+  entries: ConsommationEntry[];
+  totalAlimentKg: number;
+  ic?: number | null;
+  icStatus?: string | null;
+}
+
+export interface VaccinationEntry {
+  id: number;
+  bandeId: number;
+  jourPrevu: number;
+  nom: string;
+  description?: string | null;
+  fait: string;
+  dateFait?: string | null;
+  commentaire?: string | null;
+  datePrevue?: string;
+  enRetard?: boolean;
+}
+
+export interface CreateVaccinationBody {
+  jourPrevu: number;
+  nom: string;
+  description?: string;
+}
+
+export interface UpdateVaccinationBody {
+  fait?: string;
+  dateFait?: string;
+  commentaire?: string;
+}
+
+export interface ComparaisonBande {
+  id: number;
+  numero: number;
+  nom: string;
+  statut: string;
+  sujetsDepart: number;
+  nombreDeces?: number;
+  tauxMortalite?: number;
+  coutParSujet?: number;
+  prixVenteMoyen?: number;
+  beneficeNet?: number;
+  dureeJours?: number;
+  totalVendus?: number;
+  seuilNombrePoulets?: number;
+  seuilPrixMin?: number;
+  margeSecurite?: number;
+}
+
+export type CaisseEntryType =
+  (typeof CaisseEntryType)[keyof typeof CaisseEntryType];
+
+export const CaisseEntryType = {
+  entree: "entree",
+  sortie: "sortie",
+} as const;
+
+export interface CaisseEntry {
+  date: string;
+  type: CaisseEntryType;
+  categorie: string;
+  designation: string;
+  montant: number;
+  soldeApres: number;
+}
+
+export interface HistoriqueCaisseResponse {
+  entries: CaisseEntry[];
+  soldeCourant: number;
+}
+
+export interface ActivityLogEntry {
+  id: number;
+  userId?: number | null;
+  userNom: string;
+  action: string;
+  details?: string | null;
+  createdAt?: string;
+}
+
+export type GetActivityLogParams = {
+  limit?: number;
+};

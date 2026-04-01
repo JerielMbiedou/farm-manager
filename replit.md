@@ -91,6 +91,33 @@ Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used b
 
 Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
 
+### `artifacts/ferme-familiale` (`@workspace/ferme-familiale`)
+
+French-language React + Vite web app for managing a family poultry farm in Cameroon. Uses Tailwind CSS + shadcn/ui components.
+
+**5 Modules**: Financement, Devis Construction, Dépenses, Bandes de Poulets, Tableau de Bord.
+
+**User Roles**: Admin (full access), Investisseur (read-only), Gestionnaire (expenses/sales). Auth: cookie-based express-session. Credentials: admin/admin123, papa/papa123, gestionnaire/gest123.
+
+**Pages**:
+- `/dashboard` — Overview with cards (caisse, investissements, dépenses, bandes), prochaines vaccinations, prévisions
+- `/financement` — Investissements CRUD, remboursements CRUD, soldes investisseurs
+- `/devis` — Devis de construction
+- `/depenses` — Dépenses construction (bâtiment, puits, carburant)
+- `/bandes` — Liste des bandes de poulets
+- `/bandes/:id` — Détail bande avec onglets: Résumé, Dépenses, Ventes, Mortalité, Pesées & IC, Vaccins, Charges fixes
+- `/historique-caisse` — Journal complet des mouvements financiers (entrées/sorties) avec filtres
+- `/comparaison-bandes` — Tableau et graphiques comparatifs entre bandes (mortalité, coûts, bénéfice, seuil de rentabilité)
+- `/activity-log` — Journal d'activité des actions utilisateur
+
+**Production Tracking** (bande detail tabs):
+- Mortalité journalière avec alertes (>5%), décès cumulés, taux de mortalité
+- Pesées avec objectifs et écarts
+- Consommation aliment & Indice de Conversion (IC): bon ≤1.8, moyen ≤2.2, mauvais >2.2
+- Calendrier vaccination avec auto-seed (J1, J7, J14, J21, J28), statuts, retards
+
+**Currency**: All amounts in FCFA. No emojis. French UI throughout.
+
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.

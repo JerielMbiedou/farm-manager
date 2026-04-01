@@ -12,6 +12,9 @@ import Devis from "@/pages/devis";
 import Depenses from "@/pages/depenses";
 import Bandes from "@/pages/bandes/index";
 import BandeDetailView from "@/pages/bandes/[id]";
+import HistoriqueCaisse from "@/pages/historique-caisse";
+import ComparaisonBandes from "@/pages/comparaison-bandes";
+import ActivityLog from "@/pages/activity-log";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +49,15 @@ function Router() {
       </Route>
       <Route path="/bandes" component={() => <Layout><Bandes /></Layout>} />
       <Route path="/bandes/:id" component={() => <Layout><BandeDetailView /></Layout>} />
+      <Route path="/historique-caisse">
+        <Layout><HistoriqueCaisse /></Layout>
+      </Route>
+      <Route path="/comparaison-bandes">
+        <Layout><ComparaisonBandes /></Layout>
+      </Route>
+      <Route path="/activity-log">
+        <Layout><ActivityLog /></Layout>
+      </Route>
       
       <Route component={NotFound} />
     </Switch>

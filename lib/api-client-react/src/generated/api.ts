@@ -17,36 +17,53 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  ActivityLogEntry,
   Bande,
   BandeDepense,
   BandeDetail,
   BandeVente,
   ChargesFixe,
+  ComparaisonBande,
+  ConsommationEntry,
+  ConsommationResponse,
   CreateBandeBody,
   CreateBandeDepenseBody,
   CreateBandeVenteBody,
+  CreateConsommationBody,
   CreateDepenseDetaillee,
   CreateDepenseVenteBody,
   CreateFinancementBody,
+  CreateMortaliteBody,
+  CreatePeseeBody,
   CreatePuitsItemBody,
+  CreateRemboursementBody,
   CreateSortieBody,
   CreateSortieCarburantBody,
+  CreateVaccinationBody,
   DashboardSummary,
   DepenseDetaillee,
   DepenseVente,
   DevisConstruction,
   ErrorResponse,
   Financement,
+  GetActivityLogParams,
   HealthStatus,
+  HistoriqueCaisseResponse,
   LoginBody,
   LoginResponse,
+  MortaliteEntry,
+  PeseeEntry,
   PuitsItem,
+  Remboursement,
+  RemboursementsResponse,
   SortieArgent,
   SortieCarburant,
   SuccessResponse,
   UpdateChargesFixeBody,
   UpdateDevisBody,
+  UpdateVaccinationBody,
   User,
+  VaccinationEntry,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -4226,6 +4243,1548 @@ export function useGetDashboardSummary<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetDashboardSummaryQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Comparaison entre bandes
+ */
+export const getGetComparaisonBandesUrl = () => {
+  return `/api/dashboard/comparaison-bandes`;
+};
+
+export const getComparaisonBandes = async (
+  options?: RequestInit,
+): Promise<ComparaisonBande[]> => {
+  return customFetch<ComparaisonBande[]>(getGetComparaisonBandesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetComparaisonBandesQueryKey = () => {
+  return [`/api/dashboard/comparaison-bandes`] as const;
+};
+
+export const getGetComparaisonBandesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getComparaisonBandes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getComparaisonBandes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetComparaisonBandesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getComparaisonBandes>>
+  > = ({ signal }) => getComparaisonBandes({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getComparaisonBandes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetComparaisonBandesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getComparaisonBandes>>
+>;
+export type GetComparaisonBandesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Comparaison entre bandes
+ */
+
+export function useGetComparaisonBandes<
+  TData = Awaited<ReturnType<typeof getComparaisonBandes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getComparaisonBandes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetComparaisonBandesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Historique de caisse
+ */
+export const getGetHistoriqueCaisseUrl = () => {
+  return `/api/dashboard/historique-caisse`;
+};
+
+export const getHistoriqueCaisse = async (
+  options?: RequestInit,
+): Promise<HistoriqueCaisseResponse> => {
+  return customFetch<HistoriqueCaisseResponse>(getGetHistoriqueCaisseUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetHistoriqueCaisseQueryKey = () => {
+  return [`/api/dashboard/historique-caisse`] as const;
+};
+
+export const getGetHistoriqueCaisseQueryOptions = <
+  TData = Awaited<ReturnType<typeof getHistoriqueCaisse>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getHistoriqueCaisse>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetHistoriqueCaisseQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getHistoriqueCaisse>>
+  > = ({ signal }) => getHistoriqueCaisse({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getHistoriqueCaisse>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetHistoriqueCaisseQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getHistoriqueCaisse>>
+>;
+export type GetHistoriqueCaisseQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Historique de caisse
+ */
+
+export function useGetHistoriqueCaisse<
+  TData = Awaited<ReturnType<typeof getHistoriqueCaisse>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getHistoriqueCaisse>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetHistoriqueCaisseQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Liste des remboursements
+ */
+export const getGetRemboursementsUrl = () => {
+  return `/api/financement/remboursements`;
+};
+
+export const getRemboursements = async (
+  options?: RequestInit,
+): Promise<RemboursementsResponse> => {
+  return customFetch<RemboursementsResponse>(getGetRemboursementsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRemboursementsQueryKey = () => {
+  return [`/api/financement/remboursements`] as const;
+};
+
+export const getGetRemboursementsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRemboursements>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getRemboursements>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRemboursementsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRemboursements>>
+  > = ({ signal }) => getRemboursements({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRemboursements>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRemboursementsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRemboursements>>
+>;
+export type GetRemboursementsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Liste des remboursements
+ */
+
+export function useGetRemboursements<
+  TData = Awaited<ReturnType<typeof getRemboursements>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getRemboursements>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRemboursementsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Enregistrer un remboursement
+ */
+export const getCreateRemboursementUrl = () => {
+  return `/api/financement/remboursements`;
+};
+
+export const createRemboursement = async (
+  createRemboursementBody: CreateRemboursementBody,
+  options?: RequestInit,
+): Promise<Remboursement> => {
+  return customFetch<Remboursement>(getCreateRemboursementUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createRemboursementBody),
+  });
+};
+
+export const getCreateRemboursementMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createRemboursement>>,
+    TError,
+    { data: BodyType<CreateRemboursementBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createRemboursement>>,
+  TError,
+  { data: BodyType<CreateRemboursementBody> },
+  TContext
+> => {
+  const mutationKey = ["createRemboursement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createRemboursement>>,
+    { data: BodyType<CreateRemboursementBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createRemboursement(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateRemboursementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createRemboursement>>
+>;
+export type CreateRemboursementMutationBody = BodyType<CreateRemboursementBody>;
+export type CreateRemboursementMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Enregistrer un remboursement
+ */
+export const useCreateRemboursement = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createRemboursement>>,
+    TError,
+    { data: BodyType<CreateRemboursementBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createRemboursement>>,
+  TError,
+  { data: BodyType<CreateRemboursementBody> },
+  TContext
+> => {
+  return useMutation(getCreateRemboursementMutationOptions(options));
+};
+
+/**
+ * @summary Supprimer un remboursement
+ */
+export const getDeleteRemboursementUrl = (id: number) => {
+  return `/api/financement/remboursements/${id}`;
+};
+
+export const deleteRemboursement = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getDeleteRemboursementUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteRemboursementMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRemboursement>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteRemboursement>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteRemboursement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteRemboursement>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteRemboursement(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteRemboursementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteRemboursement>>
+>;
+
+export type DeleteRemboursementMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Supprimer un remboursement
+ */
+export const useDeleteRemboursement = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRemboursement>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteRemboursement>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteRemboursementMutationOptions(options));
+};
+
+/**
+ * @summary Suivi mortalité journalière
+ */
+export const getGetBandeMortaliteUrl = (id: number) => {
+  return `/api/bandes/${id}/mortalite`;
+};
+
+export const getBandeMortalite = async (
+  id: number,
+  options?: RequestInit,
+): Promise<MortaliteEntry[]> => {
+  return customFetch<MortaliteEntry[]>(getGetBandeMortaliteUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBandeMortaliteQueryKey = (id: number) => {
+  return [`/api/bandes/${id}/mortalite`] as const;
+};
+
+export const getGetBandeMortaliteQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBandeMortalite>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBandeMortalite>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBandeMortaliteQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBandeMortalite>>
+  > = ({ signal }) => getBandeMortalite(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBandeMortalite>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBandeMortaliteQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBandeMortalite>>
+>;
+export type GetBandeMortaliteQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Suivi mortalité journalière
+ */
+
+export function useGetBandeMortalite<
+  TData = Awaited<ReturnType<typeof getBandeMortalite>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBandeMortalite>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBandeMortaliteQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Ajouter une entrée de mortalité
+ */
+export const getCreateBandeMortaliteUrl = (id: number) => {
+  return `/api/bandes/${id}/mortalite`;
+};
+
+export const createBandeMortalite = async (
+  id: number,
+  createMortaliteBody: CreateMortaliteBody,
+  options?: RequestInit,
+): Promise<MortaliteEntry> => {
+  return customFetch<MortaliteEntry>(getCreateBandeMortaliteUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createMortaliteBody),
+  });
+};
+
+export const getCreateBandeMortaliteMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBandeMortalite>>,
+    TError,
+    { id: number; data: BodyType<CreateMortaliteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createBandeMortalite>>,
+  TError,
+  { id: number; data: BodyType<CreateMortaliteBody> },
+  TContext
+> => {
+  const mutationKey = ["createBandeMortalite"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createBandeMortalite>>,
+    { id: number; data: BodyType<CreateMortaliteBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createBandeMortalite(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateBandeMortaliteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createBandeMortalite>>
+>;
+export type CreateBandeMortaliteMutationBody = BodyType<CreateMortaliteBody>;
+export type CreateBandeMortaliteMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Ajouter une entrée de mortalité
+ */
+export const useCreateBandeMortalite = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBandeMortalite>>,
+    TError,
+    { id: number; data: BodyType<CreateMortaliteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createBandeMortalite>>,
+  TError,
+  { id: number; data: BodyType<CreateMortaliteBody> },
+  TContext
+> => {
+  return useMutation(getCreateBandeMortaliteMutationOptions(options));
+};
+
+/**
+ * @summary Supprimer une entrée de mortalité
+ */
+export const getDeleteBandeMortaliteUrl = (id: number, mortaliteId: number) => {
+  return `/api/bandes/${id}/mortalite/${mortaliteId}`;
+};
+
+export const deleteBandeMortalite = async (
+  id: number,
+  mortaliteId: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(
+    getDeleteBandeMortaliteUrl(id, mortaliteId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteBandeMortaliteMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBandeMortalite>>,
+    TError,
+    { id: number; mortaliteId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteBandeMortalite>>,
+  TError,
+  { id: number; mortaliteId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteBandeMortalite"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteBandeMortalite>>,
+    { id: number; mortaliteId: number }
+  > = (props) => {
+    const { id, mortaliteId } = props ?? {};
+
+    return deleteBandeMortalite(id, mortaliteId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteBandeMortaliteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteBandeMortalite>>
+>;
+
+export type DeleteBandeMortaliteMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Supprimer une entrée de mortalité
+ */
+export const useDeleteBandeMortalite = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBandeMortalite>>,
+    TError,
+    { id: number; mortaliteId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteBandeMortalite>>,
+  TError,
+  { id: number; mortaliteId: number },
+  TContext
+> => {
+  return useMutation(getDeleteBandeMortaliteMutationOptions(options));
+};
+
+/**
+ * @summary Suivi des pesées
+ */
+export const getGetBandePeseesUrl = (id: number) => {
+  return `/api/bandes/${id}/pesees`;
+};
+
+export const getBandePesees = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PeseeEntry[]> => {
+  return customFetch<PeseeEntry[]>(getGetBandePeseesUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBandePeseesQueryKey = (id: number) => {
+  return [`/api/bandes/${id}/pesees`] as const;
+};
+
+export const getGetBandePeseesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBandePesees>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBandePesees>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBandePeseesQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBandePesees>>> = ({
+    signal,
+  }) => getBandePesees(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBandePesees>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBandePeseesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBandePesees>>
+>;
+export type GetBandePeseesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Suivi des pesées
+ */
+
+export function useGetBandePesees<
+  TData = Awaited<ReturnType<typeof getBandePesees>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBandePesees>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBandePeseesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Ajouter une pesée
+ */
+export const getCreateBandePeseeUrl = (id: number) => {
+  return `/api/bandes/${id}/pesees`;
+};
+
+export const createBandePesee = async (
+  id: number,
+  createPeseeBody: CreatePeseeBody,
+  options?: RequestInit,
+): Promise<PeseeEntry> => {
+  return customFetch<PeseeEntry>(getCreateBandePeseeUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPeseeBody),
+  });
+};
+
+export const getCreateBandePeseeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBandePesee>>,
+    TError,
+    { id: number; data: BodyType<CreatePeseeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createBandePesee>>,
+  TError,
+  { id: number; data: BodyType<CreatePeseeBody> },
+  TContext
+> => {
+  const mutationKey = ["createBandePesee"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createBandePesee>>,
+    { id: number; data: BodyType<CreatePeseeBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createBandePesee(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateBandePeseeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createBandePesee>>
+>;
+export type CreateBandePeseeMutationBody = BodyType<CreatePeseeBody>;
+export type CreateBandePeseeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Ajouter une pesée
+ */
+export const useCreateBandePesee = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBandePesee>>,
+    TError,
+    { id: number; data: BodyType<CreatePeseeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createBandePesee>>,
+  TError,
+  { id: number; data: BodyType<CreatePeseeBody> },
+  TContext
+> => {
+  return useMutation(getCreateBandePeseeMutationOptions(options));
+};
+
+/**
+ * @summary Supprimer une pesée
+ */
+export const getDeleteBandePeseeUrl = (id: number, peseeId: number) => {
+  return `/api/bandes/${id}/pesees/${peseeId}`;
+};
+
+export const deleteBandePesee = async (
+  id: number,
+  peseeId: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getDeleteBandePeseeUrl(id, peseeId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteBandePeseeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBandePesee>>,
+    TError,
+    { id: number; peseeId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteBandePesee>>,
+  TError,
+  { id: number; peseeId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteBandePesee"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteBandePesee>>,
+    { id: number; peseeId: number }
+  > = (props) => {
+    const { id, peseeId } = props ?? {};
+
+    return deleteBandePesee(id, peseeId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteBandePeseeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteBandePesee>>
+>;
+
+export type DeleteBandePeseeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Supprimer une pesée
+ */
+export const useDeleteBandePesee = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBandePesee>>,
+    TError,
+    { id: number; peseeId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteBandePesee>>,
+  TError,
+  { id: number; peseeId: number },
+  TContext
+> => {
+  return useMutation(getDeleteBandePeseeMutationOptions(options));
+};
+
+/**
+ * @summary Consommation aliment et IC
+ */
+export const getGetBandeConsommationUrl = (id: number) => {
+  return `/api/bandes/${id}/consommation`;
+};
+
+export const getBandeConsommation = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ConsommationResponse> => {
+  return customFetch<ConsommationResponse>(getGetBandeConsommationUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBandeConsommationQueryKey = (id: number) => {
+  return [`/api/bandes/${id}/consommation`] as const;
+};
+
+export const getGetBandeConsommationQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBandeConsommation>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBandeConsommation>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetBandeConsommationQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBandeConsommation>>
+  > = ({ signal }) => getBandeConsommation(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBandeConsommation>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBandeConsommationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBandeConsommation>>
+>;
+export type GetBandeConsommationQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Consommation aliment et IC
+ */
+
+export function useGetBandeConsommation<
+  TData = Awaited<ReturnType<typeof getBandeConsommation>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBandeConsommation>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBandeConsommationQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Ajouter consommation aliment
+ */
+export const getCreateBandeConsommationUrl = (id: number) => {
+  return `/api/bandes/${id}/consommation`;
+};
+
+export const createBandeConsommation = async (
+  id: number,
+  createConsommationBody: CreateConsommationBody,
+  options?: RequestInit,
+): Promise<ConsommationEntry> => {
+  return customFetch<ConsommationEntry>(getCreateBandeConsommationUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createConsommationBody),
+  });
+};
+
+export const getCreateBandeConsommationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBandeConsommation>>,
+    TError,
+    { id: number; data: BodyType<CreateConsommationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createBandeConsommation>>,
+  TError,
+  { id: number; data: BodyType<CreateConsommationBody> },
+  TContext
+> => {
+  const mutationKey = ["createBandeConsommation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createBandeConsommation>>,
+    { id: number; data: BodyType<CreateConsommationBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createBandeConsommation(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateBandeConsommationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createBandeConsommation>>
+>;
+export type CreateBandeConsommationMutationBody =
+  BodyType<CreateConsommationBody>;
+export type CreateBandeConsommationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Ajouter consommation aliment
+ */
+export const useCreateBandeConsommation = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBandeConsommation>>,
+    TError,
+    { id: number; data: BodyType<CreateConsommationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createBandeConsommation>>,
+  TError,
+  { id: number; data: BodyType<CreateConsommationBody> },
+  TContext
+> => {
+  return useMutation(getCreateBandeConsommationMutationOptions(options));
+};
+
+/**
+ * @summary Supprimer une consommation
+ */
+export const getDeleteBandeConsommationUrl = (id: number, consId: number) => {
+  return `/api/bandes/${id}/consommation/${consId}`;
+};
+
+export const deleteBandeConsommation = async (
+  id: number,
+  consId: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(
+    getDeleteBandeConsommationUrl(id, consId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteBandeConsommationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBandeConsommation>>,
+    TError,
+    { id: number; consId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteBandeConsommation>>,
+  TError,
+  { id: number; consId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteBandeConsommation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteBandeConsommation>>,
+    { id: number; consId: number }
+  > = (props) => {
+    const { id, consId } = props ?? {};
+
+    return deleteBandeConsommation(id, consId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteBandeConsommationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteBandeConsommation>>
+>;
+
+export type DeleteBandeConsommationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Supprimer une consommation
+ */
+export const useDeleteBandeConsommation = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBandeConsommation>>,
+    TError,
+    { id: number; consId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteBandeConsommation>>,
+  TError,
+  { id: number; consId: number },
+  TContext
+> => {
+  return useMutation(getDeleteBandeConsommationMutationOptions(options));
+};
+
+/**
+ * @summary Calendrier vaccinations
+ */
+export const getGetBandeVaccinationsUrl = (id: number) => {
+  return `/api/bandes/${id}/vaccinations`;
+};
+
+export const getBandeVaccinations = async (
+  id: number,
+  options?: RequestInit,
+): Promise<VaccinationEntry[]> => {
+  return customFetch<VaccinationEntry[]>(getGetBandeVaccinationsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBandeVaccinationsQueryKey = (id: number) => {
+  return [`/api/bandes/${id}/vaccinations`] as const;
+};
+
+export const getGetBandeVaccinationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBandeVaccinations>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBandeVaccinations>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetBandeVaccinationsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBandeVaccinations>>
+  > = ({ signal }) => getBandeVaccinations(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBandeVaccinations>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBandeVaccinationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBandeVaccinations>>
+>;
+export type GetBandeVaccinationsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Calendrier vaccinations
+ */
+
+export function useGetBandeVaccinations<
+  TData = Awaited<ReturnType<typeof getBandeVaccinations>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBandeVaccinations>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBandeVaccinationsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Ajouter un vaccin
+ */
+export const getCreateBandeVaccinationUrl = (id: number) => {
+  return `/api/bandes/${id}/vaccinations`;
+};
+
+export const createBandeVaccination = async (
+  id: number,
+  createVaccinationBody: CreateVaccinationBody,
+  options?: RequestInit,
+): Promise<VaccinationEntry> => {
+  return customFetch<VaccinationEntry>(getCreateBandeVaccinationUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createVaccinationBody),
+  });
+};
+
+export const getCreateBandeVaccinationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBandeVaccination>>,
+    TError,
+    { id: number; data: BodyType<CreateVaccinationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createBandeVaccination>>,
+  TError,
+  { id: number; data: BodyType<CreateVaccinationBody> },
+  TContext
+> => {
+  const mutationKey = ["createBandeVaccination"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createBandeVaccination>>,
+    { id: number; data: BodyType<CreateVaccinationBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createBandeVaccination(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateBandeVaccinationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createBandeVaccination>>
+>;
+export type CreateBandeVaccinationMutationBody =
+  BodyType<CreateVaccinationBody>;
+export type CreateBandeVaccinationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Ajouter un vaccin
+ */
+export const useCreateBandeVaccination = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createBandeVaccination>>,
+    TError,
+    { id: number; data: BodyType<CreateVaccinationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createBandeVaccination>>,
+  TError,
+  { id: number; data: BodyType<CreateVaccinationBody> },
+  TContext
+> => {
+  return useMutation(getCreateBandeVaccinationMutationOptions(options));
+};
+
+/**
+ * @summary Mettre à jour vaccination
+ */
+export const getUpdateBandeVaccinationUrl = (id: number, vaccId: number) => {
+  return `/api/bandes/${id}/vaccinations/${vaccId}`;
+};
+
+export const updateBandeVaccination = async (
+  id: number,
+  vaccId: number,
+  updateVaccinationBody: UpdateVaccinationBody,
+  options?: RequestInit,
+): Promise<VaccinationEntry> => {
+  return customFetch<VaccinationEntry>(
+    getUpdateBandeVaccinationUrl(id, vaccId),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateVaccinationBody),
+    },
+  );
+};
+
+export const getUpdateBandeVaccinationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBandeVaccination>>,
+    TError,
+    { id: number; vaccId: number; data: BodyType<UpdateVaccinationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateBandeVaccination>>,
+  TError,
+  { id: number; vaccId: number; data: BodyType<UpdateVaccinationBody> },
+  TContext
+> => {
+  const mutationKey = ["updateBandeVaccination"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateBandeVaccination>>,
+    { id: number; vaccId: number; data: BodyType<UpdateVaccinationBody> }
+  > = (props) => {
+    const { id, vaccId, data } = props ?? {};
+
+    return updateBandeVaccination(id, vaccId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateBandeVaccinationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateBandeVaccination>>
+>;
+export type UpdateBandeVaccinationMutationBody =
+  BodyType<UpdateVaccinationBody>;
+export type UpdateBandeVaccinationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Mettre à jour vaccination
+ */
+export const useUpdateBandeVaccination = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBandeVaccination>>,
+    TError,
+    { id: number; vaccId: number; data: BodyType<UpdateVaccinationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateBandeVaccination>>,
+  TError,
+  { id: number; vaccId: number; data: BodyType<UpdateVaccinationBody> },
+  TContext
+> => {
+  return useMutation(getUpdateBandeVaccinationMutationOptions(options));
+};
+
+/**
+ * @summary Journal d'activité
+ */
+export const getGetActivityLogUrl = (params?: GetActivityLogParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/activity-log?${stringifiedParams}`
+    : `/api/activity-log`;
+};
+
+export const getActivityLog = async (
+  params?: GetActivityLogParams,
+  options?: RequestInit,
+): Promise<ActivityLogEntry[]> => {
+  return customFetch<ActivityLogEntry[]>(getGetActivityLogUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetActivityLogQueryKey = (params?: GetActivityLogParams) => {
+  return [`/api/activity-log`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetActivityLogQueryOptions = <
+  TData = Awaited<ReturnType<typeof getActivityLog>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetActivityLogParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getActivityLog>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetActivityLogQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getActivityLog>>> = ({
+    signal,
+  }) => getActivityLog(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getActivityLog>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetActivityLogQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getActivityLog>>
+>;
+export type GetActivityLogQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Journal d'activité
+ */
+
+export function useGetActivityLog<
+  TData = Awaited<ReturnType<typeof getActivityLog>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetActivityLogParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getActivityLog>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetActivityLogQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

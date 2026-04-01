@@ -796,3 +796,307 @@ export const GetDashboardSummaryResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary Comparaison entre bandes
+ */
+export const GetComparaisonBandesResponseItem = zod.object({
+  id: zod.number(),
+  numero: zod.number(),
+  nom: zod.string(),
+  statut: zod.string(),
+  sujetsDepart: zod.number(),
+  nombreDeces: zod.number().optional(),
+  tauxMortalite: zod.number().optional(),
+  coutParSujet: zod.number().optional(),
+  prixVenteMoyen: zod.number().optional(),
+  beneficeNet: zod.number().optional(),
+  dureeJours: zod.number().optional(),
+  totalVendus: zod.number().optional(),
+  seuilNombrePoulets: zod.number().optional(),
+  seuilPrixMin: zod.number().optional(),
+  margeSecurite: zod.number().optional(),
+});
+export const GetComparaisonBandesResponse = zod.array(
+  GetComparaisonBandesResponseItem,
+);
+
+/**
+ * @summary Historique de caisse
+ */
+export const GetHistoriqueCaisseResponse = zod.object({
+  entries: zod.array(
+    zod.object({
+      date: zod.string(),
+      type: zod.enum(["entree", "sortie"]),
+      categorie: zod.string(),
+      designation: zod.string(),
+      montant: zod.number(),
+      soldeApres: zod.number(),
+    }),
+  ),
+  soldeCourant: zod.number(),
+});
+
+/**
+ * @summary Liste des remboursements
+ */
+export const GetRemboursementsResponse = zod.object({
+  remboursements: zod.array(
+    zod.object({
+      id: zod.number(),
+      investisseurNom: zod.string(),
+      montant: zod.number(),
+      date: zod.string(),
+      commentaire: zod.string().nullish(),
+      createdAt: zod.string().optional(),
+    }),
+  ),
+  soldesInvestisseurs: zod.array(
+    zod.object({
+      nom: zod.string(),
+      totalInvesti: zod.number(),
+      totalRembourse: zod.number(),
+      soldeRestant: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Enregistrer un remboursement
+ */
+export const CreateRemboursementBody = zod.object({
+  investisseurNom: zod.string(),
+  montant: zod.number(),
+  date: zod.string(),
+  commentaire: zod.string().optional(),
+});
+
+/**
+ * @summary Supprimer un remboursement
+ */
+export const DeleteRemboursementParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteRemboursementResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Suivi mortalité journalière
+ */
+export const GetBandeMortaliteParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetBandeMortaliteResponseItem = zod.object({
+  id: zod.number(),
+  bandeId: zod.number(),
+  date: zod.string(),
+  ageJours: zod.number(),
+  decesJour: zod.number(),
+  decesCumules: zod.number().optional(),
+  tauxMortalite: zod.number().optional(),
+  alerteRouge: zod.boolean().optional(),
+});
+export const GetBandeMortaliteResponse = zod.array(
+  GetBandeMortaliteResponseItem,
+);
+
+/**
+ * @summary Ajouter une entrée de mortalité
+ */
+export const CreateBandeMortaliteParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateBandeMortaliteBody = zod.object({
+  date: zod.string(),
+  ageJours: zod.number(),
+  decesJour: zod.number(),
+});
+
+/**
+ * @summary Supprimer une entrée de mortalité
+ */
+export const DeleteBandeMortaliteParams = zod.object({
+  id: zod.coerce.number(),
+  mortaliteId: zod.coerce.number(),
+});
+
+export const DeleteBandeMortaliteResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Suivi des pesées
+ */
+export const GetBandePeseesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetBandePeseesResponseItem = zod.object({
+  id: zod.number(),
+  bandeId: zod.number(),
+  date: zod.string(),
+  ageJours: zod.number(),
+  poidsMoyenG: zod.number(),
+  objectifPoidsG: zod.number().nullish(),
+  ecart: zod.number().nullish(),
+  alertePoids: zod.boolean().optional(),
+});
+export const GetBandePeseesResponse = zod.array(GetBandePeseesResponseItem);
+
+/**
+ * @summary Ajouter une pesée
+ */
+export const CreateBandePeseeParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateBandePeseeBody = zod.object({
+  date: zod.string(),
+  ageJours: zod.number(),
+  poidsMoyenG: zod.number(),
+  objectifPoidsG: zod.number().optional(),
+});
+
+/**
+ * @summary Supprimer une pesée
+ */
+export const DeleteBandePeseeParams = zod.object({
+  id: zod.coerce.number(),
+  peseeId: zod.coerce.number(),
+});
+
+export const DeleteBandePeseeResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Consommation aliment et IC
+ */
+export const GetBandeConsommationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetBandeConsommationResponse = zod.object({
+  entries: zod.array(
+    zod.object({
+      id: zod.number(),
+      bandeId: zod.number(),
+      date: zod.string(),
+      quantiteKg: zod.number(),
+    }),
+  ),
+  totalAlimentKg: zod.number(),
+  ic: zod.number().nullish(),
+  icStatus: zod.string().nullish(),
+});
+
+/**
+ * @summary Ajouter consommation aliment
+ */
+export const CreateBandeConsommationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateBandeConsommationBody = zod.object({
+  date: zod.string(),
+  quantiteKg: zod.number(),
+});
+
+/**
+ * @summary Supprimer une consommation
+ */
+export const DeleteBandeConsommationParams = zod.object({
+  id: zod.coerce.number(),
+  consId: zod.coerce.number(),
+});
+
+export const DeleteBandeConsommationResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Calendrier vaccinations
+ */
+export const GetBandeVaccinationsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetBandeVaccinationsResponseItem = zod.object({
+  id: zod.number(),
+  bandeId: zod.number(),
+  jourPrevu: zod.number(),
+  nom: zod.string(),
+  description: zod.string().nullish(),
+  fait: zod.string(),
+  dateFait: zod.string().nullish(),
+  commentaire: zod.string().nullish(),
+  datePrevue: zod.string().optional(),
+  enRetard: zod.boolean().optional(),
+});
+export const GetBandeVaccinationsResponse = zod.array(
+  GetBandeVaccinationsResponseItem,
+);
+
+/**
+ * @summary Ajouter un vaccin
+ */
+export const CreateBandeVaccinationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateBandeVaccinationBody = zod.object({
+  jourPrevu: zod.number(),
+  nom: zod.string(),
+  description: zod.string().optional(),
+});
+
+/**
+ * @summary Mettre à jour vaccination
+ */
+export const UpdateBandeVaccinationParams = zod.object({
+  id: zod.coerce.number(),
+  vaccId: zod.coerce.number(),
+});
+
+export const UpdateBandeVaccinationBody = zod.object({
+  fait: zod.string().optional(),
+  dateFait: zod.string().optional(),
+  commentaire: zod.string().optional(),
+});
+
+export const UpdateBandeVaccinationResponse = zod.object({
+  id: zod.number(),
+  bandeId: zod.number(),
+  jourPrevu: zod.number(),
+  nom: zod.string(),
+  description: zod.string().nullish(),
+  fait: zod.string(),
+  dateFait: zod.string().nullish(),
+  commentaire: zod.string().nullish(),
+  datePrevue: zod.string().optional(),
+  enRetard: zod.boolean().optional(),
+});
+
+/**
+ * @summary Journal d'activité
+ */
+export const getActivityLogQueryLimitDefault = 50;
+
+export const GetActivityLogQueryParams = zod.object({
+  limit: zod.coerce.number().default(getActivityLogQueryLimitDefault),
+});
+
+export const GetActivityLogResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.number().nullish(),
+  userNom: zod.string(),
+  action: zod.string(),
+  details: zod.string().nullish(),
+  createdAt: zod.string().optional(),
+});
+export const GetActivityLogResponse = zod.array(GetActivityLogResponseItem);

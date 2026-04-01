@@ -7,6 +7,8 @@ export const sortiesArgentTable = pgTable("sorties_argent", {
   date: date("date").notNull(),
   decaisse: numeric("decaisse", { precision: 15, scale: 2 }).notNull(),
   depense: numeric("depense", { precision: 15, scale: 2 }).notNull(),
+  commentaire: text("commentaire"),
+  photoUrl: text("photo_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -14,6 +16,8 @@ export const sortiesCarburantTable = pgTable("sorties_carburant", {
   id: serial("id").primaryKey(),
   date: date("date").notNull(),
   montant: numeric("montant", { precision: 15, scale: 2 }).notNull(),
+  commentaire: text("commentaire"),
+  photoUrl: text("photo_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -6,6 +6,7 @@ import devisRouter from "./devis";
 import depensesRouter from "./depenses";
 import bandesRouter from "./bandes";
 import dashboardRouter from "./dashboard";
+import activityLogRouter from "./activity-log";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use("/devis", devisRouter);
 router.use("/depenses", depensesRouter);
 router.use("/bandes", bandesRouter);
 router.use("/dashboard", dashboardRouter);
+router.use("/activity-log", activityLogRouter);
 
 export default router;

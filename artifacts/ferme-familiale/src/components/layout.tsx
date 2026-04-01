@@ -8,7 +8,10 @@ import {
   Bird, 
   LogOut, 
   Menu,
-  X
+  X,
+  BookOpen,
+  BarChart3,
+  ClipboardList
 } from "lucide-react";
 import { useGetMe, useLogout, UserRole } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -40,7 +43,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       await logout.mutateAsync();
       toast({ title: "À bientôt", description: "Vous êtes déconnecté." });
       setLocation("/login");
-    } catch (e) {
+    } catch {
       toast({ title: "Erreur", description: "Impossible de se déconnecter", variant: "destructive" });
     }
   };
@@ -53,6 +56,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/devis", label: "Devis Construction", icon: HardHat, roles: [UserRole.admin] },
     { href: "/depenses", label: "Dépenses", icon: Receipt, roles: [UserRole.admin, UserRole.gestionnaire] },
     { href: "/bandes", label: "Bandes de Poulets", icon: Bird, roles: [UserRole.admin, UserRole.gestionnaire] },
+    { href: "/historique-caisse", label: "Historique Caisse", icon: BookOpen, roles: [UserRole.admin, UserRole.investisseur] },
+    { href: "/comparaison-bandes", label: "Comparaison", icon: BarChart3, roles: [UserRole.admin, UserRole.investisseur] },
+    { href: "/activity-log", label: "Journal d'activité", icon: ClipboardList, roles: [UserRole.admin] },
   ].filter(item => item.roles.includes(role));
 
   const roleLabel = {
@@ -63,14 +69,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex w-full bg-background selection:bg-primary/20">
-      {/* Mobile Menu Button */}
       <div className="lg:hidden fixed top-4 right-4 z-50">
         <Button variant="outline" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
           {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
       </div>
 
-      {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 z-40 w-64 bg-sidebar text-sidebar-foreground transform transition-transform duration-300 ease-in-out
         lg:relative lg:translate-x-0
@@ -91,7 +95,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <nav className="flex-1 px-4 py-4 space-y-1">
+          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location === item.href || location.startsWith(item.href + "/");
@@ -103,8 +107,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium" 
                       : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}
                   `}>
-                    <Icon className="h-5 w-5" />
-                    {item.label}
+                    <Icon className="h-5 w-5 shrink-0" />
+                    <span className="text-sm">{item.label}</span>
                   </div>
                 </Link>
               );
@@ -124,7 +128,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-6xl mx-auto">
@@ -133,7 +136,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </main>
       
-      {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"

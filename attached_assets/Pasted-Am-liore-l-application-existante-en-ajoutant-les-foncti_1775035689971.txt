@@ -1,0 +1,106 @@
+Améliore l'application existante en ajoutant les fonctionnalités suivantes :
+
+Gestion financière
+
+Remboursement des investisseurs
+• Ajouter une section dans le module Financement pour tracker les remboursements
+• Table avec colonnes : Nom de l'investisseur, Montant remboursé, Date, Commentaire
+• Calculer automatiquement pour chaque investisseur :
+  - Total investi
+  - Total remboursé
+  - Solde restant dû
+  - Retour sur investissement en % (basé sur les bénéfices des bandes)
+
+Historique de caisse
+• Journal complet de chaque mouvement de caisse
+• Colonnes : Date, Type (entrée/sortie), Catégorie, Désignation, Montant, Solde après opération
+• Solde courant toujours visible en haut de page
+• Filtres par date et par catégorie
+
+Prévisions
+• Basées sur les moyennes des bandes précédentes, afficher automatiquement :
+  - Coût de production estimé pour la prochaine bande
+  - Bénéfice probable estimé
+  - Durée moyenne d'une bande
+
+Suivi de production
+
+Suivi de mortalité quotidien
+• Dans chaque bande, ajouter un tableau de suivi journalier
+• Colonnes : Date, Âge des poulets (jours), Décès du jour, Décès cumulés, Taux de mortalité %
+• Alerte visuelle (rouge) si le taux de mortalité dépasse 3% sur une journée
+• Graphique de la courbe de mortalité par bande
+
+Suivi du poids
+• Tableau de pesée : Date, Âge (jours), Poids moyen échantillon (g), Objectif poids (g), Écart
+• Graphique de courbe de croissance réelle vs courbe théorique
+• Alertes si le poids est en dessous de l'objectif de plus de 10%
+
+Indice de consommation (IC)
+• Calculer automatiquement : IC = kg d'aliment consommé ÷ kg de poids gagné
+• Afficher l'IC actuel pour chaque bande
+• Indiquer si l'IC est bon (< 1.8), moyen (1.8 - 2.2), ou mauvais (> 2.2)
+
+Calendrier vaccins et médicaments
+• Pour chaque bande, générer automatiquement un calendrier de vaccination basé sur la date de démarrage :
+  - J1 : Désinfection et installation
+  - J7 : Vaccin Newcastle
+  - J14 : Vaccin Gumboro
+  - J21 : Rappel Newcastle
+  - J28 : Vaccin Bronchite infectieuse
+• Afficher les rappels à venir dans le dashboard
+• Permettre de marquer chaque vaccination comme "faite" avec date et commentaire
+• Alerte si une vaccination est en retard
+
+
+Commentaires sur les dépenses
+• Ajouter un champ "Commentaire / Justification" sur chaque formulaire de saisie de dépense
+• Rendre ce champ obligatoire pour les dépenses supérieures à 50 000 FCFA
+• Afficher le commentaire dans le tableau des dépenses
+
+
+Expérience terrain
+
+Photos sur les dépenses
+• Permettre d'attacher une photo (reçu, facture) à chaque dépense
+• Photo visible en cliquant sur la ligne dans le tableau
+• Stockage des images dans Replit
+
+Rapport PDF
+• Bouton "Générer rapport PDF" disponible :
+  - Par bande : résumé complet (dépenses, ventes, mortalité, bénéfice)
+  - Par mois : toutes les dépenses et entrées du mois
+  - Financement global : état des investissements et remboursements
+• Le PDF doit être propre et imprimable, avec le nom de la ferme en en-tête
+
+Mode hors-ligne
+• L'appli doit fonctionner sans connexion internet pour la saisie de données
+• Les données saisies hors-ligne se synchronisent automatiquement quand la connexion revient
+• Indicateur visuel montrant si l'appli est en ligne ou hors-ligne
+
+Analyses long terme
+
+Comparaison entre bandes
+• Page dédiée avec tableau comparatif de toutes les bandes :
+  - Nombre de sujets de départ
+  - Taux de mortalité
+  - Coût de production par sujet
+  - Prix de vente moyen
+  - Bénéfice net
+  - Durée de la bande
+• Graphiques comparatifs en barres
+
+Seuil de rentabilité
+• Calculer et afficher pour chaque bande :
+  - Nombre minimum de poulets à vendre pour couvrir les coûts
+  - Prix minimum de vente par poulet pour être rentable
+  - Marge de sécurité actuelle en % (combien on peut perdre avant d'être en perte)
+• Afficher ces indicateurs en temps réel pendant la bande
+
+Améliorations générales
+• Ajouter un log d'activité : qui a fait quoi et quand (ex: "Jeriel a ajouté une dépense de 50 000 FCFA le 17/03/2026")
+• Ajouter une sauvegarde automatique de la base de données toutes les 24h
+• Le dashboard principal doit afficher en priorité : caisse disponible, prochaine vaccination, taux de mortalité actuel, et bénéfice estimé de la bande en cours
+
+Garde tout ce qui existe déjà dans l'appli. Ces fonctionnalités s'ajoutent par-dessus sans rien casser.
+
