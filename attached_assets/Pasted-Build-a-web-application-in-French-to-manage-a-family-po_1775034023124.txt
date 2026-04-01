@@ -1,0 +1,117 @@
+Build a web application in French to manage a family poultry farm business in Cameroon. The app should be clean, mobile-friendly, and easy to use without technical knowledge.
+
+Authentication
+• Simple login system with user roles:
+  - Admin (full access)
+  - Investisseur (read-only access to financing and reports)
+  - Gestionnaire (can enter expenses and sales)
+
+Module 1 – Financement
+Track investments from each family member.
+
+• Table with columns: Nom, Montant investi, Date
+• Ability to add/edit/delete entries
+• Show total investi at the bottom
+• Initial data:
+  - Papa: 600 000
+  - Maman: 1 500 000
+  - Murielle: 1 200 000
+  - Jeriel: 1 800 000
+  - Total: 5 100 000
+
+Module 2 – Devis Construction
+Manage construction budget estimates, broken down by category.
+
+Three categories:
+
+Bâtiment
+• Estimated total: 3 525 000
+• Free-form notes field
+
+Puits aménagé (Forage)
+• Detailed items table: Désignation, Quantité, Prix unitaire, Prix total
+• Initial items:
+  - Puits creuser: 350 000
+  - Buses: 620 000
+  - Château d'eau: 300 000
+  - Électricité + plomberie: 100 000
+• Auto-calculated total
+
+Carburant construction
+• Estimated total: 150 000
+
+Show total général des devis and compare it to total financing available.
+
+Module 3 – Suivi des Dépenses de Construction
+Track actual construction spending with dates.
+
+Two sub-sections:
+
+Sorties d'argent
+• Columns: Date, Décaissé, Dépensé, Reste (auto-calculated)
+
+Sorties carburant
+• Columns: Date, Montant
+
+Dépenses détaillées bâtiment (itemized list):
+• Columns: Désignation, Quantité, Prix unitaire, Prix total
+• Examples: planches, défrichage, gravier, sable, transport, etc.
+
+Dépenses détaillées puits
+• Same structure
+
+Show:
+• Total dépensé
+• Budget restant (devis - dépenses réelles)
+• Caisse actuelle
+
+Module 4 – Gestion des Bandes de Poulets
+Each "bande" (batch of chickens) is an independent production cycle.
+
+For each bande:
+
+Dépenses de production:
+• Itemized table: Désignation, Quantité, Prix unitaire, Montant
+• Categories: poussins, aliments, concentré, médicaments, carburant, salaires, matériel divers
+• Auto-calculated totals
+
+Charges fixes:
+• Valeur perdue matériel fixe (10% of fixed asset value)
+• Imprévus (5%)
+• Loyer
+
+Coût de production:
+• Auto-calculated: total dépenses + charges fixes
+• Coût par sujet = coût total ÷ nombre de sujets
+
+Ventes:
+• Table: Date, Quantité vendue, Prix unitaire, Montant
+• Dépenses liées à la vente: sanitaire, ticket, déjeuner, garderie, police, mairie, réparation véhicule
+
+Résumé de la bande:
+• Sujets de départ
+• Nombre de décès
+• Sujets restants
+• Total recettes
+• Total dépenses
+• Bénéfice net estimé (avec et sans charges fixes)
+• Net en caisse après cette bande
+
+Allow creating multiple bandes (Bande 1, Bande 2, etc.)
+
+Module 5 – Tableau de Bord (Dashboard)
+Main overview page showing:
+
+• Total financé vs total dépensé (construction)
+• Caisse disponible actuelle
+• Nombre de bandes créées
+• Pour chaque bande active : sujets vivants, coût de production, recettes, bénéfice estimé
+• Simple charts (bar or pie) for expenses breakdown
+• Alerts if spending exceeds budget
+
+Technical requirements
+• Language: French throughout the entire UI
+• Database: persistent storage (use a simple built-in database like SQLite or Replit DB)
+• Stack: use whatever stack is easiest to deploy on Replit (suggested: Python/Flask + SQLite, or Node.js + SQLite)
+• Mobile-friendly: responsive design, works well on smartphones
+• No complex setup: should run out of the box on Replit
