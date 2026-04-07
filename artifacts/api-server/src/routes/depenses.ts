@@ -69,28 +69,35 @@ router.delete("/carburant/:id", async (req, res) => {
   res.json({ success: true });
 });
 
+function formatBatItem(r: any) {
+  return { id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire), categorie: r.categorie || "materiaux", date: r.date || null, commentaire: r.commentaire || null };
+}
+
 router.get("/batiment-items", async (req, res) => {
   const rows = await db.select().from(depensesBatimentTable);
-  res.json(rows.map(r => ({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire), categorie: r.categorie || "materiaux" })));
+  res.json(rows.map(formatBatItem));
 });
 
 router.post("/batiment-items", async (req, res) => {
-  const { designation, quantite, prixUnitaire, categorie } = req.body;
-  const rows = await db.insert(depensesBatimentTable).values({ designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire), categorie: categorie || "materiaux" }).returning();
+  const { designation, quantite, prixUnitaire, categorie, date, commentaire } = req.body;
+  const rows = await db.insert(depensesBatimentTable).values({ designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire), categorie: categorie || "materiaux", date: date || null, commentaire: commentaire || null }).returning();
   const r = rows[0];
   await logFromRequest(req, "Ajout dépense bâtiment", `${designation} - ${parseFloat(r.quantite) * parseFloat(r.prixUnitaire)} FCFA`);
-  res.status(201).json({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire), categorie: r.categorie || "materiaux" });
+  res.status(201).json(formatBatItem(r));
 });
 
 router.put("/batiment-items/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  const { designation, quantite, prixUnitaire, categorie } = req.body;
+  const { designation, quantite, prixUnitaire, categorie, date, commentaire } = req.body;
   const updates: any = { designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire) };
   if (categorie !== undefined) updates.categorie = categorie;
+  if (date !== undefined) updates.date = date || null;
+  if (commentaire !== undefined) updates.commentaire = commentaire || null;
   const rows = await db.update(depensesBatimentTable).set(updates).where(eq(depensesBatimentTable.id, id)).returning();
+  if (!rows.length) return res.status(404).json({ error: "Item non trouvé" });
   const r = rows[0];
   await logFromRequest(req, "Modification dépense bâtiment", `${designation}`);
-  res.json({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire), categorie: r.categorie || "materiaux" });
+  res.json(formatBatItem(r));
 });
 
 router.delete("/batiment-items/:id", async (req, res) => {
@@ -100,26 +107,35 @@ router.delete("/batiment-items/:id", async (req, res) => {
   res.json({ success: true });
 });
 
+function formatPuitsItem(r: any) {
+  return { id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire), categorie: r.categorie || "materiaux", date: r.date || null, commentaire: r.commentaire || null };
+}
+
 router.get("/puits-items", async (req, res) => {
   const rows = await db.select().from(depensesPuitsTable);
-  res.json(rows.map(r => ({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire) })));
+  res.json(rows.map(formatPuitsItem));
 });
 
 router.post("/puits-items", async (req, res) => {
-  const { designation, quantite, prixUnitaire } = req.body;
-  const rows = await db.insert(depensesPuitsTable).values({ designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire) }).returning();
+  const { designation, quantite, prixUnitaire, categorie, date, commentaire } = req.body;
+  const rows = await db.insert(depensesPuitsTable).values({ designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire), categorie: categorie || "materiaux", date: date || null, commentaire: commentaire || null }).returning();
   const r = rows[0];
-  await logFromRequest(req, "Ajout dépense puits", `${designation} - ${parseFloat(r.quantite) * parseFloat(r.prixUnitaire)} FCFA`);
-  res.status(201).json({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire) });
+  await logFromRequest(req, "Ajout dépense forage", `${designation} - ${parseFloat(r.quantite) * parseFloat(r.prixUnitaire)} FCFA`);
+  res.status(201).json(formatPuitsItem(r));
 });
 
 router.put("/puits-items/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  const { designation, quantite, prixUnitaire } = req.body;
-  const rows = await db.update(depensesPuitsTable).set({ designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire) }).where(eq(depensesPuitsTable.id, id)).returning();
+  const { designation, quantite, prixUnitaire, categorie, date, commentaire } = req.body;
+  const updates: any = { designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire) };
+  if (categorie !== undefined) updates.categorie = categorie;
+  if (date !== undefined) updates.date = date || null;
+  if (commentaire !== undefined) updates.commentaire = commentaire || null;
+  const rows = await db.update(depensesPuitsTable).set(updates).where(eq(depensesPuitsTable.id, id)).returning();
+  if (!rows.length) return res.status(404).json({ error: "Item non trouvé" });
   const r = rows[0];
-  await logFromRequest(req, "Modification dépense puits", `${designation}`);
-  res.json({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire) });
+  await logFromRequest(req, "Modification dépense forage", `${designation}`);
+  res.json(formatPuitsItem(r));
 });
 
 router.delete("/puits-items/:id", async (req, res) => {

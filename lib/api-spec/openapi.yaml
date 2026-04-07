@@ -1631,6 +1631,13 @@ components:
         categorie:
           type: string
           enum: [materiaux, main_oeuvre, transport, carburant, divers]
+        date:
+          type: string
+          format: date
+          nullable: true
+        commentaire:
+          type: string
+          nullable: true
       required:
         - id
         - designation
@@ -1650,6 +1657,11 @@ components:
         categorie:
           type: string
           enum: [materiaux, main_oeuvre, transport, carburant, divers]
+        date:
+          type: string
+          format: date
+        commentaire:
+          type: string
       required:
         - designation
         - quantite

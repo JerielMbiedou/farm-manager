@@ -8,15 +8,11 @@ import {
   useCreateDepensesPuitsItem,
   useUpdateDepensesPuitsItem,
   useDeleteDepensesPuitsItem,
-  useListSortiesCarburant,
-  useCreateSortieCarburant,
-  useUpdateSortieCarburant,
-  useDeleteSortieCarburant,
   useGetDashboardSummary,
+  useListDevis,
   useGetMe,
   getListBatimentItemsQueryKey,
   getListDepensesPuitsItemsQueryKey,
-  getListSortiesCarburantQueryKey,
   getGetDashboardSummaryQueryKey
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,11 +28,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Construction, Droplets, Fuel, Wallet, Filter } from "lucide-react";
+import { Plus, Pencil, Trash2, Construction, Droplets, Wallet, Search, ChevronDown, ChevronRight, MessageSquare } from "lucide-react";
 
 const CATEGORIES = [
   { value: "materiaux", label: "Materiaux" },
@@ -58,23 +56,233 @@ function getCategoryLabel(value: string) {
   return CATEGORIES.find(c => c.value === value)?.label || value;
 }
 
-const depenseDetailleeSchema = z.object({
+const depenseSchema = z.object({
   designation: z.string().min(1, "La designation est requise"),
-  quantite: z.coerce.number().min(1, "La quantite doit etre superieure a 0"),
+  quantite: z.coerce.number().min(0.01, "La quantite doit etre superieure a 0"),
   prixUnitaire: z.coerce.number().min(0, "Le prix unitaire doit etre positif"),
   categorie: z.string().optional(),
+  date: z.string().optional(),
+  commentaire: z.string().optional(),
 });
 
-const sortieCarburantSchema = z.object({
-  date: z.string().min(1, "La date est requise"),
-  montant: z.coerce.number().min(0, "Le montant doit etre positif"),
-});
+type DepenseItem = {
+  id: number;
+  designation: string;
+  quantite: number;
+  prixUnitaire: number;
+  prixTotal: number;
+  categorie?: string;
+  date?: string | null;
+  commentaire?: string | null;
+};
+
+function GroupedTable({ 
+  items, 
+  isReadOnly, 
+  onEdit, 
+  onDelete,
+  searchQuery 
+}: { 
+  items: DepenseItem[];
+  isReadOnly: boolean;
+  onEdit: (item: DepenseItem) => void;
+  onDelete: (id: number) => void;
+  searchQuery: string;
+}) {
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return items;
+    const q = searchQuery.toLowerCase();
+    return items.filter(i => i.designation.toLowerCase().includes(q));
+  }, [items, searchQuery]);
+
+  const grouped = useMemo(() => {
+    const groups: Record<string, { items: DepenseItem[]; total: number }> = {};
+    for (const item of filtered) {
+      const cat = item.categorie || "materiaux";
+      if (!groups[cat]) groups[cat] = { items: [], total: 0 };
+      groups[cat].items.push(item);
+      groups[cat].total += item.prixTotal;
+    }
+    return groups;
+  }, [filtered]);
+
+  const toggleGroup = (cat: string) => {
+    setCollapsedGroups(prev => ({ ...prev, [cat]: !prev[cat] }));
+  };
+
+  const grandTotal = filtered.reduce((s, i) => s + i.prixTotal, 0);
+  const colCount = isReadOnly ? 5 : 6;
+
+  return (
+    <div className="border rounded-md overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/30">
+            <TableHead className="w-10"></TableHead>
+            <TableHead>Designation</TableHead>
+            <TableHead className="text-right">Qte</TableHead>
+            <TableHead className="text-right">Prix Unit.</TableHead>
+            <TableHead className="text-right">Total</TableHead>
+            {!isReadOnly && <TableHead className="text-right w-24">Actions</TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filtered.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={colCount} className="text-center py-8 text-muted-foreground">
+                {searchQuery ? "Aucun resultat pour cette recherche" : "Aucune depense enregistree"}
+              </TableCell>
+            </TableRow>
+          ) : (
+            CATEGORIES.map(cat => {
+              const group = grouped[cat.value];
+              if (!group) return null;
+              const isCollapsed = collapsedGroups[cat.value];
+              return (
+                <GroupSection
+                  key={cat.value}
+                  category={cat.value}
+                  label={cat.label}
+                  items={group.items}
+                  total={group.total}
+                  isCollapsed={isCollapsed}
+                  onToggle={() => toggleGroup(cat.value)}
+                  isReadOnly={isReadOnly}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              );
+            })
+          )}
+        </TableBody>
+        {filtered.length > 0 && (
+          <TableFooter>
+            <TableRow className="bg-primary/5">
+              <TableCell colSpan={4} className="font-bold">Total</TableCell>
+              <TableCell className="text-right font-bold text-primary">{formatFCFA(grandTotal)}</TableCell>
+              {!isReadOnly && <TableCell></TableCell>}
+            </TableRow>
+          </TableFooter>
+        )}
+      </Table>
+    </div>
+  );
+}
+
+function GroupSection({
+  category,
+  label,
+  items,
+  total,
+  isCollapsed,
+  onToggle,
+  isReadOnly,
+  onEdit,
+  onDelete,
+}: {
+  category: string;
+  label: string;
+  items: DepenseItem[];
+  total: number;
+  isCollapsed: boolean;
+  onToggle: () => void;
+  isReadOnly: boolean;
+  onEdit: (item: DepenseItem) => void;
+  onDelete: (id: number) => void;
+}) {
+  return (
+    <>
+      <TableRow 
+        className="bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors" 
+        onClick={onToggle}
+      >
+        <TableCell className="w-10 px-3">
+          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </TableCell>
+        <TableCell colSpan={2} className="font-semibold">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className={categoryColors[category]}>
+              {label}
+            </Badge>
+            <span className="text-muted-foreground text-sm">({items.length} {items.length > 1 ? "lignes" : "ligne"})</span>
+          </div>
+        </TableCell>
+        <TableCell className="text-right font-semibold text-sm text-muted-foreground">Sous-total</TableCell>
+        <TableCell className="text-right font-semibold">{formatFCFA(total)}</TableCell>
+        {!isReadOnly && <TableCell></TableCell>}
+      </TableRow>
+      {!isCollapsed && items.map(item => (
+        <TableRow key={item.id} className="hover:bg-muted/10">
+          <TableCell></TableCell>
+          <TableCell>
+            <div>
+              <span className="font-medium">{item.designation}</span>
+              {item.commentaire && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                  <MessageSquare className="h-3 w-3" />
+                  {item.commentaire}
+                </div>
+              )}
+              {item.date && (
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {format(new Date(item.date), 'dd/MM/yyyy')}
+                </div>
+              )}
+            </div>
+          </TableCell>
+          <TableCell className="text-right">{item.quantite}</TableCell>
+          <TableCell className="text-right">{formatFCFA(item.prixUnitaire)}</TableCell>
+          <TableCell className="text-right font-medium">{formatFCFA(item.prixTotal)}</TableCell>
+          {!isReadOnly && (
+            <TableCell className="text-right">
+              <div className="flex justify-end gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); onEdit(item); }}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </TableCell>
+          )}
+        </TableRow>
+      ))}
+    </>
+  );
+}
+
+function ProgressCard({ label, icon: Icon, spent, budget, color }: { label: string; icon: React.ElementType; spent: number; budget: number; color: string }) {
+  const pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+  const remaining = budget - spent;
+  
+  return (
+    <Card className={`border-t-4 shadow-sm ${color}`}>
+      <CardHeader className="pb-2 flex flex-row items-center justify-between">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="font-bold text-lg">{formatFCFA(spent)}</span>
+          <span className="text-muted-foreground">/ {formatFCFA(budget)}</span>
+        </div>
+        <Progress value={pct} className="h-2" />
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>{pct.toFixed(0)}% utilise</span>
+          <span>Reste: {formatFCFA(remaining)}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Depenses() {
   const { data: summary, isLoading: isLoadingSummary } = useGetDashboardSummary();
   const { data: batimentItems, isLoading: isLoadingBatiment } = useListBatimentItems();
   const { data: puitsItems, isLoading: isLoadingPuits } = useListDepensesPuitsItems();
-  const { data: carburantItems, isLoading: isLoadingCarburant } = useListSortiesCarburant();
+  const { data: devis, isLoading: isLoadingDevis } = useListDevis();
   const { data: user } = useGetMe();
 
   const queryClient = useQueryClient();
@@ -90,60 +298,50 @@ export default function Depenses() {
   const updatePuits = useUpdateDepensesPuitsItem();
   const deletePuits = useDeleteDepensesPuitsItem();
 
-  const createCarburant = useCreateSortieCarburant();
-  const updateCarburant = useUpdateSortieCarburant();
-  const deleteCarburant = useDeleteSortieCarburant();
-
   const [activeTab, setActiveTab] = useState("batiment");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const detailleeForm = useForm<z.infer<typeof depenseDetailleeSchema>>({
-    resolver: zodResolver(depenseDetailleeSchema),
-    defaultValues: { designation: "", quantite: 1, prixUnitaire: 0, categorie: "materiaux" },
+  const form = useForm<z.infer<typeof depenseSchema>>({
+    resolver: zodResolver(depenseSchema),
+    defaultValues: { designation: "", quantite: 1, prixUnitaire: 0, categorie: "materiaux", date: "", commentaire: "" },
   });
 
-  const carburantForm = useForm<z.infer<typeof sortieCarburantSchema>>({
-    resolver: zodResolver(sortieCarburantSchema),
-    defaultValues: { date: new Date().toISOString().split("T")[0], montant: 0 },
-  });
-
-  const resetForms = () => {
-    detailleeForm.reset({ designation: "", quantite: 1, prixUnitaire: 0, categorie: "materiaux" });
-    carburantForm.reset({ date: new Date().toISOString().split("T")[0], montant: 0 });
+  const resetForm = () => {
+    form.reset({ designation: "", quantite: 1, prixUnitaire: 0, categorie: "materiaux", date: "", commentaire: "" });
     setEditingId(null);
   };
 
-  const handleEdit = (item: any) => {
+  const handleEdit = (item: DepenseItem) => {
     setEditingId(item.id);
-    if (activeTab === "carburant") {
-      carburantForm.reset({
-        date: new Date(item.date).toISOString().split("T")[0],
-        montant: item.montant,
-      });
-    } else {
-      detailleeForm.reset({
-        designation: item.designation,
-        quantite: item.quantite,
-        prixUnitaire: item.prixUnitaire,
-        categorie: item.categorie || "materiaux",
-      });
-    }
+    form.reset({
+      designation: item.designation,
+      quantite: item.quantite,
+      prixUnitaire: item.prixUnitaire,
+      categorie: item.categorie || "materiaux",
+      date: item.date ? new Date(item.date).toISOString().split("T")[0] : "",
+      commentaire: item.commentaire || "",
+    });
     setIsDialogOpen(true);
   };
 
-  const onDetailleeSubmit = async (values: z.infer<typeof depenseDetailleeSchema>) => {
+  const onSubmit = async (values: z.infer<typeof depenseSchema>) => {
     try {
-      const payload = activeTab === "batiment" 
-        ? { designation: values.designation, quantite: values.quantite, prixUnitaire: values.prixUnitaire, categorie: values.categorie as any }
-        : { designation: values.designation, quantite: values.quantite, prixUnitaire: values.prixUnitaire };
+      const payload = {
+        designation: values.designation,
+        quantite: values.quantite,
+        prixUnitaire: values.prixUnitaire,
+        categorie: values.categorie as any,
+        date: values.date || null,
+        commentaire: values.commentaire || null,
+      };
       
       if (activeTab === "batiment") {
         if (editingId) await updateBatiment.mutateAsync({ id: editingId, data: payload });
         else await createBatiment.mutateAsync({ data: payload });
         queryClient.invalidateQueries({ queryKey: getListBatimentItemsQueryKey() });
-      } else if (activeTab === "puits") {
+      } else {
         if (editingId) await updatePuits.mutateAsync({ id: editingId, data: payload });
         else await createPuits.mutateAsync({ data: payload });
         queryClient.invalidateQueries({ queryKey: getListDepensesPuitsItemsQueryKey() });
@@ -151,21 +349,7 @@ export default function Depenses() {
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       toast({ title: "Enregistrement reussi" });
       setIsDialogOpen(false);
-      resetForms();
-    } catch (e) {
-      toast({ title: "Erreur", variant: "destructive" });
-    }
-  };
-
-  const onCarburantSubmit = async (values: z.infer<typeof sortieCarburantSchema>) => {
-    try {
-      if (editingId) await updateCarburant.mutateAsync({ id: editingId, data: values });
-      else await createCarburant.mutateAsync({ data: values });
-      queryClient.invalidateQueries({ queryKey: getListSortiesCarburantQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-      toast({ title: "Enregistrement reussi" });
-      setIsDialogOpen(false);
-      resetForms();
+      resetForm();
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" });
     }
@@ -177,12 +361,9 @@ export default function Depenses() {
       if (activeTab === "batiment") {
         await deleteBatiment.mutateAsync({ id });
         queryClient.invalidateQueries({ queryKey: getListBatimentItemsQueryKey() });
-      } else if (activeTab === "puits") {
+      } else {
         await deletePuits.mutateAsync({ id });
         queryClient.invalidateQueries({ queryKey: getListDepensesPuitsItemsQueryKey() });
-      } else if (activeTab === "carburant") {
-        await deleteCarburant.mutateAsync({ id });
-        queryClient.invalidateQueries({ queryKey: getListSortiesCarburantQueryKey() });
       }
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       toast({ title: "Ligne supprimee" });
@@ -191,44 +372,26 @@ export default function Depenses() {
     }
   };
 
-  const isLoading = isLoadingSummary || isLoadingBatiment || isLoadingPuits || isLoadingCarburant;
+  const isLoading = isLoadingSummary || isLoadingBatiment || isLoadingPuits || isLoadingDevis;
 
-  const filteredBatimentItems = useMemo(() => {
-    if (!batimentItems) return [];
-    if (!filterCategory) return batimentItems;
-    return batimentItems.filter(item => (item as any).categorie === filterCategory);
-  }, [batimentItems, filterCategory]);
-
-  const categoryTotals = useMemo(() => {
-    if (!batimentItems) return {};
-    const totals: Record<string, { count: number; total: number }> = {};
-    for (const item of batimentItems) {
-      const cat = (item as any).categorie || "materiaux";
-      if (!totals[cat]) totals[cat] = { count: 0, total: 0 };
-      totals[cat].count++;
-      totals[cat].total += item.prixTotal;
-    }
-    return totals;
-  }, [batimentItems]);
-
-  if (isLoading) return <div>Chargement...</div>;
+  if (isLoading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Chargement...</div>;
 
   const totalBatiment = batimentItems?.reduce((sum, item) => sum + item.prixTotal, 0) || 0;
-  const totalPuits = puitsItems?.reduce((sum, item) => sum + item.prixTotal, 0) || 0;
-  const totalCarburant = carburantItems?.reduce((sum, item) => sum + item.montant, 0) || 0;
-  const filteredTotal = filteredBatimentItems.reduce((sum, item) => sum + item.prixTotal, 0);
+  const totalForage = puitsItems?.reduce((sum, item) => sum + item.prixTotal, 0) || 0;
+  const budgetBatiment = devis?.batimentEstime || 0;
+  const budgetForage = devis?.totalPuits || 0;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Depenses Construction</h1>
-          <p className="text-muted-foreground mt-1">Suivi des decaissements et achats reels</p>
+          <p className="text-muted-foreground mt-1">Suivi des depenses reelles vs budget previsionnel</p>
         </div>
         {!isReadOnly && (
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
-            if (!open) resetForms();
+            if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
               <Button className="gap-2">
@@ -238,305 +401,153 @@ export default function Depenses() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingId ? "Modifier la depense" : "Ajouter une depense"}</DialogTitle>
+                <DialogTitle>
+                  {editingId ? "Modifier la depense" : `Ajouter une depense ${activeTab === "batiment" ? "batiment" : "forage"}`}
+                </DialogTitle>
               </DialogHeader>
-              
-              {activeTab === "carburant" ? (
-                <Form {...carburantForm}>
-                  <form onSubmit={carburantForm.handleSubmit(onCarburantSubmit)} className="space-y-4">
-                    <FormField control={carburantForm.control} name="date" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date</FormLabel>
-                        <FormControl><Input type="date" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={carburantForm.control} name="montant" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Montant (FCFA)</FormLabel>
-                        <FormControl><Input type="number" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <Button type="submit" className="w-full">Enregistrer</Button>
-                  </form>
-                </Form>
-              ) : (
-                <Form {...detailleeForm}>
-                  <form onSubmit={detailleeForm.handleSubmit(onDetailleeSubmit)} className="space-y-4">
-                    <FormField control={detailleeForm.control} name="designation" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Designation</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={detailleeForm.control} name="quantite" render={({ field }) => (
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField control={form.control} name="designation" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Designation</FormLabel>
+                      <FormControl><Input placeholder="Ex: Sac de ciment, Fer de 8..." {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="quantite" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Quantite</FormLabel>
-                        <FormControl><Input type="number" {...field} /></FormControl>
+                        <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={detailleeForm.control} name="prixUnitaire" render={({ field }) => (
+                    <FormField control={form.control} name="prixUnitaire" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Prix unitaire (FCFA)</FormLabel>
                         <FormControl><Input type="number" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
-                    {activeTab === "batiment" && (
-                      <FormField control={detailleeForm.control} name="categorie" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Categorie</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || "materiaux"}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Choisir une categorie" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {CATEGORIES.map(cat => (
-                                <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                    )}
-                    <Button type="submit" className="w-full">Enregistrer</Button>
-                  </form>
-                </Form>
-              )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="categorie" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categorie</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || "materiaux"}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {CATEGORIES.map(cat => (
+                              <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="date" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date (optionnel)</FormLabel>
+                        <FormControl><Input type="date" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+                  <FormField control={form.control} name="commentaire" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Commentaire (optionnel)</FormLabel>
+                      <FormControl><Textarea placeholder="Note ou remarque..." className="resize-none" rows={2} {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <Button type="submit" className="w-full">Enregistrer</Button>
+                </form>
+              </Form>
             </DialogContent>
           </Dialog>
         )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
+        <ProgressCard 
+          label="Batiment" 
+          icon={Construction} 
+          spent={totalBatiment} 
+          budget={budgetBatiment} 
+          color="border-t-blue-500 bg-blue-50/50" 
+        />
+        <ProgressCard 
+          label="Forage" 
+          icon={Droplets} 
+          spent={totalForage} 
+          budget={budgetForage} 
+          color="border-t-cyan-500 bg-cyan-50/50" 
+        />
         <Card className="border-t-4 border-t-primary shadow-sm bg-primary/5">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Depense</CardTitle>
-            <Wallet className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Construction</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatFCFA(summary?.totalDepenseConstruction || 0)}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-t-4 border-t-accent shadow-sm bg-accent/5">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Budget Restant (Devis)</CardTitle>
-            <Wallet className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {formatFCFA((summary?.totalDevis || 0) - (summary?.totalDepenseConstruction || 0))}
+          <CardContent className="space-y-2">
+            <div className="text-2xl font-bold">{formatFCFA(totalBatiment + totalForage)}</div>
+            <div className="text-xs text-muted-foreground">
+              Caisse disponible: {formatFCFA(summary?.caisseDisponible || 0)}
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-t-4 border-t-secondary shadow-sm bg-secondary/5">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Caisse Actuelle</CardTitle>
-            <Wallet className="h-4 w-4 text-secondary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatFCFA(summary?.caisseDisponible || 0)}</div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setFilterCategory(null); }} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/50 p-1">
-          <TabsTrigger value="batiment" className="flex items-center gap-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">
-            <Construction className="h-4 w-4" /> Batiment
-          </TabsTrigger>
-          <TabsTrigger value="puits" className="flex items-center gap-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">
-            <Droplets className="h-4 w-4" /> Puits & Eau
-          </TabsTrigger>
-          <TabsTrigger value="carburant" className="flex items-center gap-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">
-            <Fuel className="h-4 w-4" /> Carburant
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setSearchQuery(""); }} className="w-full">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <TabsList className="bg-muted/50 p-1">
+            <TabsTrigger value="batiment" className="flex items-center gap-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+              <Construction className="h-4 w-4" /> Batiment
+              <Badge variant="secondary" className="ml-1 text-xs">{batimentItems?.length || 0}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="forage" className="flex items-center gap-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+              <Droplets className="h-4 w-4" /> Forage
+              <Badge variant="secondary" className="ml-1 text-xs">{puitsItems?.length || 0}</Badge>
+            </TabsTrigger>
+          </TabsList>
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Rechercher..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
 
         <TabsContent value="batiment">
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Badge
-                variant={filterCategory === null ? "default" : "outline"}
-                className="cursor-pointer"
-                onClick={() => setFilterCategory(null)}
-              >
-                Tout ({batimentItems?.length || 0})
-              </Badge>
-              {CATEGORIES.map(cat => {
-                const info = categoryTotals[cat.value];
-                if (!info) return null;
-                return (
-                  <Badge
-                    key={cat.value}
-                    variant={filterCategory === cat.value ? "default" : "outline"}
-                    className={`cursor-pointer ${filterCategory !== cat.value ? categoryColors[cat.value] : ""}`}
-                    onClick={() => setFilterCategory(filterCategory === cat.value ? null : cat.value)}
-                  >
-                    {cat.label} ({info.count}) - {formatFCFA(info.total)}
-                  </Badge>
-                );
-              })}
-            </div>
-
-            <Card>
-              <CardContent className="p-0">
-                <div className="border rounded-md overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/30">
-                        <TableHead>Designation</TableHead>
-                        <TableHead>Categorie</TableHead>
-                        <TableHead className="text-right">Quantite</TableHead>
-                        <TableHead className="text-right">Prix Unitaire</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        {!isReadOnly && <TableHead className="text-right w-24">Actions</TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredBatimentItems.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Aucune depense enregistree</TableCell></TableRow>
-                      ) : (
-                        filteredBatimentItems.map(item => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.designation}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className={categoryColors[(item as any).categorie || "materiaux"]}>
-                                {getCategoryLabel((item as any).categorie || "materiaux")}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">{item.quantite}</TableCell>
-                            <TableCell className="text-right">{formatFCFA(item.prixUnitaire)}</TableCell>
-                            <TableCell className="text-right font-medium">{formatFCFA(item.prixTotal)}</TableCell>
-                            {!isReadOnly && (
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
-                                  <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                                  <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
-                                </div>
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                    <TableFooter>
-                      <TableRow className="bg-primary/5">
-                        <TableCell colSpan={4} className="font-bold">
-                          {filterCategory ? `Total ${getCategoryLabel(filterCategory)}` : "Total Batiment"}
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-primary">
-                          {formatFCFA(filterCategory ? filteredTotal : totalBatiment)}
-                        </TableCell>
-                        {!isReadOnly && <TableCell></TableCell>}
-                      </TableRow>
-                    </TableFooter>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="puits">
           <Card>
             <CardContent className="p-0">
-              <div className="border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      <TableHead>Designation</TableHead>
-                      <TableHead className="text-right">Quantite</TableHead>
-                      <TableHead className="text-right">Prix Unitaire</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      {!isReadOnly && <TableHead className="text-right w-24">Actions</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {puitsItems?.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Aucune depense enregistree</TableCell></TableRow>
-                    ) : (
-                      puitsItems?.map(item => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.designation}</TableCell>
-                          <TableCell className="text-right">{item.quantite}</TableCell>
-                          <TableCell className="text-right">{formatFCFA(item.prixUnitaire)}</TableCell>
-                          <TableCell className="text-right font-medium">{formatFCFA(item.prixTotal)}</TableCell>
-                          {!isReadOnly && (
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
-                              </div>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                  <TableFooter>
-                    <TableRow className="bg-primary/5">
-                      <TableCell colSpan={3} className="font-bold">Total Puits</TableCell>
-                      <TableCell className="text-right font-bold text-primary">{formatFCFA(totalPuits)}</TableCell>
-                      {!isReadOnly && <TableCell></TableCell>}
-                    </TableRow>
-                  </TableFooter>
-                </Table>
-              </div>
+              <GroupedTable
+                items={(batimentItems || []) as DepenseItem[]}
+                isReadOnly={isReadOnly}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                searchQuery={searchQuery}
+              />
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="carburant">
+        <TabsContent value="forage">
           <Card>
             <CardContent className="p-0">
-              <div className="border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Montant</TableHead>
-                      {!isReadOnly && <TableHead className="text-right w-24">Actions</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {carburantItems?.length === 0 ? (
-                      <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground">Aucune depense enregistree</TableCell></TableRow>
-                    ) : (
-                      carburantItems?.map(item => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{format(new Date(item.date), 'dd/MM/yyyy')}</TableCell>
-                          <TableCell className="text-right font-medium">{formatFCFA(item.montant)}</TableCell>
-                          {!isReadOnly && (
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
-                              </div>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                  <TableFooter>
-                    <TableRow className="bg-primary/5">
-                      <TableCell className="font-bold">Total Carburant</TableCell>
-                      <TableCell className="text-right font-bold text-primary">{formatFCFA(totalCarburant)}</TableCell>
-                      {!isReadOnly && <TableCell></TableCell>}
-                    </TableRow>
-                  </TableFooter>
-                </Table>
-              </div>
+              <GroupedTable
+                items={(puitsItems || []) as DepenseItem[]}
+                isReadOnly={isReadOnly}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                searchQuery={searchQuery}
+              />
             </CardContent>
           </Card>
         </TabsContent>

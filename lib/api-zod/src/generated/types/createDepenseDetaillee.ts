@@ -12,4 +12,6 @@ export interface CreateDepenseDetaillee {
   quantite: number;
   prixUnitaire: number;
   categorie?: CreateDepenseDetailleeCategorie;
+  date?: Date;
+  commentaire?: string;
 }

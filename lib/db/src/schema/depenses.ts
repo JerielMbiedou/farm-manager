@@ -27,6 +27,8 @@ export const depensesBatimentTable = pgTable("depenses_batiment", {
   quantite: numeric("quantite", { precision: 15, scale: 2 }).notNull(),
   prixUnitaire: numeric("prix_unitaire", { precision: 15, scale: 2 }).notNull(),
   categorie: text("categorie").default("materiaux"),
+  date: date("date"),
+  commentaire: text("commentaire"),
 });
 
 export const depensesPuitsTable = pgTable("depenses_puits", {
@@ -34,6 +36,9 @@ export const depensesPuitsTable = pgTable("depenses_puits", {
   designation: text("designation").notNull(),
   quantite: numeric("quantite", { precision: 15, scale: 2 }).notNull(),
   prixUnitaire: numeric("prix_unitaire", { precision: 15, scale: 2 }).notNull(),
+  categorie: text("categorie").default("materiaux"),
+  date: date("date"),
+  commentaire: text("commentaire"),
 });
 
 export const insertSortieArgentSchema = createInsertSchema(sortiesArgentTable).omit({ id: true, createdAt: true });

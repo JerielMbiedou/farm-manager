@@ -14,4 +14,6 @@ export interface DepenseDetaillee {
   prixUnitaire: number;
   prixTotal: number;
   categorie?: DepenseDetailleeCategorie;
+  date?: Date | null;
+  commentaire?: string | null;
 }

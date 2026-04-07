@@ -129,6 +129,8 @@ export interface DepenseDetaillee {
   prixUnitaire: number;
   prixTotal: number;
   categorie?: DepenseDetailleeCategorie;
+  date?: string | null;
+  commentaire?: string | null;
 }
 
 export type CreateDepenseDetailleeCategorie =
@@ -147,6 +149,8 @@ export interface CreateDepenseDetaillee {
   quantite: number;
   prixUnitaire: number;
   categorie?: CreateDepenseDetailleeCategorie;
+  date?: string;
+  commentaire?: string;
 }
 
 export type BandeStatut = (typeof BandeStatut)[keyof typeof BandeStatut];

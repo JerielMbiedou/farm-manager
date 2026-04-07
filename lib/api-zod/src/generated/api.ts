@@ -318,6 +318,8 @@ export const ListBatimentItemsResponseItem = zod.object({
   categorie: zod
     .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
     .optional(),
+  date: zod.coerce.date().nullish(),
+  commentaire: zod.string().nullish(),
 });
 export const ListBatimentItemsResponse = zod.array(
   ListBatimentItemsResponseItem,
@@ -333,6 +335,8 @@ export const CreateBatimentItemBody = zod.object({
   categorie: zod
     .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
     .optional(),
+  date: zod.coerce.date().optional(),
+  commentaire: zod.string().optional(),
 });
 
 /**
@@ -349,6 +353,8 @@ export const UpdateBatimentItemBody = zod.object({
   categorie: zod
     .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
     .optional(),
+  date: zod.coerce.date().optional(),
+  commentaire: zod.string().optional(),
 });
 
 export const UpdateBatimentItemResponse = zod.object({
@@ -360,6 +366,8 @@ export const UpdateBatimentItemResponse = zod.object({
   categorie: zod
     .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
     .optional(),
+  date: zod.coerce.date().nullish(),
+  commentaire: zod.string().nullish(),
 });
 
 /**
@@ -385,6 +393,8 @@ export const ListDepensesPuitsItemsResponseItem = zod.object({
   categorie: zod
     .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
     .optional(),
+  date: zod.coerce.date().nullish(),
+  commentaire: zod.string().nullish(),
 });
 export const ListDepensesPuitsItemsResponse = zod.array(
   ListDepensesPuitsItemsResponseItem,
@@ -400,6 +410,8 @@ export const CreateDepensesPuitsItemBody = zod.object({
   categorie: zod
     .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
     .optional(),
+  date: zod.coerce.date().optional(),
+  commentaire: zod.string().optional(),
 });
 
 /**
@@ -416,6 +428,8 @@ export const UpdateDepensesPuitsItemBody = zod.object({
   categorie: zod
     .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
     .optional(),
+  date: zod.coerce.date().optional(),
+  commentaire: zod.string().optional(),
 });
 
 export const UpdateDepensesPuitsItemResponse = zod.object({
@@ -427,6 +441,8 @@ export const UpdateDepensesPuitsItemResponse = zod.object({
   categorie: zod
     .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
     .optional(),
+  date: zod.coerce.date().nullish(),
+  commentaire: zod.string().nullish(),
 });
 
 /**

@@ -103,7 +103,7 @@ French-language React + Vite web app for managing a family poultry farm in Camer
 - `/dashboard` — Overview with cards (caisse, investissements, dépenses, bandes), prochaines vaccinations, prévisions
 - `/financement` — Investissements CRUD, remboursements CRUD, soldes investisseurs
 - `/devis` — Devis de construction
-- `/depenses` — Dépenses construction (bâtiment avec catégories: materiaux/main d'oeuvre/transport/carburant/divers, puits & eau, carburant)
+- `/depenses` — Dépenses construction: 2 onglets (Bâtiment, Forage) avec catégories (materiaux/main d'oeuvre/transport/carburant/divers), barres de progression budget vs réel, regroupement par catégorie avec sous-totaux, recherche, date/commentaire optionnels
 - `/bandes` — Liste des bandes de poulets
 - `/bandes/:id` — Détail bande avec onglets: Résumé, Dépenses, Ventes, Mortalité, Pesées & IC, Vaccins, Charges fixes
 - `/historique-caisse` — Journal complet des mouvements financiers (entrées/sorties) avec filtres
