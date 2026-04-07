@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useGetMe } from "@workspace/api-client-react";
-import { formatFCFA } from "@/lib/format";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -63,7 +62,7 @@ export default function Utilisateurs() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast({ title: "Role mis a jour" });
+      toast({ title: "Rôle mis à jour" });
       fetchUsers();
     } catch (e: any) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
@@ -71,7 +70,7 @@ export default function Utilisateurs() {
   };
 
   const handleDelete = async (userId: number, nom: string) => {
-    if (!confirm(`Supprimer le compte de ${nom} ? Cette action est irreversible.`)) return;
+    if (!confirm(`Supprimer le compte de ${nom} ? Cette action est irréversible.`)) return;
     try {
       const res = await fetch(`${baseUrl}/auth/users/${userId}`, {
         method: "DELETE",
@@ -79,7 +78,7 @@ export default function Utilisateurs() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast({ title: "Compte supprime" });
+      toast({ title: "Compte supprimé" });
       fetchUsers();
     } catch (e: any) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
@@ -92,7 +91,7 @@ export default function Utilisateurs() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Gestion des utilisateurs</h1>
-        <p className="text-muted-foreground mt-1">Gerez les comptes et les droits d'acces</p>
+        <p className="text-muted-foreground mt-1">Gérez les comptes et les droits d'accès</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -125,7 +124,7 @@ export default function Utilisateurs() {
               <TableRow className="bg-muted/30">
                 <TableHead>Nom</TableHead>
                 <TableHead>Identifiant</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead>Rôle</TableHead>
                 <TableHead>Inscription</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -177,12 +176,12 @@ export default function Utilisateurs() {
 
       <Card className="shadow-sm border-l-4 border-l-blue-400">
         <CardContent className="p-4">
-          <h3 className="font-semibold mb-2 flex items-center gap-2"><Shield className="h-4 w-4" /> Description des roles</h3>
+          <h3 className="font-semibold mb-2 flex items-center gap-2"><Shield className="h-4 w-4" /> Description des rôles</h3>
           <div className="grid gap-2 text-sm">
-            <div><span className="font-medium">Administrateur</span> : Acces complet a toutes les fonctionnalites, gestion des utilisateurs</div>
-            <div><span className="font-medium">Gestionnaire</span> : Peut ajouter et modifier les depenses, bandes, ventes</div>
+            <div><span className="font-medium">Administrateur</span> : Accès complet à toutes les fonctionnalités, gestion des utilisateurs</div>
+            <div><span className="font-medium">Gestionnaire</span> : Peut ajouter et modifier les dépenses, bandes, ventes</div>
             <div><span className="font-medium">Investisseur</span> : Consultation du financement, historique caisse, comparaisons</div>
-            <div><span className="font-medium">Lecteur</span> : Acces en lecture seule au tableau de bord et aux donnees principales</div>
+            <div><span className="font-medium">Lecteur</span> : Accès en lecture seule au tableau de bord et aux données principales</div>
           </div>
         </CardContent>
       </Card>

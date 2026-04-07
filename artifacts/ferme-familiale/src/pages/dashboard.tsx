@@ -35,7 +35,7 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-t-4 border-t-accent shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Caisse Disponible</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Caisse disponible</CardTitle>
             <Receipt className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
@@ -45,29 +45,29 @@ export default function Dashboard() {
 
         <Card className="border-t-4 border-t-secondary shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Investi</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total investi</CardTitle>
             <Wallet className="h-4 w-4 text-secondary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{formatFCFA(summary.totalFinance)}</div>
-            {totalRembourse > 0 && <p className="text-xs text-muted-foreground mt-1">Remboursé: {formatFCFA(totalRembourse)}</p>}
+            {totalRembourse > 0 && <p className="text-xs text-muted-foreground mt-1">Remboursé : {formatFCFA(totalRembourse)}</p>}
           </CardContent>
         </Card>
         
         <Card className="border-t-4 border-t-primary shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Dépenses Construction</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Dépenses construction</CardTitle>
             <Construction className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{formatFCFA(summary.totalDepenseConstruction)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Sur {formatFCFA(summary.totalDevis)} (Devis)</p>
+            <p className="text-xs text-muted-foreground mt-1">Sur {formatFCFA(summary.totalDevis)} (devis)</p>
           </CardContent>
         </Card>
 
         <Card className="border-t-4 border-t-sidebar-primary shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Bandes Actives</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Bandes actives</CardTitle>
             <Bird className="h-4 w-4 text-sidebar-primary" />
           </CardHeader>
           <CardContent>

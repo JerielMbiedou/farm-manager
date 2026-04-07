@@ -37,7 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Construction, Droplets, Wallet, Search, ChevronDown, ChevronRight, MessageSquare } from "lucide-react";
 
 const CATEGORIES = [
-  { value: "materiaux", label: "Materiaux" },
+  { value: "materiaux", label: "Matériaux" },
   { value: "main_oeuvre", label: "Main d'oeuvre" },
   { value: "transport", label: "Transport" },
   { value: "carburant", label: "Carburant" },
@@ -57,9 +57,9 @@ function getCategoryLabel(value: string) {
 }
 
 const depenseSchema = z.object({
-  designation: z.string().min(1, "La designation est requise"),
-  quantite: z.coerce.number().min(0.01, "La quantite doit etre superieure a 0"),
-  prixUnitaire: z.coerce.number().min(0, "Le prix unitaire doit etre positif"),
+  designation: z.string().min(1, "La désignation est requise"),
+  quantite: z.coerce.number().min(0.01, "La quantité doit être supérieure à 0"),
+  prixUnitaire: z.coerce.number().min(0, "Le prix unitaire doit être positif"),
   categorie: z.string().optional(),
   date: z.string().optional(),
   commentaire: z.string().optional(),
@@ -121,9 +121,9 @@ function GroupedTable({
         <TableHeader>
           <TableRow className="bg-muted/30">
             <TableHead className="w-10"></TableHead>
-            <TableHead>Designation</TableHead>
-            <TableHead className="text-right">Qte</TableHead>
-            <TableHead className="text-right">Prix Unit.</TableHead>
+            <TableHead>Désignation</TableHead>
+            <TableHead className="text-right">Qté</TableHead>
+            <TableHead className="text-right">Prix unit.</TableHead>
             <TableHead className="text-right">Total</TableHead>
             {!isReadOnly && <TableHead className="text-right w-24">Actions</TableHead>}
           </TableRow>
@@ -132,7 +132,7 @@ function GroupedTable({
           {filtered.length === 0 ? (
             <TableRow>
               <TableCell colSpan={colCount} className="text-center py-8 text-muted-foreground">
-                {searchQuery ? "Aucun resultat pour cette recherche" : "Aucune depense enregistree"}
+                {searchQuery ? "Aucun résultat pour cette recherche" : "Aucune dépense enregistrée"}
               </TableCell>
             </TableRow>
           ) : (
@@ -347,7 +347,7 @@ export default function Depenses() {
         queryClient.invalidateQueries({ queryKey: getListDepensesPuitsItemsQueryKey() });
       }
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-      toast({ title: "Enregistrement reussi" });
+      toast({ title: "Enregistrement réussi" });
       setIsDialogOpen(false);
       resetForm();
     } catch (e) {
@@ -366,7 +366,7 @@ export default function Depenses() {
         queryClient.invalidateQueries({ queryKey: getListDepensesPuitsItemsQueryKey() });
       }
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-      toast({ title: "Ligne supprimee" });
+      toast({ title: "Ligne supprimée" });
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" });
     }
@@ -385,8 +385,8 @@ export default function Depenses() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Depenses Construction</h1>
-          <p className="text-muted-foreground mt-1">Suivi des depenses reelles vs budget previsionnel</p>
+          <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Dépenses construction</h1>
+          <p className="text-muted-foreground mt-1">Suivi des dépenses réelles vs budget prévisionnel</p>
         </div>
         {!isReadOnly && (
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -396,20 +396,20 @@ export default function Depenses() {
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
-                Nouvelle depense
+                Nouvelle dépense
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  {editingId ? "Modifier la depense" : `Ajouter une depense ${activeTab === "batiment" ? "batiment" : "forage"}`}
+                  {editingId ? "Modifier la dépense" : `Ajouter une dépense ${activeTab === "batiment" ? "bâtiment" : "forage"}`}
                 </DialogTitle>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField control={form.control} name="designation" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Designation</FormLabel>
+                      <FormLabel>Désignation</FormLabel>
                       <FormControl><Input placeholder="Ex: Sac de ciment, Fer de 8..." {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
@@ -417,7 +417,7 @@ export default function Depenses() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="quantite" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Quantite</FormLabel>
+                        <FormLabel>Quantité</FormLabel>
                         <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -433,7 +433,7 @@ export default function Depenses() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="categorie" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Categorie</FormLabel>
+                        <FormLabel>Catégorie</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || "materiaux"}>
                           <FormControl>
                             <SelectTrigger>
@@ -451,7 +451,7 @@ export default function Depenses() {
                     )} />
                     <FormField control={form.control} name="date" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Date (optionnel)</FormLabel>
+                        <FormLabel>Date (optionnelle)</FormLabel>
                         <FormControl><Input type="date" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -474,7 +474,7 @@ export default function Depenses() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <ProgressCard 
-          label="Batiment" 
+          label="Bâtiment" 
           icon={Construction} 
           spent={totalBatiment} 
           budget={budgetBatiment} 
@@ -489,13 +489,13 @@ export default function Depenses() {
         />
         <Card className="border-t-4 border-t-primary shadow-sm bg-primary/5">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Construction</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total construction</CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="text-2xl font-bold">{formatFCFA(totalBatiment + totalForage)}</div>
             <div className="text-xs text-muted-foreground">
-              Caisse disponible: {formatFCFA(summary?.caisseDisponible || 0)}
+              Caisse disponible : {formatFCFA(summary?.caisseDisponible || 0)}
             </div>
           </CardContent>
         </Card>
@@ -505,7 +505,7 @@ export default function Depenses() {
         <div className="flex items-center justify-between gap-4 mb-4">
           <TabsList className="bg-muted/50 p-1">
             <TabsTrigger value="batiment" className="flex items-center gap-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">
-              <Construction className="h-4 w-4" /> Batiment
+              <Construction className="h-4 w-4" /> Bâtiment
               <Badge variant="secondary" className="ml-1 text-xs">{batimentItems?.length || 0}</Badge>
             </TabsTrigger>
             <TabsTrigger value="forage" className="flex items-center gap-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">

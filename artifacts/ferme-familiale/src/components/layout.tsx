@@ -56,12 +56,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, roles: allRoles },
     { href: "/financement", label: "Financement", icon: Wallet, roles: allRoles },
-    { href: "/devis", label: "Devis Construction", icon: HardHat, roles: [UserRole.admin] },
-    { href: "/depenses", label: "Depenses", icon: Receipt, roles: [UserRole.admin, UserRole.gestionnaire] },
-    { href: "/bandes", label: "Bandes de Poulets", icon: Bird, roles: [UserRole.admin, UserRole.gestionnaire, "lecteur" as UserRole] },
-    { href: "/historique-caisse", label: "Historique Caisse", icon: BookOpen, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
+    { href: "/devis", label: "Devis construction", icon: HardHat, roles: [UserRole.admin] },
+    { href: "/depenses", label: "Dépenses", icon: Receipt, roles: [UserRole.admin, UserRole.gestionnaire] },
+    { href: "/bandes", label: "Bandes de poulets", icon: Bird, roles: [UserRole.admin, UserRole.gestionnaire, "lecteur" as UserRole] },
+    { href: "/historique-caisse", label: "Historique caisse", icon: BookOpen, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
     { href: "/comparaison-bandes", label: "Comparaison", icon: BarChart3, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
-    { href: "/activity-log", label: "Journal d'activite", icon: ClipboardList, roles: [UserRole.admin] },
+    { href: "/activity-log", label: "Journal d'activité", icon: ClipboardList, roles: [UserRole.admin] },
     { href: "/utilisateurs", label: "Utilisateurs", icon: Users, roles: [UserRole.admin] },
   ].filter(item => item.roles.includes(role));
 

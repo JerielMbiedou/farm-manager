@@ -114,7 +114,7 @@ export default function Devis() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="border-t-4 border-t-primary shadow-sm bg-primary/5">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Financement</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total financement</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{formatFCFA(totalFinance)}</div>
@@ -123,7 +123,7 @@ export default function Devis() {
 
         <Card className="border-t-4 border-t-sidebar-primary shadow-sm bg-sidebar-primary/5">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Devis (Général)</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total devis (général)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{formatFCFA(devis?.totalGeneral || 0)}</div>
@@ -132,7 +132,7 @@ export default function Devis() {
 
         <Card className={`border-t-4 shadow-sm ${isBudgetDeficit ? 'border-t-destructive bg-destructive/5' : 'border-t-secondary bg-secondary/5'}`}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Solde Prévisionnel</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Solde prévisionnel</CardTitle>
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${isBudgetDeficit ? 'text-destructive' : 'text-secondary'}`}>
@@ -160,7 +160,7 @@ export default function Devis() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Notes / Détails</label>
+              <label className="text-sm font-medium">Notes / détails</label>
               <Textarea 
                 rows={4}
                 value={batimentNotes} 
@@ -198,7 +198,7 @@ export default function Devis() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-xl font-serif">Puits & Eau</CardTitle>
+          <CardTitle className="text-xl font-serif">Puits et eau</CardTitle>
           <Dialog open={isPuitsDialogOpen} onOpenChange={(open) => {
             setIsPuitsDialogOpen(open);
             if (!open) {
@@ -254,7 +254,7 @@ export default function Devis() {
                 <TableRow className="bg-muted/50">
                   <TableHead>Désignation</TableHead>
                   <TableHead className="text-right">Quantité</TableHead>
-                  <TableHead className="text-right">Prix Unitaire</TableHead>
+                  <TableHead className="text-right">Prix unitaire</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -287,7 +287,7 @@ export default function Devis() {
               </TableBody>
               <TableFooter>
                 <TableRow className="bg-primary/5">
-                  <TableCell colSpan={3} className="font-bold">Total Puits</TableCell>
+                  <TableCell colSpan={3} className="font-bold">Total puits</TableCell>
                   <TableCell className="text-right font-bold text-primary">{formatFCFA(devis?.totalPuits || 0)}</TableCell>
                   <TableCell></TableCell>
                 </TableRow>

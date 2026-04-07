@@ -28,8 +28,8 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   nom: z.string().min(2, "Le nom complet est requis"),
-  username: z.string().min(3, "Minimum 3 caracteres"),
-  password: z.string().min(6, "Minimum 6 caracteres"),
+  username: z.string().min(3, "Minimum 3 caractères"),
+  password: z.string().min(6, "Minimum 6 caractères"),
   passwordConfirm: z.string().min(1, "Confirmez le mot de passe"),
 }).refine((data) => data.password === data.passwordConfirm, {
   message: "Les mots de passe ne correspondent pas",
@@ -64,10 +64,10 @@ export default function Login() {
     try {
       await loginMutation.mutateAsync({ data: values });
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-      toast({ title: "Connexion reussie", description: "Bienvenue dans l'espace de gestion." });
+      toast({ title: "Connexion réussie", description: "Bienvenue dans l'espace de gestion." });
       setLocation("/dashboard");
     } catch {
-      toast({ title: "Erreur de connexion", description: "Verifiez vos identifiants.", variant: "destructive" });
+      toast({ title: "Erreur de connexion", description: "Vérifiez vos identifiants.", variant: "destructive" });
     }
   }
 
@@ -82,12 +82,12 @@ export default function Login() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erreur");
-      toast({ title: "Compte cree", description: "Vous pouvez maintenant vous connecter." });
+      toast({ title: "Compte créé", description: "Vous pouvez maintenant vous connecter." });
       setIsRegistering(false);
       form.reset({ username: values.username, password: "" });
       registerForm.reset();
     } catch (e: any) {
-      toast({ title: "Erreur", description: e.message || "Impossible de creer le compte.", variant: "destructive" });
+      toast({ title: "Erreur", description: e.message || "Impossible de créer le compte.", variant: "destructive" });
     }
   }
 
@@ -111,7 +111,7 @@ export default function Login() {
             <>
               <CardHeader className="space-y-1">
                 <CardTitle className="text-2xl font-semibold">Connexion</CardTitle>
-                <CardDescription>Entrez vos identifiants pour acceder a votre espace</CardDescription>
+                <CardDescription>Entrez vos identifiants pour accéder à votre espace</CardDescription>
               </CardHeader>
               <CardContent>
                 <Form {...form}>
@@ -138,7 +138,7 @@ export default function Login() {
                 <div className="mt-4 text-center">
                   <button type="button" onClick={() => setIsRegistering(true)} className="text-sm text-primary hover:underline inline-flex items-center gap-1.5">
                     <UserPlus className="h-3.5 w-3.5" />
-                    Creer un compte
+                    Créer un compte
                   </button>
                 </div>
               </CardContent>
@@ -146,8 +146,8 @@ export default function Login() {
           ) : (
             <>
               <CardHeader className="space-y-1">
-                <CardTitle className="text-2xl font-semibold">Creer un compte</CardTitle>
-                <CardDescription>Votre compte sera en lecture seule par defaut. L'administrateur pourra vous accorder des droits supplementaires.</CardDescription>
+                <CardTitle className="text-2xl font-semibold">Créer un compte</CardTitle>
+                <CardDescription>Votre compte sera en lecture seule par défaut. L'administrateur pourra vous accorder des droits supplémentaires.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Form {...registerForm}>
@@ -169,7 +169,7 @@ export default function Login() {
                     <FormField control={registerForm.control} name="password" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Mot de passe</FormLabel>
-                        <FormControl><Input type="password" placeholder="Minimum 6 caracteres" {...field} /></FormControl>
+                        <FormControl><Input type="password" placeholder="Minimum 6 caractères" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
@@ -181,13 +181,13 @@ export default function Login() {
                       </FormItem>
                     )} />
                     <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white font-medium">
-                      Creer mon compte
+                      Créer mon compte
                     </Button>
                   </form>
                 </Form>
                 <div className="mt-4 text-center">
                   <button type="button" onClick={() => setIsRegistering(false)} className="text-sm text-muted-foreground hover:text-foreground">
-                    Deja un compte ? Se connecter
+                    Déjà un compte ? Se connecter
                   </button>
                 </div>
               </CardContent>

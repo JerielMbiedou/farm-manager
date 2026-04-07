@@ -54,17 +54,17 @@ router.post("/register", async (req, res) => {
     return;
   }
   if (username.length < 3) {
-    res.status(400).json({ error: "L'identifiant doit contenir au moins 3 caracteres" });
+    res.status(400).json({ error: "L'identifiant doit contenir au moins 3 caractères" });
     return;
   }
   if (password.length < 6) {
-    res.status(400).json({ error: "Le mot de passe doit contenir au moins 6 caracteres" });
+    res.status(400).json({ error: "Le mot de passe doit contenir au moins 6 caractères" });
     return;
   }
 
   const existing = await db.select().from(usersTable).where(eq(usersTable.username, username));
   if (existing.length > 0) {
-    res.status(409).json({ error: "Ce nom d'utilisateur est deja pris" });
+    res.status(409).json({ error: "Ce nom d'utilisateur est déjà pris" });
     return;
   }
 
@@ -88,7 +88,7 @@ router.post("/logout", (req, res) => {
 router.get("/me", async (req, res) => {
   const userId = (req.session as any).userId;
   if (!userId) {
-    res.status(401).json({ error: "Non authentifie" });
+    res.status(401).json({ error: "Non authentifié" });
     return;
   }
 
@@ -110,10 +110,10 @@ router.get("/me", async (req, res) => {
 
 router.get("/users", async (req, res) => {
   const userId = (req.session as any).userId;
-  if (!userId) { res.status(401).json({ error: "Non authentifie" }); return; }
+  if (!userId) { res.status(401).json({ error: "Non authentifié" }); return; }
   const currentUser = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   if (!currentUser[0] || currentUser[0].role !== "admin") {
-    res.status(403).json({ error: "Acces refuse" });
+    res.status(403).json({ error: "Accès refusé" });
     return;
   }
 
@@ -130,10 +130,10 @@ router.get("/users", async (req, res) => {
 
 router.put("/users/:id/role", async (req, res) => {
   const userId = (req.session as any).userId;
-  if (!userId) { res.status(401).json({ error: "Non authentifie" }); return; }
+  if (!userId) { res.status(401).json({ error: "Non authentifié" }); return; }
   const currentUser = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   if (!currentUser[0] || currentUser[0].role !== "admin") {
-    res.status(403).json({ error: "Acces refuse" });
+    res.status(403).json({ error: "Accès refusé" });
     return;
   }
 
@@ -141,7 +141,7 @@ router.put("/users/:id/role", async (req, res) => {
   const { role } = req.body;
   const validRoles = ["admin", "investisseur", "gestionnaire", "lecteur"];
   if (!validRoles.includes(role)) {
-    res.status(400).json({ error: "Role invalide" });
+    res.status(400).json({ error: "Rôle invalide" });
     return;
   }
 
@@ -158,10 +158,10 @@ router.put("/users/:id/role", async (req, res) => {
 
 router.delete("/users/:id", async (req, res) => {
   const userId = (req.session as any).userId;
-  if (!userId) { res.status(401).json({ error: "Non authentifie" }); return; }
+  if (!userId) { res.status(401).json({ error: "Non authentifié" }); return; }
   const currentUser = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   if (!currentUser[0] || currentUser[0].role !== "admin") {
-    res.status(403).json({ error: "Acces refuse" });
+    res.status(403).json({ error: "Accès refusé" });
     return;
   }
 
