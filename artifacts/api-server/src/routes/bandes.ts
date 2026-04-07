@@ -100,6 +100,127 @@ router.get("/reference-poids", async (_req, res) => {
   res.json(REFERENCE_WEIGHT_CURVE);
 });
 
+router.get("/historique-moyennes", async (_req, res) => {
+  const allBandes = await db.select().from(bandesTable).where(eq(bandesTable.statut, "terminee"));
+  if (allBandes.length === 0) {
+    res.json({ nbBandes: 0 });
+    return;
+  }
+
+  let totalSujets = 0;
+  let totalDeces = 0;
+  let totalAlimentKg = 0;
+  let totalEauL = 0;
+  let alimentDemarrage = 0;
+  let alimentCroissance = 0;
+  let alimentFinition = 0;
+  let eauDemarrage = 0;
+  let eauCroissance = 0;
+  let eauFinition = 0;
+  let decesDemarrage = 0;
+  let decesCroissance = 0;
+  let decesFinition = 0;
+  let totalDureeJours = 0;
+  let bandesAvecAliment = 0;
+  let bandesAvecEau = 0;
+  let bandesAvecMort = 0;
+  let poidsFinaux: number[] = [];
+
+  for (const bande of allBandes) {
+    totalSujets += bande.sujetsDepart;
+    totalDeces += bande.nombreDeces;
+
+    const aliment = await db.select().from(consommationAlimentTable).where(eq(consommationAlimentTable.bandeId, bande.id)).orderBy(consommationAlimentTable.date);
+    if (aliment.length > 0) {
+      bandesAvecAliment++;
+      const startDate = new Date(bande.dateDeDepart + "T00:00:00");
+      for (const a of aliment) {
+        const kg = parseFloat(a.quantiteKg);
+        totalAlimentKg += kg;
+        const entryDate = new Date(a.date + "T00:00:00");
+        const ageJours = Math.floor((entryDate.getTime() - startDate.getTime()) / 86400000) + 1;
+        if (ageJours <= 15) alimentDemarrage += kg;
+        else if (ageJours <= 28) alimentCroissance += kg;
+        else alimentFinition += kg;
+      }
+    }
+
+    const eau = await db.select().from(consommationEauTable).where(eq(consommationEauTable.bandeId, bande.id));
+    if (eau.length > 0) {
+      bandesAvecEau++;
+      for (const e of eau) {
+        const litres = parseFloat(e.quantiteLitres);
+        totalEauL += litres;
+        const age = e.ageJours;
+        if (age <= 15) eauDemarrage += litres;
+        else if (age <= 28) eauCroissance += litres;
+        else eauFinition += litres;
+      }
+    }
+
+    const mort = await db.select().from(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.bandeId, bande.id));
+    if (mort.length > 0) {
+      bandesAvecMort++;
+      let maxAge = 0;
+      for (const m of mort) {
+        const deces = m.decesJour;
+        const age = m.ageJours;
+        if (age > maxAge) maxAge = age;
+        if (age <= 15) decesDemarrage += deces;
+        else if (age <= 28) decesCroissance += deces;
+        else decesFinition += deces;
+      }
+      totalDureeJours += maxAge;
+    }
+
+    const pesees = await db.select().from(peseesTable).where(eq(peseesTable.bandeId, bande.id)).orderBy(peseesTable.ageJours);
+    if (pesees.length > 0) {
+      const dernierPoids = parseFloat(pesees[pesees.length - 1].poidsMoyenG);
+      poidsFinaux.push(dernierPoids);
+    }
+  }
+
+  const n = allBandes.length;
+  const avgAlimentParSujet = totalSujets > 0 ? totalAlimentKg / totalSujets : 4.5;
+  const avgEauParSujet = totalSujets > 0 ? totalEauL / totalSujets : 15;
+  const avgTauxMortalite = totalSujets > 0 ? (totalDeces / totalSujets) * 100 : 5;
+  const avgDuree = bandesAvecMort > 0 ? Math.round(totalDureeJours / bandesAvecMort) : 45;
+  const avgPoidsFinalG = poidsFinaux.length > 0 ? Math.round(poidsFinaux.reduce((a, b) => a + b, 0) / poidsFinaux.length) : 2000;
+
+  const alimentParSujetDemarrage = totalSujets > 0 ? alimentDemarrage / totalSujets : 0.5;
+  const alimentParSujetCroissance = totalSujets > 0 ? alimentCroissance / totalSujets : 1.5;
+  const alimentParSujetFinition = totalSujets > 0 ? alimentFinition / totalSujets : 2.5;
+
+  const eauParSujetDemarrage = totalSujets > 0 ? eauDemarrage / totalSujets : 2;
+  const eauParSujetCroissance = totalSujets > 0 ? eauCroissance / totalSujets : 5;
+  const eauParSujetFinition = totalSujets > 0 ? eauFinition / totalSujets : 8;
+
+  res.json({
+    nbBandes: n,
+    avgSujetsDepart: Math.round(totalSujets / n),
+    avgTauxMortalite: Math.round(avgTauxMortalite * 10) / 10,
+    avgDureeJours: avgDuree,
+    avgPoidsFinalG,
+    aliment: {
+      totalParSujet: Math.round(avgAlimentParSujet * 100) / 100,
+      demarrage: { parSujet: Math.round(alimentParSujetDemarrage * 100) / 100, totalKg: Math.round(alimentDemarrage), pctTotal: totalAlimentKg > 0 ? Math.round(alimentDemarrage / totalAlimentKg * 100) : 0 },
+      croissance: { parSujet: Math.round(alimentParSujetCroissance * 100) / 100, totalKg: Math.round(alimentCroissance), pctTotal: totalAlimentKg > 0 ? Math.round(alimentCroissance / totalAlimentKg * 100) : 0 },
+      finition: { parSujet: Math.round(alimentParSujetFinition * 100) / 100, totalKg: Math.round(alimentFinition), pctTotal: totalAlimentKg > 0 ? Math.round(alimentFinition / totalAlimentKg * 100) : 0 },
+    },
+    eau: {
+      totalParSujet: Math.round(avgEauParSujet * 100) / 100,
+      demarrage: { parSujet: Math.round(eauParSujetDemarrage * 100) / 100 },
+      croissance: { parSujet: Math.round(eauParSujetCroissance * 100) / 100 },
+      finition: { parSujet: Math.round(eauParSujetFinition * 100) / 100 },
+    },
+    mortalite: {
+      demarrage: totalDeces > 0 ? Math.round(decesDemarrage / totalDeces * 100) : 0,
+      croissance: totalDeces > 0 ? Math.round(decesCroissance / totalDeces * 100) : 0,
+      finition: totalDeces > 0 ? Math.round(decesFinition / totalDeces * 100) : 0,
+    },
+  });
+});
+
 router.get("/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const detail = await getBandeDetail(id);

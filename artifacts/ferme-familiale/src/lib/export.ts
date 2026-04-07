@@ -1,9 +1,45 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+interface AggregatedDepense {
+  categorie: string;
+  designation: string;
+  quantite: number;
+  montant: number;
+  prixUnitaireMoyen: number;
+}
+
+function aggregateDepenses(depenses: any[]): AggregatedDepense[] {
+  const map = new Map<string, AggregatedDepense>();
+  for (const d of depenses) {
+    const key = `${d.categorie}||${d.designation}`;
+    const existing = map.get(key);
+    const qte = parseFloat(d.quantite) || 0;
+    const montant = parseFloat(d.montant) || (qte * parseFloat(d.prixUnitaire));
+    if (existing) {
+      existing.quantite += qte;
+      existing.montant += montant;
+    } else {
+      map.set(key, {
+        categorie: d.categorie,
+        designation: d.designation,
+        quantite: qte,
+        montant,
+        prixUnitaireMoyen: 0,
+      });
+    }
+  }
+  const result: AggregatedDepense[] = [];
+  for (const item of map.values()) {
+    item.prixUnitaireMoyen = item.quantite > 0 ? item.montant / item.quantite : 0;
+    result.push(item);
+  }
+  result.sort((a, b) => a.categorie.localeCompare(b.categorie) || b.montant - a.montant);
+  return result;
+}
+
 export function exportBandePDF(detail: any, depenses: any[], ventes: any[], chargesFixes: any, mortalite: any[], pesees: any[], consommation: any) {
   const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
 
   doc.setFontSize(18);
   doc.text("Ferme Mbiedou", 14, 20);
@@ -32,20 +68,44 @@ export function exportBandePDF(detail: any, depenses: any[], ventes: any[], char
   });
 
   if (depenses.length > 0) {
+    const aggregated = aggregateDepenses(depenses);
     const finalY = (doc as any).lastAutoTable?.finalY || 120;
     doc.setFontSize(12);
-    doc.text("Dépenses de production", 14, finalY + 10);
+    doc.text("Dépenses de production (agrégées)", 14, finalY + 10);
+
+    const rows: any[][] = [];
+    let currentCat = "";
+    let catTotal = 0;
+    const addCatTotal = () => {
+      if (currentCat && catTotal > 0) {
+        rows.push([{ content: `Sous-total ${currentCat}`, colSpan: 4, styles: { fontStyle: "bold", fillColor: [240, 240, 240] } }, { content: formatFCFA(catTotal), styles: { fontStyle: "bold", fillColor: [240, 240, 240] } }]);
+      }
+    };
+
+    for (const d of aggregated) {
+      if (d.categorie !== currentCat) {
+        addCatTotal();
+        currentCat = d.categorie;
+        catTotal = 0;
+      }
+      catTotal += d.montant;
+      rows.push([
+        d.categorie,
+        d.designation,
+        String(Math.round(d.quantite * 100) / 100),
+        formatFCFA(Math.round(d.prixUnitaireMoyen)),
+        formatFCFA(d.montant),
+      ]);
+    }
+    addCatTotal();
+
+    const grandTotal = aggregated.reduce((s, d) => s + d.montant, 0);
+    rows.push([{ content: "TOTAL GÉNÉRAL", colSpan: 4, styles: { fontStyle: "bold", fillColor: [220, 230, 220] } }, { content: formatFCFA(grandTotal), styles: { fontStyle: "bold", fillColor: [220, 230, 220] } }]);
 
     autoTable(doc, {
       startY: finalY + 15,
-      head: [["Catégorie", "Désignation", "Qté", "Prix U.", "Montant"]],
-      body: depenses.map(d => [
-        d.categorie,
-        d.designation,
-        String(d.quantite),
-        formatFCFA(d.prixUnitaire),
-        formatFCFA(d.montant),
-      ]),
+      head: [["Catégorie", "Désignation", "Qté totale", "Prix U. moyen", "Montant total"]],
+      body: rows,
       theme: "striped",
     });
   }
@@ -91,10 +151,29 @@ export function exportBandeExcel(detail: any, depenses: any[], ventes: any[], ch
     XLSX.utils.book_append_sheet(wb, wsResume, "Résumé");
 
     if (depenses.length > 0) {
-      const depData = [
-        ["Catégorie", "Désignation", "Quantité", "Prix Unitaire", "Montant"],
-        ...depenses.map(d => [d.categorie, d.designation, d.quantite, d.prixUnitaire, d.montant]),
+      const aggregated = aggregateDepenses(depenses);
+      const depData: any[][] = [
+        ["Catégorie", "Désignation", "Quantité totale", "Prix Unitaire moyen", "Montant total"],
       ];
+
+      let currentCat = "";
+      let catTotal = 0;
+      for (const d of aggregated) {
+        if (d.categorie !== currentCat) {
+          if (currentCat && catTotal > 0) {
+            depData.push([`Sous-total ${currentCat}`, "", "", "", catTotal]);
+          }
+          currentCat = d.categorie;
+          catTotal = 0;
+        }
+        catTotal += d.montant;
+        depData.push([d.categorie, d.designation, Math.round(d.quantite * 100) / 100, Math.round(d.prixUnitaireMoyen), d.montant]);
+      }
+      if (currentCat && catTotal > 0) {
+        depData.push([`Sous-total ${currentCat}`, "", "", "", catTotal]);
+      }
+      depData.push(["TOTAL GÉNÉRAL", "", "", "", aggregated.reduce((s, d) => s + d.montant, 0)]);
+
       const wsDep = XLSX.utils.aoa_to_sheet(depData);
       XLSX.utils.book_append_sheet(wb, wsDep, "Dépenses");
     }
