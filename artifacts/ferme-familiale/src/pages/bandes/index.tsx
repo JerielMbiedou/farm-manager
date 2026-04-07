@@ -25,6 +25,7 @@ import { CreateBandeBodyStatut } from "@workspace/api-client-react";
 
 const bandeSchema = z.object({
   nom: z.string().min(1, "Le nom est requis"),
+  dateDeDepart: z.string().min(1, "La date de démarrage est requise"),
   sujetsDepart: z.coerce.number().min(1, "Il faut au moins 1 sujet"),
   statut: z.enum([CreateBandeBodyStatut.active, CreateBandeBodyStatut.terminee]).default(CreateBandeBodyStatut.active),
 });
@@ -45,6 +46,7 @@ export default function Bandes() {
     resolver: zodResolver(bandeSchema),
     defaultValues: {
       nom: "",
+      dateDeDepart: new Date().toISOString().split("T")[0],
       sujetsDepart: 1000,
       statut: CreateBandeBodyStatut.active,
     },
@@ -118,6 +120,19 @@ export default function Bandes() {
                   />
                   <FormField
                     control={form.control}
+                    name="dateDeDepart"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date de démarrage</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name="sujetsDepart"
                     render={({ field }) => (
                       <FormItem>
@@ -176,7 +191,7 @@ export default function Bandes() {
                       {bande.nom}
                     </CardTitle>
                     <p className="text-xs text-muted-foreground mt-1">
-                      N° {bande.numero} • Créé le {format(new Date(bande.createdAt), 'dd/MM/yyyy')}
+                      N° {bande.numero} • Démarré le {format(new Date(bande.dateDeDepart + 'T00:00:00'), 'dd/MM/yyyy')}
                     </p>
                   </div>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bande.statut === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'}`}>

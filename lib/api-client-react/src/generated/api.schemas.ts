@@ -136,6 +136,7 @@ export interface Bande {
   id: number;
   numero: number;
   nom: string;
+  dateDeDepart: string;
   sujetsDepart: number;
   nombreDeces: number;
   valeurMaterielFixe: number;
@@ -153,6 +154,7 @@ export const CreateBandeBodyStatut = {
 
 export interface CreateBandeBody {
   nom: string;
+  dateDeDepart?: string;
   sujetsDepart: number;
   nombreDeces?: number;
   valeurMaterielFixe?: number;
@@ -171,6 +173,7 @@ export interface BandeDetail {
   id: number;
   numero: number;
   nom: string;
+  dateDeDepart: string;
   sujetsDepart: number;
   nombreDeces: number;
   sujetsRestants: number;

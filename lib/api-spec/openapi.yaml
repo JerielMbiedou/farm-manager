@@ -1658,6 +1658,9 @@ components:
           type: integer
         nom:
           type: string
+        dateDeDepart:
+          type: string
+          format: date
         sujetsDepart:
           type: integer
         nombreDeces:
@@ -1674,6 +1677,7 @@ components:
         - id
         - numero
         - nom
+        - dateDeDepart
         - sujetsDepart
         - nombreDeces
         - valeurMaterielFixe
@@ -1685,6 +1689,9 @@ components:
       properties:
         nom:
           type: string
+        dateDeDepart:
+          type: string
+          format: date
         sujetsDepart:
           type: integer
         nombreDeces:
@@ -1707,6 +1714,9 @@ components:
           type: integer
         nom:
           type: string
+        dateDeDepart:
+          type: string
+          format: date
         sujetsDepart:
           type: integer
         nombreDeces:
@@ -1737,6 +1747,7 @@ components:
         - id
         - numero
         - nom
+        - dateDeDepart
         - sujetsDepart
         - nombreDeces
         - sujetsRestants

@@ -11,6 +11,7 @@ export interface BandeDetail {
   id: number;
   numero: number;
   nom: string;
+  dateDeDepart: Date;
   sujetsDepart: number;
   nombreDeces: number;
   sujetsRestants: number;

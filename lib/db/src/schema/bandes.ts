@@ -6,6 +6,7 @@ export const bandesTable = pgTable("bandes", {
   id: serial("id").primaryKey(),
   numero: integer("numero").notNull(),
   nom: text("nom").notNull(),
+  dateDeDepart: date("date_de_depart").notNull(),
   sujetsDepart: integer("sujets_depart").notNull(),
   nombreDeces: integer("nombre_deces").notNull().default(0),
   valeurMaterielFixe: numeric("valeur_materiel_fixe", { precision: 15, scale: 2 }).notNull().default("0"),

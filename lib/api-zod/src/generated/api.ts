@@ -423,6 +423,7 @@ export const ListBandesResponseItem = zod.object({
   id: zod.number(),
   numero: zod.number(),
   nom: zod.string(),
+  dateDeDepart: zod.coerce.date(),
   sujetsDepart: zod.number(),
   nombreDeces: zod.number(),
   valeurMaterielFixe: zod.number(),
@@ -436,6 +437,7 @@ export const ListBandesResponse = zod.array(ListBandesResponseItem);
  */
 export const CreateBandeBody = zod.object({
   nom: zod.string(),
+  dateDeDepart: zod.coerce.date().optional(),
   sujetsDepart: zod.number(),
   nombreDeces: zod.number().optional(),
   valeurMaterielFixe: zod.number().optional(),
@@ -453,6 +455,7 @@ export const GetBandeResponse = zod.object({
   id: zod.number(),
   numero: zod.number(),
   nom: zod.string(),
+  dateDeDepart: zod.coerce.date(),
   sujetsDepart: zod.number(),
   nombreDeces: zod.number(),
   sujetsRestants: zod.number(),
@@ -476,6 +479,7 @@ export const UpdateBandeParams = zod.object({
 
 export const UpdateBandeBody = zod.object({
   nom: zod.string(),
+  dateDeDepart: zod.coerce.date().optional(),
   sujetsDepart: zod.number(),
   nombreDeces: zod.number().optional(),
   valeurMaterielFixe: zod.number().optional(),
@@ -486,6 +490,7 @@ export const UpdateBandeResponse = zod.object({
   id: zod.number(),
   numero: zod.number(),
   nom: zod.string(),
+  dateDeDepart: zod.coerce.date(),
   sujetsDepart: zod.number(),
   nombreDeces: zod.number(),
   valeurMaterielFixe: zod.number(),

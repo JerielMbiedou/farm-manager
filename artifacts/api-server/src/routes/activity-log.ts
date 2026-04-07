@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { db, activityLogTable } from "@workspace/db";
-import { desc } from "drizzle-orm";
+import type { Request } from "express";
+import { db, activityLogTable, usersTable } from "@workspace/db";
+import { desc, eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -19,4 +20,14 @@ export async function logActivity(userId: number | null, userNom: string, action
     action,
     details: details || null,
   });
+}
+
+export async function logFromRequest(req: Request, action: string, details?: string) {
+  const userId = (req.session as any).userId as number | undefined;
+  let userNom = "Système";
+  if (userId) {
+    const users = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+    if (users.length > 0) userNom = users[0].nom;
+  }
+  await logActivity(userId ?? null, userNom, action, details);
 }

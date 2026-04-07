@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, financementTable, remboursementsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { logFromRequest } from "./activity-log";
 
 const router = Router();
 
@@ -19,6 +20,7 @@ router.post("/", async (req, res) => {
   const { nom, montant, date } = req.body;
   const rows = await db.insert(financementTable).values({ nom, montant: String(montant), date }).returning();
   const r = rows[0];
+  await logFromRequest(req, "Ajout financement", `${nom} - ${montant} FCFA`);
   res.status(201).json({
     id: r.id,
     nom: r.nom,
@@ -33,6 +35,7 @@ router.put("/:id", async (req, res) => {
   const { nom, montant, date } = req.body;
   const rows = await db.update(financementTable).set({ nom, montant: String(montant), date }).where(eq(financementTable.id, id)).returning();
   const r = rows[0];
+  await logFromRequest(req, "Modification financement", `${nom} - ${montant} FCFA`);
   res.json({
     id: r.id,
     nom: r.nom,
@@ -45,6 +48,7 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(financementTable).where(eq(financementTable.id, id));
+  await logFromRequest(req, "Suppression financement", `ID: ${id}`);
   res.json({ success: true });
 });
 
@@ -92,6 +96,7 @@ router.post("/remboursements", async (req, res) => {
     commentaire: commentaire || null,
   }).returning();
   const r = rows[0];
+  await logFromRequest(req, "Ajout remboursement", `${investisseurNom} - ${montant} FCFA`);
   res.status(201).json({
     id: r.id,
     investisseurNom: r.investisseurNom,
@@ -105,6 +110,7 @@ router.post("/remboursements", async (req, res) => {
 router.delete("/remboursements/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(remboursementsTable).where(eq(remboursementsTable.id, id));
+  await logFromRequest(req, "Suppression remboursement", `ID: ${id}`);
   res.json({ success: true });
 });
 

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, devisConstructionTable, puitsItemsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { logFromRequest } from "./activity-log";
 
 const router = Router();
 
@@ -59,6 +60,7 @@ router.put("/", async (req, res) => {
     if (carburantEstime !== undefined) updates.carburantEstime = String(carburantEstime);
     await db.update(devisConstructionTable).set(updates).where(eq(devisConstructionTable.id, existing[0].id));
   }
+  await logFromRequest(req, "Modification devis construction");
   res.json(await getDevisWithPuits());
 });
 
@@ -81,6 +83,7 @@ router.post("/puits-items", async (req, res) => {
     prixUnitaire: String(prixUnitaire),
   }).returning();
   const item = rows[0];
+  await logFromRequest(req, "Ajout item devis puits", `${designation}`);
   res.status(201).json({
     id: item.id,
     designation: item.designation,
@@ -99,6 +102,7 @@ router.put("/puits-items/:id", async (req, res) => {
     prixUnitaire: String(prixUnitaire),
   }).where(eq(puitsItemsTable.id, id)).returning();
   const item = rows[0];
+  await logFromRequest(req, "Modification item devis puits", `${designation}`);
   res.json({
     id: item.id,
     designation: item.designation,
@@ -111,6 +115,7 @@ router.put("/puits-items/:id", async (req, res) => {
 router.delete("/puits-items/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(puitsItemsTable).where(eq(puitsItemsTable.id, id));
+  await logFromRequest(req, "Suppression item devis puits", `ID: ${id}`);
   res.json({ success: true });
 });
 

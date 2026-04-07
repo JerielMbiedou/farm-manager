@@ -9,6 +9,7 @@ import type { CreateBandeBodyStatut } from "./createBandeBodyStatut";
 
 export interface CreateBandeBody {
   nom: string;
+  dateDeDepart?: Date;
   sujetsDepart: number;
   nombreDeces?: number;
   valeurMaterielFixe?: number;

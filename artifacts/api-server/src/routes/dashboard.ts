@@ -65,6 +65,7 @@ router.get("/summary", async (req, res) => {
       totalDeces,
       totalVendus,
       createdAt: bande.createdAt,
+      dateDeDepart: bande.dateDeDepart,
     };
 
     if (bande.statut === "active") {
@@ -89,7 +90,7 @@ router.get("/summary", async (req, res) => {
   for (const bande of bandes) {
     if (bande.statut !== "active") continue;
     const vaccins = await db.select().from(vaccinationsTable).where(eq(vaccinationsTable.bandeId, bande.id));
-    const startDate = new Date(bande.createdAt);
+    const startDate = new Date(bande.dateDeDepart);
     for (const v of vaccins) {
       if (v.fait === "oui") continue;
       const datePrevue = new Date(startDate);
@@ -110,7 +111,7 @@ router.get("/summary", async (req, res) => {
     const avgCoutProduction = bandesTerminees.reduce((s, b) => s + b.coutProduction, 0) / bandesTerminees.length;
     const avgBenefice = bandesTerminees.reduce((s, b) => s + b.beneficeEstime, 0) / bandesTerminees.length;
     const avgDureeMs = bandesTerminees.reduce((s, b) => {
-      const start = new Date(b.createdAt).getTime();
+      const start = new Date(b.dateDeDepart).getTime();
       return s + (Date.now() - start);
     }, 0) / bandesTerminees.length;
     const avgDureeJours = Math.round(avgDureeMs / (1000 * 60 * 60 * 24));
@@ -161,14 +162,14 @@ router.get("/comparaison-bandes", async (req, res) => {
     const coutParSujet = bande.sujetsDepart > 0 ? (totalDepBande + chargesTotal) / bande.sujetsDepart : 0;
     const prixVenteMoyen = totalVendus > 0 ? totalRecettes / totalVendus : 0;
 
-    const startDate = new Date(bande.createdAt);
+    const startDate = new Date(bande.dateDeDepart);
     const dureeJours = Math.round((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
     const coutTotal = totalDepBande + chargesTotal + totalDepVente;
     const seuilNombrePoulets = prixVenteMoyen > 0 ? Math.ceil(coutTotal / prixVenteMoyen) : 0;
     const sujetsRestants = bande.sujetsDepart - bande.nombreDeces;
     const seuilPrixMin = sujetsRestants > 0 ? Math.round(coutTotal / sujetsRestants) : 0;
-    const margeSecurite = coutTotal > 0 ? ((totalRecettes - coutTotal) / coutTotal) * 100 : 0;
+    const margeSecurite = totalRecettes > 0 ? ((totalRecettes - coutTotal) / totalRecettes) * 100 : 0;
 
     result.push({
       id: bande.id,

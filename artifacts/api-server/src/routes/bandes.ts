@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, peseesTable, consommationAlimentTable, vaccinationsTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
+import { logFromRequest } from "./activity-log";
 
 const router = Router();
 
@@ -44,6 +45,7 @@ async function getBandeDetail(id: number) {
     beneficeNet,
     beneficeNetSansCharges,
     coutParSujet,
+    dateDeDepart: bande.dateDeDepart,
     createdAt: bande.createdAt,
   };
 }
@@ -54,6 +56,7 @@ router.get("/", async (req, res) => {
     id: r.id,
     numero: r.numero,
     nom: r.nom,
+    dateDeDepart: r.dateDeDepart,
     sujetsDepart: r.sujetsDepart,
     nombreDeces: r.nombreDeces,
     valeurMaterielFixe: parseFloat(r.valeurMaterielFixe),
@@ -63,22 +66,25 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const { nom, sujetsDepart, nombreDeces, valeurMaterielFixe, statut } = req.body;
+  const { nom, dateDeDepart, sujetsDepart, nombreDeces, valeurMaterielFixe, statut } = req.body;
   const count = await db.select().from(bandesTable);
   const numero = count.length + 1;
   const rows = await db.insert(bandesTable).values({
     numero,
     nom,
+    dateDeDepart: dateDeDepart ?? new Date().toISOString().split("T")[0],
     sujetsDepart,
     nombreDeces: nombreDeces ?? 0,
     valeurMaterielFixe: String(valeurMaterielFixe ?? 0),
     statut: statut ?? "active",
   }).returning();
   const r = rows[0];
+  await logFromRequest(req, "Création bande", `${nom} - ${sujetsDepart} sujets`);
   res.status(201).json({
     id: r.id,
     numero: r.numero,
     nom: r.nom,
+    dateDeDepart: r.dateDeDepart,
     sujetsDepart: r.sujetsDepart,
     nombreDeces: r.nombreDeces,
     valeurMaterielFixe: parseFloat(r.valeurMaterielFixe),
@@ -99,19 +105,22 @@ router.get("/:id", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  const { nom, sujetsDepart, nombreDeces, valeurMaterielFixe, statut } = req.body;
+  const { nom, dateDeDepart, sujetsDepart, nombreDeces, valeurMaterielFixe, statut } = req.body;
   const updates: Record<string, unknown> = {};
   if (nom !== undefined) updates.nom = nom;
+  if (dateDeDepart !== undefined) updates.dateDeDepart = dateDeDepart;
   if (sujetsDepart !== undefined) updates.sujetsDepart = sujetsDepart;
   if (nombreDeces !== undefined) updates.nombreDeces = nombreDeces;
   if (valeurMaterielFixe !== undefined) updates.valeurMaterielFixe = String(valeurMaterielFixe);
   if (statut !== undefined) updates.statut = statut;
   const rows = await db.update(bandesTable).set(updates).where(eq(bandesTable.id, id)).returning();
   const r = rows[0];
+  await logFromRequest(req, "Modification bande", `${r.nom}`);
   res.json({
     id: r.id,
     numero: r.numero,
     nom: r.nom,
+    dateDeDepart: r.dateDeDepart,
     sujetsDepart: r.sujetsDepart,
     nombreDeces: r.nombreDeces,
     valeurMaterielFixe: parseFloat(r.valeurMaterielFixe),
@@ -123,6 +132,7 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(bandesTable).where(eq(bandesTable.id, id));
+  await logFromRequest(req, "Suppression bande", `ID: ${id}`);
   res.json({ success: true });
 });
 
@@ -151,6 +161,7 @@ router.post("/:id/depenses", async (req, res) => {
     prixUnitaire: String(prixUnitaire),
   }).returning();
   const r = rows[0];
+  await logFromRequest(req, "Ajout dépense bande", `${designation} - ${parseFloat(r.quantite) * parseFloat(r.prixUnitaire)} FCFA`);
   res.status(201).json({
     id: r.id,
     bandeId: r.bandeId,
@@ -186,6 +197,7 @@ router.put("/:id/depenses/:depenseId", async (req, res) => {
 router.delete("/:id/depenses/:depenseId", async (req, res) => {
   const depenseId = parseInt(req.params.depenseId);
   await db.delete(bandeDepensesTable).where(eq(bandeDepensesTable.id, depenseId));
+  await logFromRequest(req, "Suppression dépense bande", `ID: ${depenseId}`);
   res.json({ success: true });
 });
 
@@ -212,6 +224,7 @@ router.post("/:id/ventes", async (req, res) => {
     prixUnitaire: String(prixUnitaire),
   }).returning();
   const r = rows[0];
+  await logFromRequest(req, "Ajout vente bande", `${quantiteVendue} sujets à ${prixUnitaire} FCFA`);
   res.status(201).json({
     id: r.id,
     bandeId: r.bandeId,
@@ -244,6 +257,7 @@ router.put("/:id/ventes/:venteId", async (req, res) => {
 router.delete("/:id/ventes/:venteId", async (req, res) => {
   const venteId = parseInt(req.params.venteId);
   await db.delete(bandeVentesTable).where(eq(bandeVentesTable.id, venteId));
+  await logFromRequest(req, "Suppression vente bande", `ID: ${venteId}`);
   res.json({ success: true });
 });
 
@@ -352,9 +366,10 @@ router.get("/:id/mortalite", async (req, res) => {
 
   let decesCumules = 0;
   const data = rows.map(r => {
+    const vivantsDebutJournee = bande.sujetsDepart - decesCumules;
+    const tauxJour = vivantsDebutJournee > 0 ? (r.decesJour / vivantsDebutJournee) * 100 : 0;
     decesCumules += r.decesJour;
     const tauxMortalite = bande.sujetsDepart > 0 ? (decesCumules / bande.sujetsDepart) * 100 : 0;
-    const tauxJour = bande.sujetsDepart > 0 ? (r.decesJour / bande.sujetsDepart) * 100 : 0;
     return {
       id: r.id,
       bandeId: r.bandeId,
@@ -378,6 +393,7 @@ router.post("/:id/mortalite", async (req, res) => {
     await db.update(bandesTable).set({ nombreDeces: bande.nombreDeces + (decesJour ?? 0) }).where(eq(bandesTable.id, bandeId));
   }
   const r = rows[0];
+  await logFromRequest(req, "Ajout mortalité", `${decesJour} décès - Bande ID: ${bandeId}`);
   res.status(201).json({ id: r.id, bandeId: r.bandeId, date: r.date, ageJours: r.ageJours, decesJour: r.decesJour });
 });
 
@@ -491,7 +507,7 @@ router.get("/:id/vaccinations", async (req, res) => {
     rows = await db.select().from(vaccinationsTable).where(eq(vaccinationsTable.bandeId, bandeId)).orderBy(vaccinationsTable.jourPrevu);
   }
   const bande = (await db.select().from(bandesTable).where(eq(bandesTable.id, bandeId)))[0];
-  const startDate = bande ? new Date(bande.createdAt) : new Date();
+  const startDate = bande ? new Date(bande.dateDeDepart) : new Date();
 
   res.json(rows.map(r => {
     const datePrevue = new Date(startDate);

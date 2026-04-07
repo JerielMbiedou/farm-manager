@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, sortiesArgentTable, sortiesCarburantTable, depensesBatimentTable, depensesPuitsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { logFromRequest } from "./activity-log";
 
 const router = Router();
 
@@ -19,6 +20,7 @@ router.post("/sorties", async (req, res) => {
   const { date, decaisse, depense } = req.body;
   const rows = await db.insert(sortiesArgentTable).values({ date, decaisse: String(decaisse), depense: String(depense) }).returning();
   const r = rows[0];
+  await logFromRequest(req, "Ajout sortie d'argent", `Dépensé: ${depense} FCFA`);
   res.status(201).json({ id: r.id, date: r.date, decaisse: parseFloat(r.decaisse), depense: parseFloat(r.depense), reste: parseFloat(r.decaisse) - parseFloat(r.depense) });
 });
 
@@ -27,12 +29,14 @@ router.put("/sorties/:id", async (req, res) => {
   const { date, decaisse, depense } = req.body;
   const rows = await db.update(sortiesArgentTable).set({ date, decaisse: String(decaisse), depense: String(depense) }).where(eq(sortiesArgentTable.id, id)).returning();
   const r = rows[0];
+  await logFromRequest(req, "Modification sortie d'argent", `ID: ${id}`);
   res.json({ id: r.id, date: r.date, decaisse: parseFloat(r.decaisse), depense: parseFloat(r.depense), reste: parseFloat(r.decaisse) - parseFloat(r.depense) });
 });
 
 router.delete("/sorties/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(sortiesArgentTable).where(eq(sortiesArgentTable.id, id));
+  await logFromRequest(req, "Suppression sortie d'argent", `ID: ${id}`);
   res.json({ success: true });
 });
 
@@ -45,6 +49,7 @@ router.post("/carburant", async (req, res) => {
   const { date, montant } = req.body;
   const rows = await db.insert(sortiesCarburantTable).values({ date, montant: String(montant) }).returning();
   const r = rows[0];
+  await logFromRequest(req, "Ajout carburant", `${montant} FCFA`);
   res.status(201).json({ id: r.id, date: r.date, montant: parseFloat(r.montant) });
 });
 
@@ -53,12 +58,14 @@ router.put("/carburant/:id", async (req, res) => {
   const { date, montant } = req.body;
   const rows = await db.update(sortiesCarburantTable).set({ date, montant: String(montant) }).where(eq(sortiesCarburantTable.id, id)).returning();
   const r = rows[0];
+  await logFromRequest(req, "Modification carburant", `ID: ${id}`);
   res.json({ id: r.id, date: r.date, montant: parseFloat(r.montant) });
 });
 
 router.delete("/carburant/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(sortiesCarburantTable).where(eq(sortiesCarburantTable.id, id));
+  await logFromRequest(req, "Suppression carburant", `ID: ${id}`);
   res.json({ success: true });
 });
 
@@ -71,6 +78,7 @@ router.post("/batiment-items", async (req, res) => {
   const { designation, quantite, prixUnitaire } = req.body;
   const rows = await db.insert(depensesBatimentTable).values({ designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire) }).returning();
   const r = rows[0];
+  await logFromRequest(req, "Ajout dépense bâtiment", `${designation} - ${parseFloat(r.quantite) * parseFloat(r.prixUnitaire)} FCFA`);
   res.status(201).json({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire) });
 });
 
@@ -79,12 +87,14 @@ router.put("/batiment-items/:id", async (req, res) => {
   const { designation, quantite, prixUnitaire } = req.body;
   const rows = await db.update(depensesBatimentTable).set({ designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire) }).where(eq(depensesBatimentTable.id, id)).returning();
   const r = rows[0];
+  await logFromRequest(req, "Modification dépense bâtiment", `${designation}`);
   res.json({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire) });
 });
 
 router.delete("/batiment-items/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(depensesBatimentTable).where(eq(depensesBatimentTable.id, id));
+  await logFromRequest(req, "Suppression dépense bâtiment", `ID: ${id}`);
   res.json({ success: true });
 });
 
@@ -97,6 +107,7 @@ router.post("/puits-items", async (req, res) => {
   const { designation, quantite, prixUnitaire } = req.body;
   const rows = await db.insert(depensesPuitsTable).values({ designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire) }).returning();
   const r = rows[0];
+  await logFromRequest(req, "Ajout dépense puits", `${designation} - ${parseFloat(r.quantite) * parseFloat(r.prixUnitaire)} FCFA`);
   res.status(201).json({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire) });
 });
 
@@ -105,12 +116,14 @@ router.put("/puits-items/:id", async (req, res) => {
   const { designation, quantite, prixUnitaire } = req.body;
   const rows = await db.update(depensesPuitsTable).set({ designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire) }).where(eq(depensesPuitsTable.id, id)).returning();
   const r = rows[0];
+  await logFromRequest(req, "Modification dépense puits", `${designation}`);
   res.json({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire) });
 });
 
 router.delete("/puits-items/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(depensesPuitsTable).where(eq(depensesPuitsTable.id, id));
+  await logFromRequest(req, "Suppression dépense puits", `ID: ${id}`);
   res.json({ success: true });
 });
 
