@@ -48,7 +48,7 @@ export default function Financement() {
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const isAdmin = user?.role === "admin";
-  const isReadOnly = user?.role === "investisseur" || user?.role === "gestionnaire";
+  const isReadOnly = user?.role === "investisseur" || user?.role === "gestionnaire" || user?.role === "lecteur";
 
   const form = useForm<z.infer<typeof financementSchema>>({
     resolver: zodResolver(financementSchema),

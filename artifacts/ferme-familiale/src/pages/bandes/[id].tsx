@@ -152,7 +152,7 @@ export default function BandeDetailView() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [dialogType, setDialogType] = useState<string>("");
 
-  const isReadOnly = user?.role === "investisseur";
+  const isReadOnly = user?.role === "investisseur" || user?.role === "lecteur";
 
   const depenseForm = useForm<z.infer<typeof depenseSchema>>({
     resolver: zodResolver(depenseSchema),

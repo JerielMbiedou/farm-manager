@@ -288,7 +288,7 @@ export default function Depenses() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const isReadOnly = user?.role === "investisseur";
+  const isReadOnly = user?.role === "investisseur" || user?.role === "lecteur";
 
   const createBatiment = useCreateBatimentItem();
   const updateBatiment = useUpdateBatimentItem();

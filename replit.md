@@ -97,7 +97,7 @@ French-language React + Vite web app for managing a family poultry farm in Camer
 
 **5 Modules**: Financement, Devis Construction, Dépenses, Bandes de Poulets, Tableau de Bord.
 
-**User Roles**: Admin (full access), Investisseur (read-only), Gestionnaire (expenses/sales). Auth: cookie-based express-session. Credentials: admin/admin123, papa/papa123, gestionnaire/gest123.
+**User Roles**: Admin (full access), Investisseur (read-only), Gestionnaire (expenses/sales), Lecteur (read-only, assigned to new self-registered accounts). Auth: cookie-based express-session with bcrypt password hashing. Credentials: admin/admin123, papa/papa123, gestionnaire/gest123.
 
 **Pages**:
 - `/dashboard` — Overview with cards (caisse, investissements, dépenses, bandes), prochaines vaccinations, prévisions
@@ -109,6 +109,7 @@ French-language React + Vite web app for managing a family poultry farm in Camer
 - `/historique-caisse` — Journal complet des mouvements financiers (entrées/sorties) avec filtres
 - `/comparaison-bandes` — Tableau et graphiques comparatifs entre bandes (mortalité, coûts, bénéfice, seuil de rentabilité)
 - `/activity-log` — Journal d'activité des actions utilisateur
+- `/utilisateurs` — Gestion des utilisateurs (admin only): liste, changement de rôle, suppression
 
 **Production Tracking** (bande detail tabs):
 - Mortalité journalière avec alertes (>5%), décès cumulés, taux de mortalité

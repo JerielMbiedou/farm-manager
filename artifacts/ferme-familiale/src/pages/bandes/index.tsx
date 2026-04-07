@@ -40,7 +40,7 @@ export default function Bandes() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const isReadOnly = user?.role === "investisseur";
+  const isReadOnly = user?.role === "investisseur" || user?.role === "lecteur";
 
   const form = useForm<z.infer<typeof bandeSchema>>({
     resolver: zodResolver(bandeSchema),

@@ -11,7 +11,8 @@ import {
   X,
   BookOpen,
   BarChart3,
-  ClipboardList
+  ClipboardList,
+  Users
 } from "lucide-react";
 import { useGetMe, useLogout, UserRole } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -50,22 +51,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const role = user.role as UserRole;
   
+  const allRoles = [UserRole.admin, UserRole.investisseur, UserRole.gestionnaire, "lecteur" as UserRole];
+  
   const navItems = [
-    { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, roles: [UserRole.admin, UserRole.investisseur, UserRole.gestionnaire] },
-    { href: "/financement", label: "Financement", icon: Wallet, roles: [UserRole.admin, UserRole.investisseur, UserRole.gestionnaire] },
+    { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, roles: allRoles },
+    { href: "/financement", label: "Financement", icon: Wallet, roles: allRoles },
     { href: "/devis", label: "Devis Construction", icon: HardHat, roles: [UserRole.admin] },
-    { href: "/depenses", label: "Dépenses", icon: Receipt, roles: [UserRole.admin, UserRole.gestionnaire] },
-    { href: "/bandes", label: "Bandes de Poulets", icon: Bird, roles: [UserRole.admin, UserRole.gestionnaire] },
-    { href: "/historique-caisse", label: "Historique Caisse", icon: BookOpen, roles: [UserRole.admin, UserRole.investisseur] },
-    { href: "/comparaison-bandes", label: "Comparaison", icon: BarChart3, roles: [UserRole.admin, UserRole.investisseur] },
-    { href: "/activity-log", label: "Journal d'activité", icon: ClipboardList, roles: [UserRole.admin] },
+    { href: "/depenses", label: "Depenses", icon: Receipt, roles: [UserRole.admin, UserRole.gestionnaire] },
+    { href: "/bandes", label: "Bandes de Poulets", icon: Bird, roles: [UserRole.admin, UserRole.gestionnaire, "lecteur" as UserRole] },
+    { href: "/historique-caisse", label: "Historique Caisse", icon: BookOpen, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
+    { href: "/comparaison-bandes", label: "Comparaison", icon: BarChart3, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
+    { href: "/activity-log", label: "Journal d'activite", icon: ClipboardList, roles: [UserRole.admin] },
+    { href: "/utilisateurs", label: "Utilisateurs", icon: Users, roles: [UserRole.admin] },
   ].filter(item => item.roles.includes(role));
 
-  const roleLabel = {
+  const roleLabel: Record<string, string> = {
     [UserRole.admin]: "Administrateur",
     [UserRole.investisseur]: "Investisseur",
     [UserRole.gestionnaire]: "Gestionnaire",
-  }[role] || "Utilisateur";
+    "lecteur": "Lecteur",
+  };
+  const roleName = roleLabel[role] || "Utilisateur";
 
   return (
     <div className="min-h-screen flex w-full bg-background selection:bg-primary/20">
@@ -84,13 +90,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="p-6">
             <h1 className="text-2xl font-bold tracking-tight text-sidebar-primary flex items-center gap-2">
               <Bird className="h-6 w-6" />
-              Ferme Familiale
+              Ferme Mbiedou
             </h1>
             <div className="mt-4 flex flex-col gap-1">
               <span className="text-sm font-medium text-sidebar-foreground/80">Connecté en tant que</span>
               <span className="text-base font-semibold">{user.nom}</span>
               <span className="inline-flex items-center px-2 py-0.5 mt-1 rounded text-xs font-medium bg-sidebar-primary/20 text-sidebar-primary self-start border border-sidebar-primary/30">
-                {roleLabel}
+                {roleName}
               </span>
             </div>
           </div>
