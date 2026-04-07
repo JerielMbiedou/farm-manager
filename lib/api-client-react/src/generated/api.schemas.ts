@@ -111,18 +111,42 @@ export interface CreateSortieCarburantBody {
   montant: number;
 }
 
+export type DepenseDetailleeCategorie =
+  (typeof DepenseDetailleeCategorie)[keyof typeof DepenseDetailleeCategorie];
+
+export const DepenseDetailleeCategorie = {
+  materiaux: "materiaux",
+  main_oeuvre: "main_oeuvre",
+  transport: "transport",
+  carburant: "carburant",
+  divers: "divers",
+} as const;
+
 export interface DepenseDetaillee {
   id: number;
   designation: string;
   quantite: number;
   prixUnitaire: number;
   prixTotal: number;
+  categorie?: DepenseDetailleeCategorie;
 }
+
+export type CreateDepenseDetailleeCategorie =
+  (typeof CreateDepenseDetailleeCategorie)[keyof typeof CreateDepenseDetailleeCategorie];
+
+export const CreateDepenseDetailleeCategorie = {
+  materiaux: "materiaux",
+  main_oeuvre: "main_oeuvre",
+  transport: "transport",
+  carburant: "carburant",
+  divers: "divers",
+} as const;
 
 export interface CreateDepenseDetaillee {
   designation: string;
   quantite: number;
   prixUnitaire: number;
+  categorie?: CreateDepenseDetailleeCategorie;
 }
 
 export type BandeStatut = (typeof BandeStatut)[keyof typeof BandeStatut];

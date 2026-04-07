@@ -26,6 +26,7 @@ export const depensesBatimentTable = pgTable("depenses_batiment", {
   designation: text("designation").notNull(),
   quantite: numeric("quantite", { precision: 15, scale: 2 }).notNull(),
   prixUnitaire: numeric("prix_unitaire", { precision: 15, scale: 2 }).notNull(),
+  categorie: text("categorie").default("materiaux"),
 });
 
 export const depensesPuitsTable = pgTable("depenses_puits", {

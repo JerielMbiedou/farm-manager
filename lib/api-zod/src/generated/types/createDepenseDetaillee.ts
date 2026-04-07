@@ -5,9 +5,11 @@
  * API for Ferme Familiale - Gestion de la ferme avicole
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateDepenseDetailleeCategorie } from "./createDepenseDetailleeCategorie";
 
 export interface CreateDepenseDetaillee {
   designation: string;
   quantite: number;
   prixUnitaire: number;
+  categorie?: CreateDepenseDetailleeCategorie;
 }

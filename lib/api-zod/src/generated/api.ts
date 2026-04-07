@@ -315,6 +315,9 @@ export const ListBatimentItemsResponseItem = zod.object({
   quantite: zod.number(),
   prixUnitaire: zod.number(),
   prixTotal: zod.number(),
+  categorie: zod
+    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
+    .optional(),
 });
 export const ListBatimentItemsResponse = zod.array(
   ListBatimentItemsResponseItem,
@@ -327,6 +330,9 @@ export const CreateBatimentItemBody = zod.object({
   designation: zod.string(),
   quantite: zod.number(),
   prixUnitaire: zod.number(),
+  categorie: zod
+    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
+    .optional(),
 });
 
 /**
@@ -340,6 +346,9 @@ export const UpdateBatimentItemBody = zod.object({
   designation: zod.string(),
   quantite: zod.number(),
   prixUnitaire: zod.number(),
+  categorie: zod
+    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
+    .optional(),
 });
 
 export const UpdateBatimentItemResponse = zod.object({
@@ -348,6 +357,9 @@ export const UpdateBatimentItemResponse = zod.object({
   quantite: zod.number(),
   prixUnitaire: zod.number(),
   prixTotal: zod.number(),
+  categorie: zod
+    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
+    .optional(),
 });
 
 /**
@@ -370,6 +382,9 @@ export const ListDepensesPuitsItemsResponseItem = zod.object({
   quantite: zod.number(),
   prixUnitaire: zod.number(),
   prixTotal: zod.number(),
+  categorie: zod
+    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
+    .optional(),
 });
 export const ListDepensesPuitsItemsResponse = zod.array(
   ListDepensesPuitsItemsResponseItem,
@@ -382,6 +397,9 @@ export const CreateDepensesPuitsItemBody = zod.object({
   designation: zod.string(),
   quantite: zod.number(),
   prixUnitaire: zod.number(),
+  categorie: zod
+    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
+    .optional(),
 });
 
 /**
@@ -395,6 +413,9 @@ export const UpdateDepensesPuitsItemBody = zod.object({
   designation: zod.string(),
   quantite: zod.number(),
   prixUnitaire: zod.number(),
+  categorie: zod
+    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
+    .optional(),
 });
 
 export const UpdateDepensesPuitsItemResponse = zod.object({
@@ -403,6 +424,9 @@ export const UpdateDepensesPuitsItemResponse = zod.object({
   quantite: zod.number(),
   prixUnitaire: zod.number(),
   prixTotal: zod.number(),
+  categorie: zod
+    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
+    .optional(),
 });
 
 /**

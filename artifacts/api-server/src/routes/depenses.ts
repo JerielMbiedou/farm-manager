@@ -71,24 +71,26 @@ router.delete("/carburant/:id", async (req, res) => {
 
 router.get("/batiment-items", async (req, res) => {
   const rows = await db.select().from(depensesBatimentTable);
-  res.json(rows.map(r => ({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire) })));
+  res.json(rows.map(r => ({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire), categorie: r.categorie || "materiaux" })));
 });
 
 router.post("/batiment-items", async (req, res) => {
-  const { designation, quantite, prixUnitaire } = req.body;
-  const rows = await db.insert(depensesBatimentTable).values({ designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire) }).returning();
+  const { designation, quantite, prixUnitaire, categorie } = req.body;
+  const rows = await db.insert(depensesBatimentTable).values({ designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire), categorie: categorie || "materiaux" }).returning();
   const r = rows[0];
   await logFromRequest(req, "Ajout dépense bâtiment", `${designation} - ${parseFloat(r.quantite) * parseFloat(r.prixUnitaire)} FCFA`);
-  res.status(201).json({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire) });
+  res.status(201).json({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire), categorie: r.categorie || "materiaux" });
 });
 
 router.put("/batiment-items/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  const { designation, quantite, prixUnitaire } = req.body;
-  const rows = await db.update(depensesBatimentTable).set({ designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire) }).where(eq(depensesBatimentTable.id, id)).returning();
+  const { designation, quantite, prixUnitaire, categorie } = req.body;
+  const updates: any = { designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire) };
+  if (categorie !== undefined) updates.categorie = categorie;
+  const rows = await db.update(depensesBatimentTable).set(updates).where(eq(depensesBatimentTable.id, id)).returning();
   const r = rows[0];
   await logFromRequest(req, "Modification dépense bâtiment", `${designation}`);
-  res.json({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire) });
+  res.json({ id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire), categorie: r.categorie || "materiaux" });
 });
 
 router.delete("/batiment-items/:id", async (req, res) => {

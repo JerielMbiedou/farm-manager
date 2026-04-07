@@ -1628,6 +1628,9 @@ components:
           type: number
         prixTotal:
           type: number
+        categorie:
+          type: string
+          enum: [materiaux, main_oeuvre, transport, carburant, divers]
       required:
         - id
         - designation
@@ -1644,6 +1647,9 @@ components:
           type: number
         prixUnitaire:
           type: number
+        categorie:
+          type: string
+          enum: [materiaux, main_oeuvre, transport, carburant, divers]
       required:
         - designation
         - quantite
