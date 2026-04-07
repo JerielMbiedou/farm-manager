@@ -17,6 +17,10 @@ import ComparaisonBandes from "@/pages/comparaison-bandes";
 import ActivityLog from "@/pages/activity-log";
 import Utilisateurs from "@/pages/utilisateurs";
 import Parametres from "@/pages/parametres";
+import Stocks from "@/pages/stocks";
+import Simulation from "@/pages/simulation";
+import Tresorerie from "@/pages/tresorerie";
+import Planification from "@/pages/planification";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -65,6 +69,18 @@ function Router() {
       </Route>
       <Route path="/parametres">
         <Layout><Parametres /></Layout>
+      </Route>
+      <Route path="/stocks">
+        <Layout><Stocks /></Layout>
+      </Route>
+      <Route path="/simulation">
+        <Layout><Simulation /></Layout>
+      </Route>
+      <Route path="/tresorerie">
+        <Layout><Tresorerie /></Layout>
+      </Route>
+      <Route path="/planification">
+        <Layout><Planification /></Layout>
       </Route>
       
       <Route component={NotFound} />

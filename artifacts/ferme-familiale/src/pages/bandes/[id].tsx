@@ -56,10 +56,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download } from "lucide-react";
 import { Link } from "wouter";
 import { BandeDetail } from "@workspace/api-client-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import { CreateBandeDepenseBodyCategorie } from "@workspace/api-client-react";
+import { exportBandePDF, exportBandeExcel } from "@/lib/export";
 
 const depenseSchema = z.object({
   designation: z.string().min(1, "La désignation est requise"),
@@ -187,8 +189,10 @@ export default function BandeDetailView() {
     defaultValues: { jourPrevu: 1, nom: "", description: "" },
   });
 
-  if (chargesFixes && chargesFixesForm.getValues("loyer") !== chargesFixes.loyer && !editingId) {
+  const [loyerInitialized, setLoyerInitialized] = useState(false);
+  if (chargesFixes && !loyerInitialized) {
     chargesFixesForm.reset({ loyer: chargesFixes.loyer });
+    setLoyerInitialized(true);
   }
 
   const resetForms = () => {
@@ -248,6 +252,7 @@ export default function BandeDetailView() {
       await updateChargesFixes.mutateAsync({ id: bandeId, data: values });
       queryClient.invalidateQueries({ queryKey: getGetBandeChargesFixeQueryKey(bandeId) });
       invalidateBandeData();
+      setLoyerInitialized(false);
       toast({ title: "Charges fixes mises à jour" });
     } catch { toast({ title: "Erreur", variant: "destructive" }); }
   };
@@ -527,33 +532,69 @@ export default function BandeDetailView() {
         </TabsList>
 
         <TabsContent value="resume" className="space-y-6">
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => exportBandePDF(detail, depenses || [], ventes || [], chargesFixes, mortaliteItems, peseesItems, consResp)}>
+              <Download className="h-4 w-4" /> PDF
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => exportBandeExcel(detail, depenses || [], ventes || [], chargesFixes)}>
+              <Download className="h-4 w-4" /> Excel
+            </Button>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card className="shadow-sm border-t-4 border-t-primary">
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Sujets Restants</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Sujets restants</CardTitle></CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">{detail.sujetsRestants}</div>
                 <p className="text-xs text-muted-foreground mt-1">{detail.nombreDeces} décès</p>
               </CardContent>
             </Card>
             <Card className="shadow-sm border-t-4 border-t-destructive">
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Coût de Production</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Coût de production</CardTitle></CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">{formatFCFA(detail.totalDepenses)}</div>
                 <p className="text-xs text-muted-foreground mt-1">Coût / sujet : {formatFCFA(detail.coutParSujet)}</p>
               </CardContent>
             </Card>
             <Card className="shadow-sm border-t-4 border-t-sidebar-primary">
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Recettes Brutes</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Recettes brutes</CardTitle></CardHeader>
               <CardContent><div className="text-2xl font-bold text-foreground">{formatFCFA(detail.totalRecettes)}</div></CardContent>
             </Card>
             <Card className={`shadow-sm border-t-4 ${detail.beneficeNet >= 0 ? 'border-t-green-500' : 'border-t-red-500'}`}>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Bénéfice Net</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Bénéfice net</CardTitle></CardHeader>
               <CardContent>
                 <div className={`text-2xl font-bold ${detail.beneficeNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatFCFA(detail.beneficeNet)}</div>
                 <p className="text-xs text-muted-foreground mt-1">Sans charges : {formatFCFA(detail.beneficeNetSansCharges)}</p>
               </CardContent>
             </Card>
           </div>
+
+          {(() => {
+            const catTotals: Record<string, number> = {};
+            (depenses || []).forEach((d: any) => {
+              const cat = d.categorie?.replace('_', ' ') || 'Autre';
+              catTotals[cat] = (catTotals[cat] || 0) + (d.montant || 0);
+            });
+            if (detail.chargesFixesTotal > 0) catTotals["Charges fixes"] = detail.chargesFixesTotal;
+            const pieData = Object.entries(catTotals).map(([name, value]) => ({ name, value }));
+            const COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#64748b"];
+            if (pieData.length === 0) return null;
+            return (
+              <Card>
+                <CardHeader><CardTitle className="text-xl font-serif">Répartition des coûts</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie data={pieData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}>
+                        {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => formatFCFA(v)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            );
+          })()}
         </TabsContent>
 
         <TabsContent value="depenses">
@@ -694,7 +735,27 @@ export default function BandeDetailView() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="mortalite">
+        <TabsContent value="mortalite" className="space-y-6">
+          {mortaliteItems.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle className="text-xl font-serif">Courbe de mortalité</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={mortaliteItems.map((m: any) => ({ jour: `J${m.ageJours}`, deces: m.decesJour, cumules: m.decesCumules, taux: m.tauxMortalite }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="jour" />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" unit="%" />
+                    <Tooltip />
+                    <Legend />
+                    <Bar yAxisId="left" dataKey="deces" name="Décès / jour" fill="#ef4444" />
+                    <Line yAxisId="right" type="monotone" dataKey="taux" name="Taux cumulé %" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xl font-serif flex items-center gap-2"><Skull className="h-5 w-5" /> Suivi de la mortalité</CardTitle>
@@ -749,6 +810,25 @@ export default function BandeDetailView() {
         </TabsContent>
 
         <TabsContent value="pesees" className="space-y-6">
+          {peseesItems.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle className="text-xl font-serif">Courbe de croissance</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={peseesItems.map((p: any) => ({ jour: `J${p.ageJours}`, poids: p.poidsMoyenG, objectif: p.objectifPoidsG || null }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="jour" />
+                    <YAxis unit="g" />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="poids" name="Poids moyen (g)" stroke="#22c55e" strokeWidth={2} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="objectif" name="Objectif (g)" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">

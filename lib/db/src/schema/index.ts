@@ -5,3 +5,4 @@ export * from "./depenses";
 export * from "./bandes";
 export * from "./activity-log";
 export * from "./parametres";
+export * from "./stocks";

@@ -13,7 +13,11 @@ import {
   BarChart3,
   ClipboardList,
   Users,
-  Settings
+  Settings,
+  Package,
+  Calculator,
+  TrendingUp,
+  CalendarDays
 } from "lucide-react";
 import { useGetMe, useLogout, UserRole } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -62,6 +66,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/bandes", label: "Bandes de poulets", icon: Bird, roles: [UserRole.admin, UserRole.gestionnaire, "lecteur" as UserRole] },
     { href: "/historique-caisse", label: "Historique caisse", icon: BookOpen, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
     { href: "/comparaison-bandes", label: "Comparaison", icon: BarChart3, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
+    { href: "/stocks", label: "Stocks", icon: Package, roles: [UserRole.admin, UserRole.gestionnaire] },
+    { href: "/simulation", label: "Simulation", icon: Calculator, roles: allRoles },
+    { href: "/tresorerie", label: "Trésorerie", icon: TrendingUp, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
+    { href: "/planification", label: "Planification", icon: CalendarDays, roles: [UserRole.admin, UserRole.gestionnaire] },
     { href: "/activity-log", label: "Journal d'activité", icon: ClipboardList, roles: [UserRole.admin] },
     { href: "/utilisateurs", label: "Utilisateurs", icon: Users, roles: [UserRole.admin] },
     { href: "/parametres", label: "Paramètres", icon: Settings, roles: allRoles },

@@ -8,6 +8,7 @@ import bandesRouter from "./bandes";
 import dashboardRouter from "./dashboard";
 import activityLogRouter from "./activity-log";
 import parametresRouter from "./parametres";
+import stocksRouter from "./stocks";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use("/bandes", bandesRouter);
 router.use("/dashboard", dashboardRouter);
 router.use("/activity-log", activityLogRouter);
 router.use("/parametres", parametresRouter);
+router.use("/stocks", stocksRouter);
 
 export default router;

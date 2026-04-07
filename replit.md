@@ -105,12 +105,25 @@ French-language React + Vite web app for managing a family poultry farm in Camer
 - `/devis` — Devis de construction
 - `/depenses` — Dépenses construction: 2 onglets (Bâtiment, Forage) avec catégories (materiaux/main d'oeuvre/transport/carburant/divers), barres de progression budget vs réel, regroupement par catégorie avec sous-totaux, recherche, date/commentaire optionnels
 - `/bandes` — Liste des bandes de poulets
-- `/bandes/:id` — Détail bande avec onglets: Résumé, Dépenses, Ventes, Mortalité, Pesées & IC, Vaccins, Charges fixes
+- `/bandes/:id` — Détail bande avec onglets: Résumé (avec export PDF/Excel, graphique répartition coûts), Dépenses, Ventes, Mortalité (avec courbe mortalité), Pesées & IC (avec courbe de croissance), Vaccins, Charges fixes
+- `/stocks` — Gestion des stocks aliments et médicaments/vaccins avec alertes péremption, entrées/sorties (custom hooks, non OpenAPI)
+- `/simulation` — Simulateur de rentabilité pré-lancement avec graphiques recharts, calcul seuil de rentabilité
+- `/tresorerie` — Prévision de trésorerie avec graphiques barres entrées/sorties
+- `/planification` — Calendrier de planification des bandes futures, estimation des besoins en aliments (sacs)
 - `/historique-caisse` — Journal complet des mouvements financiers (entrées/sorties) avec filtres
 - `/comparaison-bandes` — Tableau et graphiques comparatifs entre bandes (mortalité, coûts, bénéfice, seuil de rentabilité)
 - `/activity-log` — Journal d'activité des actions utilisateur
 - `/utilisateurs` — Gestion des utilisateurs (admin only): liste, changement de rôle, suppression
 - `/parametres` — Paramètres configurables de l'application (tous les rôles en lecture, admin en écriture)
+
+**Export**: PDF export via jspdf + jspdf-autotable, Excel export via xlsx. Available on bande résumé tab.
+
+**Charts**: recharts used for mortalité curves, growth curves, cost breakdown pie charts, simulation charts, trésorerie bar charts, planification comparisons.
+
+**Stock Management** (custom API, not OpenAPI-generated):
+- Tables: `stock_aliments`, `stock_medicaments`
+- API: GET/POST/DELETE `/api/stocks/aliments` and `/api/stocks/medicaments`
+- Custom hooks in `src/lib/stocks-api.ts`
 
 **Configurable Settings** (parametres table):
 - Charges fixes: taux dépréciation matériel (défaut 10%), taux imprévus (défaut 5%)
