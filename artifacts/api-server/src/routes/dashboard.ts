@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, financementTable, remboursementsTable, devisConstructionTable, puitsItemsTable, sortiesArgentTable, sortiesCarburantTable, depensesBatimentTable, depensesPuitsTable, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, vaccinationsTable } from "@workspace/db";
+import { getParam } from "../lib/parametres";
 
 const router = Router();
 
@@ -15,7 +16,9 @@ router.get("/summary", async (req, res) => {
   const puitsItemsDevis = await db.select().from(puitsItemsTable);
   const totalPuitsDevis = puitsItemsDevis.reduce((s, p) => s + parseFloat(p.quantite) * parseFloat(p.prixUnitaire), 0);
   const devis = devisRows[0];
-  const totalDevis = devis ? parseFloat(devis.batimentEstime) + parseFloat(devis.carburantEstime) + totalPuitsDevis : 3675000;
+  const budgetBatDefaut = await getParam("budget_batiment_defaut", 3525000);
+  const budgetCarbDefaut = await getParam("budget_carburant_defaut", 150000);
+  const totalDevis = devis ? parseFloat(devis.batimentEstime) + parseFloat(devis.carburantEstime) + totalPuitsDevis : (budgetBatDefaut + budgetCarbDefaut);
 
   const sorties = await db.select().from(sortiesArgentTable);
   const sortiesCarb = await db.select().from(sortiesCarburantTable);
@@ -27,6 +30,9 @@ router.get("/summary", async (req, res) => {
   const totalBatiment = batimentItems.reduce((s, r) => s + parseFloat(r.quantite) * parseFloat(r.prixUnitaire), 0);
   const totalPuitsReal = puitsItemsReal.reduce((s, r) => s + parseFloat(r.quantite) * parseFloat(r.prixUnitaire), 0);
   const totalDepenseConstruction = totalSorties + totalCarburant + totalBatiment + totalPuitsReal;
+
+  const tauxDepreciation = await getParam("taux_depreciation_materiel", 10);
+  const tauxImprevus = await getParam("taux_imprevus", 5);
 
   const bandes = await db.select().from(bandesTable).orderBy(bandesTable.numero);
   const bandesActives = [];
@@ -42,8 +48,8 @@ router.get("/summary", async (req, res) => {
     const totalDepBande = depenses.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
     const totalRecettesBande = ventes.reduce((s, v) => s + v.quantiteVendue * parseFloat(v.prixUnitaire), 0);
     const loyer = chargesRows.length > 0 ? parseFloat(chargesRows[0].loyer) : 0;
-    const valeurPerdue = parseFloat(bande.valeurMaterielFixe) * 0.1;
-    const imprevus = totalDepBande * 0.05;
+    const valeurPerdue = parseFloat(bande.valeurMaterielFixe) * (tauxDepreciation / 100);
+    const imprevus = totalDepBande * (tauxImprevus / 100);
     const chargesTotal = valeurPerdue + imprevus + loyer;
     const totalDepVente = depVenteRows.reduce((s, d) => s + parseFloat(d.montant), 0);
     const coutProduction = totalDepBande + chargesTotal;
@@ -140,6 +146,9 @@ router.get("/summary", async (req, res) => {
 });
 
 router.get("/comparaison-bandes", async (req, res) => {
+  const tauxDepComp = await getParam("taux_depreciation_materiel", 10);
+  const tauxImpComp = await getParam("taux_imprevus", 5);
+
   const bandes = await db.select().from(bandesTable).orderBy(bandesTable.numero);
   const result = [];
 
@@ -152,8 +161,8 @@ router.get("/comparaison-bandes", async (req, res) => {
     const totalDepBande = depenses.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
     const totalRecettes = ventes.reduce((s, v) => s + v.quantiteVendue * parseFloat(v.prixUnitaire), 0);
     const loyer = chargesRows.length > 0 ? parseFloat(chargesRows[0].loyer) : 0;
-    const valeurPerdue = parseFloat(bande.valeurMaterielFixe) * 0.1;
-    const imprevus = totalDepBande * 0.05;
+    const valeurPerdue = parseFloat(bande.valeurMaterielFixe) * (tauxDepComp / 100);
+    const imprevus = totalDepBande * (tauxImpComp / 100);
     const chargesTotal = valeurPerdue + imprevus + loyer;
     const totalDepVente = depVenteRows.reduce((s, d) => s + parseFloat(d.montant), 0);
     const beneficeNet = totalRecettes - totalDepBande - chargesTotal - totalDepVente;

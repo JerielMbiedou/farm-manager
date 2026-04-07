@@ -16,6 +16,7 @@ import HistoriqueCaisse from "@/pages/historique-caisse";
 import ComparaisonBandes from "@/pages/comparaison-bandes";
 import ActivityLog from "@/pages/activity-log";
 import Utilisateurs from "@/pages/utilisateurs";
+import Parametres from "@/pages/parametres";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +62,9 @@ function Router() {
       </Route>
       <Route path="/utilisateurs">
         <Layout><Utilisateurs /></Layout>
+      </Route>
+      <Route path="/parametres">
+        <Layout><Parametres /></Layout>
       </Route>
       
       <Route component={NotFound} />

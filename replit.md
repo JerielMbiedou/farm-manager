@@ -110,12 +110,20 @@ French-language React + Vite web app for managing a family poultry farm in Camer
 - `/comparaison-bandes` — Tableau et graphiques comparatifs entre bandes (mortalité, coûts, bénéfice, seuil de rentabilité)
 - `/activity-log` — Journal d'activité des actions utilisateur
 - `/utilisateurs` — Gestion des utilisateurs (admin only): liste, changement de rôle, suppression
+- `/parametres` — Paramètres configurables de l'application (tous les rôles en lecture, admin en écriture)
+
+**Configurable Settings** (parametres table):
+- Charges fixes: taux dépréciation matériel (défaut 10%), taux imprévus (défaut 5%)
+- Alertes: seuil mortalité journalier (3%), seuil mortalité cumulé (5%), seuil poids (90%)
+- Indice de conversion: IC bon (≤1.8), IC moyen (≤2.2)
+- Budget construction: bâtiment défaut (3 525 000 FCFA), carburant défaut (150 000 FCFA)
+- Calendrier vaccinal: J1, J7, J14, J21, J28 (noms, jours, descriptions)
 
 **Production Tracking** (bande detail tabs):
-- Mortalité journalière avec alertes (>5%), décès cumulés, taux de mortalité
-- Pesées avec objectifs et écarts
-- Consommation aliment & Indice de Conversion (IC): bon ≤1.8, moyen ≤2.2, mauvais >2.2
-- Calendrier vaccination avec auto-seed (J1, J7, J14, J21, J28), statuts, retards
+- Mortalité journalière avec alertes (configurable via paramètres), décès cumulés, taux de mortalité
+- Pesées avec objectifs et écarts (seuil configurable)
+- Consommation aliment & Indice de Conversion (IC): seuils configurables via paramètres
+- Calendrier vaccination configurable via paramètres, avec auto-seed et fallback par défaut
 
 **Currency**: All amounts in FCFA. No emojis. French UI throughout.
 

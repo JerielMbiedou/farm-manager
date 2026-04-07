@@ -2,16 +2,19 @@ import { Router } from "express";
 import { db, devisConstructionTable, puitsItemsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logFromRequest } from "./activity-log";
+import { getParam } from "../lib/parametres";
 
 const router = Router();
 
 async function getDevisWithPuits() {
   let devisRows = await db.select().from(devisConstructionTable).limit(1);
   if (devisRows.length === 0) {
+    const budgetBat = await getParam("budget_batiment_defaut", 3525000);
+    const budgetCarb = await getParam("budget_carburant_defaut", 150000);
     const inserted = await db.insert(devisConstructionTable).values({
-      batimentEstime: "3525000",
+      batimentEstime: String(budgetBat),
       batimentNotes: null,
-      carburantEstime: "150000",
+      carburantEstime: String(budgetCarb),
     }).returning();
     devisRows = inserted;
   }
@@ -48,10 +51,12 @@ router.put("/", async (req, res) => {
   const { batimentEstime, batimentNotes, carburantEstime } = req.body;
   const existing = await db.select().from(devisConstructionTable).limit(1);
   if (existing.length === 0) {
+    const defBat = await getParam("budget_batiment_defaut", 3525000);
+    const defCarb = await getParam("budget_carburant_defaut", 150000);
     await db.insert(devisConstructionTable).values({
-      batimentEstime: String(batimentEstime ?? 3525000),
+      batimentEstime: String(batimentEstime ?? defBat),
       batimentNotes: batimentNotes ?? null,
-      carburantEstime: String(carburantEstime ?? 150000),
+      carburantEstime: String(carburantEstime ?? defCarb),
     });
   } else {
     const updates: Record<string, unknown> = { updatedAt: new Date() };

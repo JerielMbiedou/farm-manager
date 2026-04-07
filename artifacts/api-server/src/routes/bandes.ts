@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, peseesTable, consommationAlimentTable, vaccinationsTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { logFromRequest } from "./activity-log";
+import { getParam, getVaccinationSchedule } from "../lib/parametres";
 
 const router = Router();
 
@@ -18,9 +19,11 @@ async function getBandeDetail(id: number) {
   const totalDepenses = depenses.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
   const totalRecettes = ventes.reduce((s, v) => s + v.quantiteVendue * parseFloat(v.prixUnitaire), 0);
 
+  const tauxDepreciation = await getParam("taux_depreciation_materiel", 10);
+  const tauxImprevus = await getParam("taux_imprevus", 5);
   const valeurMateriel = parseFloat(bande.valeurMaterielFixe);
-  const valeurPerdueMateriel = valeurMateriel * 0.1;
-  const imprevus = totalDepenses * 0.05;
+  const valeurPerdueMateriel = valeurMateriel * (tauxDepreciation / 100);
+  const imprevus = totalDepenses * (tauxImprevus / 100);
   const loyer = chargesRows.length > 0 ? parseFloat(chargesRows[0].loyer) : 0;
   const chargesFixesTotal = valeurPerdueMateriel + imprevus + loyer;
 
@@ -279,8 +282,10 @@ router.get("/:id/charges-fixes", async (req, res) => {
 
   const depenses = await db.select().from(bandeDepensesTable).where(eq(bandeDepensesTable.bandeId, bandeId));
   const totalDepenses = depenses.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
-  const valeurPerdueMateriel = parseFloat(bande.valeurMaterielFixe) * 0.1;
-  const imprevus = totalDepenses * 0.05;
+  const tauxDep = await getParam("taux_depreciation_materiel", 10);
+  const tauxImp = await getParam("taux_imprevus", 5);
+  const valeurPerdueMateriel = parseFloat(bande.valeurMaterielFixe) * (tauxDep / 100);
+  const imprevus = totalDepenses * (tauxImp / 100);
   const loyer = parseFloat(chargesRow.loyer);
   const total = valeurPerdueMateriel + imprevus + loyer;
 
@@ -317,8 +322,10 @@ router.put("/:id/charges-fixes", async (req, res) => {
 
   const depenses = await db.select().from(bandeDepensesTable).where(eq(bandeDepensesTable.bandeId, bandeId));
   const totalDepenses = depenses.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
-  const valeurPerdueMateriel = parseFloat(bande.valeurMaterielFixe) * 0.1;
-  const imprevus = totalDepenses * 0.05;
+  const tauxDep2 = await getParam("taux_depreciation_materiel", 10);
+  const tauxImp2 = await getParam("taux_imprevus", 5);
+  const valeurPerdueMateriel = parseFloat(bande.valeurMaterielFixe) * (tauxDep2 / 100);
+  const imprevus = totalDepenses * (tauxImp2 / 100);
   const loyerVal = parseFloat(chargesRow.loyer);
   const total = valeurPerdueMateriel + imprevus + loyerVal;
 
@@ -364,6 +371,7 @@ router.get("/:id/mortalite", async (req, res) => {
   const bande = (await db.select().from(bandesTable).where(eq(bandesTable.id, bandeId)))[0];
   if (!bande) { res.status(404).json({ error: "Bande introuvable" }); return; }
 
+  const seuilMortaliteJour = await getParam("seuil_mortalite_alerte_jour", 3);
   let decesCumules = 0;
   const data = rows.map(r => {
     const vivantsDebutJournee = bande.sujetsDepart - decesCumules;
@@ -378,7 +386,7 @@ router.get("/:id/mortalite", async (req, res) => {
       decesJour: r.decesJour,
       decesCumules,
       tauxMortalite: Math.round(tauxMortalite * 100) / 100,
-      alerteRouge: tauxJour > 3,
+      alerteRouge: tauxJour > seuilMortaliteJour,
     };
   });
   res.json(data);
@@ -414,6 +422,7 @@ router.delete("/:id/mortalite/:mortaliteId", async (req, res) => {
 router.get("/:id/pesees", async (req, res) => {
   const bandeId = parseInt(req.params.id);
   const rows = await db.select().from(peseesTable).where(eq(peseesTable.bandeId, bandeId)).orderBy(peseesTable.ageJours);
+  const seuilPoids = await getParam("seuil_poids_alerte", 90);
   res.json(rows.map(r => ({
     id: r.id,
     bandeId: r.bandeId,
@@ -422,7 +431,7 @@ router.get("/:id/pesees", async (req, res) => {
     poidsMoyenG: parseFloat(r.poidsMoyenG),
     objectifPoidsG: r.objectifPoidsG ? parseFloat(r.objectifPoidsG) : null,
     ecart: r.objectifPoidsG ? parseFloat(r.poidsMoyenG) - parseFloat(r.objectifPoidsG) : null,
-    alertePoids: r.objectifPoidsG ? parseFloat(r.poidsMoyenG) < parseFloat(r.objectifPoidsG) * 0.9 : false,
+    alertePoids: r.objectifPoidsG ? parseFloat(r.poidsMoyenG) < parseFloat(r.objectifPoidsG) * (seuilPoids / 100) : false,
   })));
 });
 
@@ -462,8 +471,10 @@ router.get("/:id/consommation", async (req, res) => {
     const poidsGagneTotal = (dernierPoids / 1000) * sujetsRestants;
     if (poidsGagneTotal > 0) {
       ic = Math.round((totalAlimentKg / poidsGagneTotal) * 100) / 100;
-      if (ic < 1.8) icStatus = "bon";
-      else if (ic <= 2.2) icStatus = "moyen";
+      const icBon = await getParam("ic_bon", 1.8);
+      const icMoyen = await getParam("ic_moyen", 2.2);
+      if (ic < icBon) icStatus = "bon";
+      else if (ic <= icMoyen) icStatus = "moyen";
       else icStatus = "mauvais";
     }
   }
@@ -489,19 +500,12 @@ router.delete("/:id/consommation/:consId", async (req, res) => {
   res.json({ success: true });
 });
 
-const DEFAULT_VACCINS = [
-  { jourPrevu: 1, nom: "Désinfection et installation", description: "Préparation du poulailler" },
-  { jourPrevu: 7, nom: "Vaccin Newcastle", description: "Première vaccination contre Newcastle" },
-  { jourPrevu: 14, nom: "Vaccin Gumboro", description: "Vaccination contre la maladie de Gumboro" },
-  { jourPrevu: 21, nom: "Rappel Newcastle", description: "Rappel de vaccination Newcastle" },
-  { jourPrevu: 28, nom: "Vaccin Bronchite infectieuse", description: "Vaccination contre la bronchite infectieuse" },
-];
-
 router.get("/:id/vaccinations", async (req, res) => {
   const bandeId = parseInt(req.params.id);
   let rows = await db.select().from(vaccinationsTable).where(eq(vaccinationsTable.bandeId, bandeId)).orderBy(vaccinationsTable.jourPrevu);
   if (rows.length === 0) {
-    for (const v of DEFAULT_VACCINS) {
+    const schedule = await getVaccinationSchedule();
+    for (const v of schedule) {
       await db.insert(vaccinationsTable).values({ bandeId, ...v, fait: "non" });
     }
     rows = await db.select().from(vaccinationsTable).where(eq(vaccinationsTable.bandeId, bandeId)).orderBy(vaccinationsTable.jourPrevu);

@@ -12,7 +12,8 @@ import {
   BookOpen,
   BarChart3,
   ClipboardList,
-  Users
+  Users,
+  Settings
 } from "lucide-react";
 import { useGetMe, useLogout, UserRole } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/comparaison-bandes", label: "Comparaison", icon: BarChart3, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
     { href: "/activity-log", label: "Journal d'activité", icon: ClipboardList, roles: [UserRole.admin] },
     { href: "/utilisateurs", label: "Utilisateurs", icon: Users, roles: [UserRole.admin] },
+    { href: "/parametres", label: "Paramètres", icon: Settings, roles: allRoles },
   ].filter(item => item.roles.includes(role));
 
   const roleLabel: Record<string, string> = {
