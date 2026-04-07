@@ -114,3 +114,42 @@ export type Consommation = typeof consommationAlimentTable.$inferSelect;
 export const insertVaccinationSchema = createInsertSchema(vaccinationsTable).omit({ id: true });
 export type InsertVaccination = z.infer<typeof insertVaccinationSchema>;
 export type Vaccination = typeof vaccinationsTable.$inferSelect;
+
+export const consommationEauTable = pgTable("consommation_eau", {
+  id: serial("id").primaryKey(),
+  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  ageJours: integer("age_jours").notNull(),
+  quantiteLitres: numeric("quantite_litres", { precision: 10, scale: 2 }).notNull(),
+});
+
+export const traitementsTable = pgTable("traitements", {
+  id: serial("id").primaryKey(),
+  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  ageJours: integer("age_jours").notNull(),
+  produit: text("produit").notNull(),
+  type: text("type").notNull().default("traitement"),
+  dosage: text("dosage"),
+  observations: text("observations"),
+});
+
+export const observationsJournalTable = pgTable("observations_journal", {
+  id: serial("id").primaryKey(),
+  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+  date: date("date").notNull(),
+  ageJours: integer("age_jours").notNull(),
+  contenu: text("contenu").notNull(),
+});
+
+export const insertConsommationEauSchema = createInsertSchema(consommationEauTable).omit({ id: true });
+export type InsertConsommationEau = z.infer<typeof insertConsommationEauSchema>;
+export type ConsommationEau = typeof consommationEauTable.$inferSelect;
+
+export const insertTraitementSchema = createInsertSchema(traitementsTable).omit({ id: true });
+export type InsertTraitement = z.infer<typeof insertTraitementSchema>;
+export type Traitement = typeof traitementsTable.$inferSelect;
+
+export const insertObservationSchema = createInsertSchema(observationsJournalTable).omit({ id: true });
+export type InsertObservation = z.infer<typeof insertObservationSchema>;
+export type Observation = typeof observationsJournalTable.$inferSelect;

@@ -194,11 +194,11 @@ export async function seedDefaults() {
   console.log("Charges fixes seeded");
 
   await db.insert(vaccinationsTable).values([
-    { bandeId: bande.id, jourPrevu: 1, nom: "Désinfection et installation", description: "Préparation du poulailler", fait: "non" },
-    { bandeId: bande.id, jourPrevu: 7, nom: "Vaccin Newcastle", description: "Première vaccination contre Newcastle", fait: "non" },
-    { bandeId: bande.id, jourPrevu: 14, nom: "Vaccin Gumboro", description: "Vaccination contre la maladie de Gumboro", fait: "non" },
-    { bandeId: bande.id, jourPrevu: 21, nom: "Rappel Newcastle", description: "Rappel de vaccination Newcastle", fait: "non" },
-    { bandeId: bande.id, jourPrevu: 28, nom: "Vaccin Bronchite infectieuse", description: "Vaccination contre la bronchite infectieuse", fait: "non" },
+    { bandeId: bande.id, jourPrevu: 1, nom: "Bipestos + Antistress", description: "Vaccination bipestos (Newcastle+Gumboro) + eau sucrée antistress", fait: "non" },
+    { bandeId: bande.id, jourPrevu: 4, nom: "Antibiotique (J4-J6)", description: "Traitement antibiotique preventif pendant 3 jours", fait: "non" },
+    { bandeId: bande.id, jourPrevu: 8, nom: "Vaccin Gumboro", description: "Vaccination contre la maladie de Gumboro + antistress", fait: "non" },
+    { bandeId: bande.id, jourPrevu: 14, nom: "Rappel Gumboro", description: "Rappel vaccination Gumboro", fait: "non" },
+    { bandeId: bande.id, jourPrevu: 21, nom: "Rappel Bipestos + Antistress", description: "Rappel bipestos (Newcastle+Gumboro) + antistress", fait: "non" },
   ] as any);
   console.log("Vaccinations seeded");
 
@@ -212,21 +212,21 @@ export async function seedDefaults() {
     { cle: "ic_moyen", valeur: "2.2", description: "Indice de conversion considéré comme moyen (≤)", categorie: "Indice de conversion" },
     { cle: "budget_batiment_defaut", valeur: "3525000", description: "Budget bâtiment par défaut si aucun devis (FCFA)", categorie: "Budget construction" },
     { cle: "budget_carburant_defaut", valeur: "150000", description: "Budget carburant par défaut si aucun devis (FCFA)", categorie: "Budget construction" },
-    { cle: "vaccin_j1_nom", valeur: "Désinfection et installation", description: "Nom du traitement jour 1", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j1_nom", valeur: "Bipestos + Antistress", description: "Nom du traitement jour 1", categorie: "Calendrier vaccinal" },
     { cle: "vaccin_j1_jour", valeur: "1", description: "Jour prévu pour le traitement 1", categorie: "Calendrier vaccinal" },
-    { cle: "vaccin_j1_description", valeur: "Préparation du poulailler", description: "Description du traitement jour 1", categorie: "Calendrier vaccinal" },
-    { cle: "vaccin_j7_nom", valeur: "Vaccin Newcastle", description: "Nom du vaccin jour 7", categorie: "Calendrier vaccinal" },
-    { cle: "vaccin_j7_jour", valeur: "7", description: "Jour prévu pour le vaccin Newcastle", categorie: "Calendrier vaccinal" },
-    { cle: "vaccin_j7_description", valeur: "Première vaccination contre Newcastle", description: "Description vaccin jour 7", categorie: "Calendrier vaccinal" },
-    { cle: "vaccin_j14_nom", valeur: "Vaccin Gumboro", description: "Nom du vaccin jour 14", categorie: "Calendrier vaccinal" },
-    { cle: "vaccin_j14_jour", valeur: "14", description: "Jour prévu pour le vaccin Gumboro", categorie: "Calendrier vaccinal" },
-    { cle: "vaccin_j14_description", valeur: "Vaccination contre la maladie de Gumboro", description: "Description vaccin jour 14", categorie: "Calendrier vaccinal" },
-    { cle: "vaccin_j21_nom", valeur: "Rappel Newcastle", description: "Nom du vaccin jour 21", categorie: "Calendrier vaccinal" },
-    { cle: "vaccin_j21_jour", valeur: "21", description: "Jour prévu pour le rappel Newcastle", categorie: "Calendrier vaccinal" },
-    { cle: "vaccin_j21_description", valeur: "Rappel de vaccination Newcastle", description: "Description vaccin jour 21", categorie: "Calendrier vaccinal" },
-    { cle: "vaccin_j28_nom", valeur: "Vaccin Bronchite infectieuse", description: "Nom du vaccin jour 28", categorie: "Calendrier vaccinal" },
-    { cle: "vaccin_j28_jour", valeur: "28", description: "Jour prévu pour le vaccin bronchite infectieuse", categorie: "Calendrier vaccinal" },
-    { cle: "vaccin_j28_description", valeur: "Vaccination contre la bronchite infectieuse", description: "Description vaccin jour 28", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j1_description", valeur: "Vaccination bipestos (Newcastle+Gumboro) + eau sucrée antistress", description: "Description du traitement jour 1", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j4_nom", valeur: "Antibiotique (J4-J6)", description: "Nom du traitement jour 4", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j4_jour", valeur: "4", description: "Jour prévu pour antibiotique", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j4_description", valeur: "Traitement antibiotique preventif pendant 3 jours", description: "Description traitement jour 4", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j8_nom", valeur: "Vaccin Gumboro", description: "Nom du vaccin jour 8", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j8_jour", valeur: "8", description: "Jour prévu pour le vaccin Gumboro", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j8_description", valeur: "Vaccination contre la maladie de Gumboro + antistress", description: "Description vaccin jour 8", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j14_nom", valeur: "Rappel Gumboro", description: "Nom du vaccin jour 14", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j14_jour", valeur: "14", description: "Jour prévu pour le rappel Gumboro", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j14_description", valeur: "Rappel vaccination Gumboro", description: "Description vaccin jour 14", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j21_nom", valeur: "Rappel Bipestos + Antistress", description: "Nom du vaccin jour 21", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j21_jour", valeur: "21", description: "Jour prévu pour le rappel bipestos", categorie: "Calendrier vaccinal" },
+    { cle: "vaccin_j21_description", valeur: "Rappel bipestos (Newcastle+Gumboro) + antistress", description: "Description vaccin jour 21", categorie: "Calendrier vaccinal" },
   ]);
   console.log("Paramètres seeded");
 

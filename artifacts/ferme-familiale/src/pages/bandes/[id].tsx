@@ -56,12 +56,24 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download, Droplets, Pill, BookOpen } from "lucide-react";
 import { Link } from "wouter";
 import { BandeDetail } from "@workspace/api-client-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, PieChart, Pie, Cell, ComposedChart, Area } from "recharts";
 import { CreateBandeDepenseBodyCategorie } from "@workspace/api-client-react";
 import { exportBandePDF, exportBandeExcel } from "@/lib/export";
+import { useConsommationEau, useCreateConsommationEau, useDeleteConsommationEau, useTraitements, useCreateTraitement, useDeleteTraitement, useObservations, useCreateObservation, useDeleteObservation, useReferencePoids } from "@/lib/bande-extras-api";
+
+const PHASES = [
+  { nom: "Demarrage", label: "Démarrage", min: 1, max: 15, color: "#3b82f6" },
+  { nom: "Croissance", label: "Croissance", min: 16, max: 28, color: "#22c55e" },
+  { nom: "Finition", label: "Finition", min: 29, max: 45, color: "#f59e0b" },
+  { nom: "Reforme", label: "Réformé", min: 46, max: 999, color: "#8b5cf6" },
+];
+
+function getPhase(ageJours: number) {
+  return PHASES.find(p => ageJours >= p.min && ageJours <= p.max) || PHASES[3];
+}
 
 const depenseSchema = z.object({
   designation: z.string().min(1, "La désignation est requise"),
@@ -109,6 +121,27 @@ const vaccinSchema = z.object({
   description: z.string().optional(),
 });
 
+const eauSchema = z.object({
+  date: z.string().min(1, "La date est requise"),
+  ageJours: z.coerce.number().min(1, "L'âge est requis"),
+  quantiteLitres: z.coerce.number().min(0, "La quantité est requise"),
+});
+
+const traitementSchema = z.object({
+  date: z.string().min(1, "La date est requise"),
+  ageJours: z.coerce.number().min(1, "L'âge est requis"),
+  produit: z.string().min(1, "Le produit est requis"),
+  type: z.string().default("traitement"),
+  dosage: z.string().optional(),
+  observations: z.string().optional(),
+});
+
+const observationSchema = z.object({
+  date: z.string().min(1, "La date est requise"),
+  ageJours: z.coerce.number().min(1, "L'âge est requis"),
+  contenu: z.string().min(1, "Le contenu est requis"),
+});
+
 export default function BandeDetailView() {
   const params = useParams<{ id: string }>();
   const bandeId = Number(params.id);
@@ -126,6 +159,10 @@ export default function BandeDetailView() {
   const { data: peseesData } = useGetBandePesees(bandeId);
   const { data: consommationData } = useGetBandeConsommation(bandeId);
   const { data: vaccinationsData } = useGetBandeVaccinations(bandeId);
+  const { data: eauData } = useConsommationEau(bandeId);
+  const { data: traitementsData } = useTraitements(bandeId);
+  const { data: observationsData } = useObservations(bandeId);
+  const { data: referencePoids } = useReferencePoids();
 
   const createDepense = useCreateBandeDepense();
   const updateDepense = useUpdateBandeDepense();
@@ -145,6 +182,12 @@ export default function BandeDetailView() {
   const deleteConsommation = useDeleteBandeConsommation();
   const createVaccination = useCreateBandeVaccination();
   const updateVaccination = useUpdateBandeVaccination();
+  const createEau = useCreateConsommationEau(bandeId);
+  const deleteEau = useDeleteConsommationEau(bandeId);
+  const createTraitement = useCreateTraitement(bandeId);
+  const deleteTraitement = useDeleteTraitement(bandeId);
+  const createObservation = useCreateObservation(bandeId);
+  const deleteObservation = useDeleteObservation(bandeId);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -188,6 +231,18 @@ export default function BandeDetailView() {
     resolver: zodResolver(vaccinSchema),
     defaultValues: { jourPrevu: 1, nom: "", description: "" },
   });
+  const eauForm = useForm<z.infer<typeof eauSchema>>({
+    resolver: zodResolver(eauSchema),
+    defaultValues: { date: new Date().toISOString().split("T")[0], ageJours: 1, quantiteLitres: 0 },
+  });
+  const traitementForm = useForm<z.infer<typeof traitementSchema>>({
+    resolver: zodResolver(traitementSchema),
+    defaultValues: { date: new Date().toISOString().split("T")[0], ageJours: 1, produit: "", type: "traitement", dosage: "", observations: "" },
+  });
+  const observationForm = useForm<z.infer<typeof observationSchema>>({
+    resolver: zodResolver(observationSchema),
+    defaultValues: { date: new Date().toISOString().split("T")[0], ageJours: 1, contenu: "" },
+  });
 
   const [loyerInitialized, setLoyerInitialized] = useState(false);
   if (chargesFixes && !loyerInitialized) {
@@ -203,6 +258,9 @@ export default function BandeDetailView() {
     peseeForm.reset({ date: new Date().toISOString().split("T")[0], ageJours: 1, poidsMoyenG: 0 });
     consommationForm.reset({ date: new Date().toISOString().split("T")[0], quantiteKg: 0 });
     vaccinForm.reset({ jourPrevu: 1, nom: "", description: "" });
+    eauForm.reset({ date: new Date().toISOString().split("T")[0], ageJours: 1, quantiteLitres: 0 });
+    traitementForm.reset({ date: new Date().toISOString().split("T")[0], ageJours: 1, produit: "", type: "traitement", dosage: "", observations: "" });
+    observationForm.reset({ date: new Date().toISOString().split("T")[0], ageJours: 1, contenu: "" });
     setEditingId(null);
     setDialogType("");
   };
@@ -298,6 +356,33 @@ export default function BandeDetailView() {
     } catch { toast({ title: "Erreur", variant: "destructive" }); }
   };
 
+  const onEauSubmit = async (values: z.infer<typeof eauSchema>) => {
+    try {
+      await createEau.mutateAsync(values);
+      toast({ title: "Consommation d'eau enregistrée" });
+      setIsDialogOpen(false);
+      resetForms();
+    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+  };
+
+  const onTraitementSubmit = async (values: z.infer<typeof traitementSchema>) => {
+    try {
+      await createTraitement.mutateAsync(values);
+      toast({ title: "Traitement enregistré" });
+      setIsDialogOpen(false);
+      resetForms();
+    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+  };
+
+  const onObservationSubmit = async (values: z.infer<typeof observationSchema>) => {
+    try {
+      await createObservation.mutateAsync(values);
+      toast({ title: "Observation enregistrée" });
+      setIsDialogOpen(false);
+      resetForms();
+    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+  };
+
   const handleMarkVaccinDone = async (vaccId: number) => {
     try {
       await updateVaccination.mutateAsync({ id: bandeId, vaccId, data: { fait: "oui", dateFait: new Date().toISOString().split("T")[0] } });
@@ -345,6 +430,41 @@ export default function BandeDetailView() {
   const consResp = (consommationData || {}) as Record<string, unknown>;
   const consEntries = (consResp.entries || []) as Array<Record<string, unknown>>;
   const vaccinItems = (vaccinationsData || []) as Array<Record<string, unknown>>;
+  const eauItems = (eauData || []) as Array<Record<string, unknown>>;
+  const traitementItems = (traitementsData || []) as Array<Record<string, unknown>>;
+  const observationItems = (observationsData || []) as Array<Record<string, unknown>>;
+  const refPoids = (referencePoids || []) as Array<{ ageJours: number; poidsG: number }>;
+
+  const mortaliteParPhase = PHASES.map(phase => {
+    const items = mortaliteItems.filter((m: any) => m.ageJours >= phase.min && m.ageJours <= phase.max);
+    const totalDeces = items.reduce((s: number, m: any) => s + (m.decesJour || 0), 0);
+    return { ...phase, totalDeces, count: items.length };
+  }).filter(p => p.totalDeces > 0);
+
+  const icParPhase = (() => {
+    const result: Array<{ label: string; color: string; alimentKg: number; poidsGagne: number; ic: number | null }> = [];
+    for (const phase of PHASES) {
+      const alimentEntries = consEntries.filter((c: any) => {
+        const d = new Date(c.date as string);
+        const startDate = new Date(detail.dateDeDepart);
+        const age = Math.floor((d.getTime() - startDate.getTime()) / 86400000) + 1;
+        return age >= phase.min && age <= phase.max;
+      });
+      const alimentKg = alimentEntries.reduce((s: number, c: any) => s + (c.quantiteKg as number || 0), 0);
+
+      const peseesPhase = peseesItems.filter((p: any) => p.ageJours >= phase.min && p.ageJours <= phase.max);
+      const peseesPrev = peseesItems.filter((p: any) => p.ageJours < phase.min);
+      const poidsDebut = peseesPrev.length > 0 ? (peseesPrev[peseesPrev.length - 1] as any).poidsMoyenG : 42;
+      const poidsFin = peseesPhase.length > 0 ? (peseesPhase[peseesPhase.length - 1] as any).poidsMoyenG : null;
+      const poidsGagne = poidsFin ? (poidsFin - poidsDebut) / 1000 : 0;
+      const ic = poidsGagne > 0 && alimentKg > 0 ? alimentKg / (poidsGagne * (detail.sujetsRestants || 1)) : null;
+
+      if (alimentKg > 0 || (peseesPhase.length > 0)) {
+        result.push({ label: phase.label, color: phase.color, alimentKg, poidsGagne, ic: ic ? Math.round(ic * 100) / 100 : null });
+      }
+    }
+    return result;
+  })();
 
   const openDialog = (type: string) => {
     setDialogType(type);
@@ -378,6 +498,9 @@ export default function BandeDetailView() {
               {dialogType === "pesee" && "Ajouter une pesée"}
               {dialogType === "consommation" && "Ajouter consommation aliment"}
               {dialogType === "vaccin" && "Ajouter un vaccin"}
+              {dialogType === "eau" && "Ajouter consommation d'eau"}
+              {dialogType === "traitement" && "Ajouter un traitement"}
+              {dialogType === "observation" && "Ajouter une observation"}
               {dialogType === "depense" && (editingId ? "Modifier la dépense" : "Ajouter une dépense")}
               {dialogType === "vente" && (editingId ? "Modifier la vente" : "Enregistrer une vente")}
               {dialogType === "depenseVente" && (editingId ? "Modifier le frais" : "Ajouter un frais de vente")}
@@ -446,6 +569,78 @@ export default function BandeDetailView() {
                 )} />
                 <FormField control={vaccinForm.control} name="description" render={({ field }) => (
                   <FormItem><FormLabel>Description (optionnel)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <Button type="submit" className="w-full">Enregistrer</Button>
+              </form>
+            </Form>
+          )}
+
+          {dialogType === "eau" && (
+            <Form {...eauForm}>
+              <form onSubmit={eauForm.handleSubmit(onEauSubmit)} className="space-y-4">
+                <FormField control={eauForm.control} name="date" render={({ field }) => (
+                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={eauForm.control} name="ageJours" render={({ field }) => (
+                  <FormItem><FormLabel>Jour (J+)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={eauForm.control} name="quantiteLitres" render={({ field }) => (
+                  <FormItem><FormLabel>Quantité (litres)</FormLabel><FormControl><Input type="number" step="0.1" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <Button type="submit" className="w-full">Enregistrer</Button>
+              </form>
+            </Form>
+          )}
+
+          {dialogType === "traitement" && (
+            <Form {...traitementForm}>
+              <form onSubmit={traitementForm.handleSubmit(onTraitementSubmit)} className="space-y-4">
+                <FormField control={traitementForm.control} name="date" render={({ field }) => (
+                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={traitementForm.control} name="ageJours" render={({ field }) => (
+                  <FormItem><FormLabel>Jour (J+)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={traitementForm.control} name="produit" render={({ field }) => (
+                  <FormItem><FormLabel>Produit</FormLabel><FormControl><Input placeholder="ex: Anticoc, Bipestos..." {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={traitementForm.control} name="type" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="traitement">Traitement</SelectItem>
+                        <SelectItem value="vaccin">Vaccin</SelectItem>
+                        <SelectItem value="complement">Complément</SelectItem>
+                        <SelectItem value="preventif">Préventif</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={traitementForm.control} name="dosage" render={({ field }) => (
+                  <FormItem><FormLabel>Dosage (optionnel)</FormLabel><FormControl><Input placeholder="ex: 1g/L" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={traitementForm.control} name="observations" render={({ field }) => (
+                  <FormItem><FormLabel>Observations (optionnel)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <Button type="submit" className="w-full">Enregistrer</Button>
+              </form>
+            </Form>
+          )}
+
+          {dialogType === "observation" && (
+            <Form {...observationForm}>
+              <form onSubmit={observationForm.handleSubmit(onObservationSubmit)} className="space-y-4">
+                <FormField control={observationForm.control} name="date" render={({ field }) => (
+                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={observationForm.control} name="ageJours" render={({ field }) => (
+                  <FormItem><FormLabel>Jour (J+)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={observationForm.control} name="contenu" render={({ field }) => (
+                  <FormItem><FormLabel>Observation</FormLabel><FormControl><Textarea placeholder="Notes du jour..." {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <Button type="submit" className="w-full">Enregistrer</Button>
               </form>
@@ -528,6 +723,9 @@ export default function BandeDetailView() {
           <TabsTrigger value="mortalite" className="flex gap-1 text-xs sm:text-sm"><Skull className="h-4 w-4" /><span className="hidden sm:inline">Mortalité</span></TabsTrigger>
           <TabsTrigger value="pesees" className="flex gap-1 text-xs sm:text-sm"><Scale className="h-4 w-4" /><span className="hidden sm:inline">Pesées & IC</span></TabsTrigger>
           <TabsTrigger value="vaccinations" className="flex gap-1 text-xs sm:text-sm"><Syringe className="h-4 w-4" /><span className="hidden sm:inline">Vaccins</span></TabsTrigger>
+          <TabsTrigger value="eau" className="flex gap-1 text-xs sm:text-sm"><Droplets className="h-4 w-4" /><span className="hidden sm:inline">Eau</span></TabsTrigger>
+          <TabsTrigger value="traitements" className="flex gap-1 text-xs sm:text-sm"><Pill className="h-4 w-4" /><span className="hidden sm:inline">Traitements</span></TabsTrigger>
+          <TabsTrigger value="journal" className="flex gap-1 text-xs sm:text-sm"><BookOpen className="h-4 w-4" /><span className="hidden sm:inline">Journal</span></TabsTrigger>
           <TabsTrigger value="charges" className="flex gap-1 text-xs sm:text-sm"><CheckSquare className="h-4 w-4" /><span className="hidden sm:inline">Charges</span></TabsTrigger>
         </TabsList>
 
@@ -737,23 +935,46 @@ export default function BandeDetailView() {
 
         <TabsContent value="mortalite" className="space-y-6">
           {mortaliteItems.length > 0 && (
-            <Card>
-              <CardHeader><CardTitle className="text-xl font-serif">Courbe de mortalité</CardTitle></CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={mortaliteItems.map((m: any) => ({ jour: `J${m.ageJours}`, deces: m.decesJour, cumules: m.decesCumules, taux: m.tauxMortalite }))}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="jour" />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" unit="%" />
-                    <Tooltip />
-                    <Legend />
-                    <Bar yAxisId="left" dataKey="deces" name="Décès / jour" fill="#ef4444" />
-                    <Line yAxisId="right" type="monotone" dataKey="taux" name="Taux cumulé %" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <>
+              <Card>
+                <CardHeader><CardTitle className="text-xl font-serif">Courbe de mortalité</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <ComposedChart data={mortaliteItems.map((m: any) => ({ jour: `J${m.ageJours}`, deces: m.decesJour, cumules: m.decesCumules, taux: m.tauxMortalite }))}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="jour" />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" unit="%" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar yAxisId="left" dataKey="deces" name="Décès / jour" fill="#ef4444" />
+                      <Line yAxisId="right" type="monotone" dataKey="taux" name="Taux cumulé %" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {mortaliteParPhase.length > 0 && (
+                <Card>
+                  <CardHeader><CardTitle className="text-xl font-serif">Analyse par phase</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {mortaliteParPhase.map(phase => {
+                        const taux = detail.sujetsDepart > 0 ? ((phase.totalDeces / detail.sujetsDepart) * 100).toFixed(1) : "0";
+                        return (
+                          <div key={phase.nom} className="p-4 rounded-lg border" style={{ borderLeftColor: phase.color, borderLeftWidth: 4 }}>
+                            <div className="text-sm font-medium text-muted-foreground">{phase.label}</div>
+                            <div className="text-xs text-muted-foreground mb-1">J{phase.min} - J{phase.max > 100 ? "+" : phase.max}</div>
+                            <div className="text-2xl font-bold">{phase.totalDeces}</div>
+                            <div className="text-xs text-muted-foreground">{taux}% du total</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
 
           <Card>
@@ -810,19 +1031,33 @@ export default function BandeDetailView() {
         </TabsContent>
 
         <TabsContent value="pesees" className="space-y-6">
-          {peseesItems.length > 0 && (
+          {(peseesItems.length > 0 || refPoids.length > 0) && (
             <Card>
-              <CardHeader><CardTitle className="text-xl font-serif">Courbe de croissance</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-xl font-serif">Courbe de croissance (vs référence COBB 500)</CardTitle></CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={peseesItems.map((p: any) => ({ jour: `J${p.ageJours}`, poids: p.poidsMoyenG, objectif: p.objectifPoidsG || null }))}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={(() => {
+                    const allDays = new Set<number>();
+                    peseesItems.forEach((p: any) => allDays.add(p.ageJours));
+                    refPoids.forEach(r => allDays.add(r.ageJours));
+                    const sortedDays = Array.from(allDays).sort((a, b) => a - b);
+                    return sortedDays.map(day => {
+                      const pesee = peseesItems.find((p: any) => p.ageJours === day) as any;
+                      const ref = refPoids.find(r => r.ageJours === day);
+                      return {
+                        jour: `J${day}`,
+                        poids: pesee ? pesee.poidsMoyenG : null,
+                        reference: ref ? ref.poidsG : null,
+                      };
+                    });
+                  })()}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="jour" />
                     <YAxis unit="g" />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="poids" name="Poids moyen (g)" stroke="#22c55e" strokeWidth={2} dot={{ r: 4 }} />
-                    <Line type="monotone" dataKey="objectif" name="Objectif (g)" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="poids" name="Poids réel (g)" stroke="#22c55e" strokeWidth={2} dot={{ r: 4 }} connectNulls />
+                    <Line type="monotone" dataKey="reference" name="Référence COBB 500 (g)" stroke="#3b82f6" strokeDasharray="5 5" strokeWidth={2} dot={{ r: 3 }} connectNulls />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -911,6 +1146,27 @@ export default function BandeDetailView() {
                       </span>
                     </div>
                   </div>
+
+                  {icParPhase.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-semibold mb-2">IC par phase</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {icParPhase.map(phase => (
+                          <div key={phase.label} className="p-3 rounded-lg border text-sm" style={{ borderLeftColor: phase.color, borderLeftWidth: 3 }}>
+                            <div className="font-medium">{phase.label}</div>
+                            <div className="text-muted-foreground text-xs">{phase.alimentKg.toFixed(1)} kg aliment</div>
+                            <div className="font-bold text-lg">
+                              {phase.ic ? (
+                                <span className={phase.ic <= 1.8 ? "text-green-700" : phase.ic <= 2.2 ? "text-orange-600" : "text-red-600"}>
+                                  {phase.ic}
+                                </span>
+                              ) : "-"}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="border rounded-md overflow-hidden">
                     <Table>
@@ -1008,6 +1264,172 @@ export default function BandeDetailView() {
                   </TableBody>
                 </Table>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="eau" className="space-y-6">
+          {eauItems.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle className="text-xl font-serif">Courbe de consommation d'eau</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <ComposedChart data={eauItems.map((e: any) => ({ jour: `J${e.ageJours}`, litres: e.quantiteLitres }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="jour" />
+                    <YAxis unit="L" />
+                    <Tooltip />
+                    <Legend />
+                    <Area type="monotone" dataKey="litres" name="Eau (L)" fill="#3b82f6" fillOpacity={0.2} stroke="#3b82f6" strokeWidth={2} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xl font-serif flex items-center gap-2"><Droplets className="h-5 w-5" /> Consommation d'eau</CardTitle>
+              {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => openDialog("eau")}><Plus className="w-4 h-4" /> Ajouter</Button>}
+            </CardHeader>
+            <CardContent>
+              {eauItems.length > 0 && (
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg mb-4">
+                  <div>
+                    <span className="text-muted-foreground text-xs block">Total eau</span>
+                    <span className="font-bold text-lg">{eauItems.reduce((s: number, e: any) => s + e.quantiteLitres, 0).toFixed(1)} L</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground text-xs block">Moy / jour</span>
+                    <span className="font-bold text-lg">
+                      {(eauItems.reduce((s: number, e: any) => s + e.quantiteLitres, 0) / eauItems.length).toFixed(1)} L
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="border rounded-md overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead>Date</TableHead><TableHead className="text-right">Jour</TableHead>
+                      <TableHead className="text-right">Litres</TableHead>
+                      {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {eauItems.length === 0 ? (
+                      <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Aucune donnée de consommation d'eau</TableCell></TableRow>
+                    ) : (
+                      eauItems.map((e: any) => (
+                        <TableRow key={e.id}>
+                          <TableCell>{e.date}</TableCell>
+                          <TableCell className="text-right">J{e.ageJours}</TableCell>
+                          <TableCell className="text-right font-medium">{e.quantiteLitres} L</TableCell>
+                          {!isReadOnly && (
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
+                                if (confirm("Supprimer ?")) {
+                                  try { await deleteEau.mutateAsync(e.id); } catch { toast({ title: "Erreur", variant: "destructive" }); }
+                                }
+                              }}><Trash2 className="h-4 w-4" /></Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="traitements">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xl font-serif flex items-center gap-2"><Pill className="h-5 w-5" /> Journal des traitements</CardTitle>
+              {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => openDialog("traitement")}><Plus className="w-4 h-4" /> Ajouter</Button>}
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-md overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead>Date</TableHead><TableHead className="text-right">Jour</TableHead>
+                      <TableHead>Produit</TableHead><TableHead>Type</TableHead>
+                      <TableHead>Dosage</TableHead><TableHead>Observations</TableHead>
+                      {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {traitementItems.length === 0 ? (
+                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Aucun traitement enregistré</TableCell></TableRow>
+                    ) : (
+                      traitementItems.map((t: any) => (
+                        <TableRow key={t.id}>
+                          <TableCell>{t.date}</TableCell>
+                          <TableCell className="text-right">J{t.ageJours}</TableCell>
+                          <TableCell className="font-medium">{t.produit}</TableCell>
+                          <TableCell>
+                            <span className={`text-xs px-2 py-0.5 rounded ${
+                              t.type === "vaccin" ? "bg-blue-100 text-blue-800" :
+                              t.type === "preventif" ? "bg-green-100 text-green-800" :
+                              t.type === "complement" ? "bg-purple-100 text-purple-800" :
+                              "bg-orange-100 text-orange-800"
+                            }`}>{t.type}</span>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{t.dosage || "-"}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">{t.observations || "-"}</TableCell>
+                          {!isReadOnly && (
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
+                                if (confirm("Supprimer ?")) {
+                                  try { await deleteTraitement.mutateAsync(t.id); } catch { toast({ title: "Erreur", variant: "destructive" }); }
+                                }
+                              }}><Trash2 className="h-4 w-4" /></Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="journal">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xl font-serif flex items-center gap-2"><BookOpen className="h-5 w-5" /> Journal d'observations</CardTitle>
+              {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => openDialog("observation")}><Plus className="w-4 h-4" /> Ajouter</Button>}
+            </CardHeader>
+            <CardContent>
+              {observationItems.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">Aucune observation enregistrée</p>
+              ) : (
+                <div className="space-y-3">
+                  {observationItems.map((o: any) => (
+                    <div key={o.id} className="p-4 border rounded-lg flex justify-between items-start gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded">J{o.ageJours}</span>
+                          <span className="text-xs text-muted-foreground">{o.date}</span>
+                        </div>
+                        <p className="text-sm">{o.contenu}</p>
+                      </div>
+                      {!isReadOnly && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={async () => {
+                          if (confirm("Supprimer ?")) {
+                            try { await deleteObservation.mutateAsync(o.id); } catch { toast({ title: "Erreur", variant: "destructive" }); }
+                          }
+                        }}><Trash2 className="h-4 w-4" /></Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

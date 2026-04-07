@@ -18,7 +18,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, ArrowRight, Bird } from "lucide-react";
+import { Plus, Trash2, ArrowRight, Bird, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { CreateBandeBodyStatut } from "@workspace/api-client-react";
@@ -39,8 +39,30 @@ export default function Bandes() {
   const { toast } = useToast();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const isReadOnly = user?.role === "investisseur" || user?.role === "lecteur";
+
+  const handleImportHistorique = async () => {
+    if (!confirm("Importer les données historiques depuis le fichier Excel ? Cela créera les bandes passées avec toutes leurs données.")) return;
+    setImporting(true);
+    try {
+      const base = import.meta.env.BASE_URL || "/";
+      const resp = await fetch(`${base}api/import-historical`, { method: "POST", credentials: "include" });
+      const data = await resp.json();
+      if (data.success) {
+        const imported = data.results.filter((r: any) => r.status === "imported");
+        toast({ title: `${imported.length} bande(s) importée(s)` });
+        queryClient.invalidateQueries({ queryKey: getListBandesQueryKey() });
+      } else {
+        toast({ title: "Erreur", description: data.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erreur d'import", variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const form = useForm<z.infer<typeof bandeSchema>>({
     resolver: zodResolver(bandeSchema),
@@ -88,23 +110,28 @@ export default function Bandes() {
           <p className="text-muted-foreground mt-1">Gestion des cycles de production</p>
         </div>
         {!isReadOnly && (
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) form.reset();
-          }}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Nouvelle bande
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Créer une bande</DialogTitle>
-                <DialogDescription>Initialisez un nouveau lot de production.</DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={handleImportHistorique} disabled={importing}>
+              <Upload className="h-4 w-4" />
+              {importing ? "Import en cours..." : "Importer historique"}
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) form.reset();
+            }}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Nouvelle bande
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Créer une bande</DialogTitle>
+                  <DialogDescription>Initialisez un nouveau lot de production.</DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
                     control={form.control}
                     name="nom"
@@ -165,13 +192,14 @@ export default function Bandes() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full" disabled={createBande.isPending}>
-                    Créer
-                  </Button>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                    <Button type="submit" className="w-full" disabled={createBande.isPending}>
+                      Créer
+                    </Button>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
       </div>
 

@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, peseesTable, consommationAlimentTable, vaccinationsTable } from "@workspace/db";
+import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, peseesTable, consommationAlimentTable, vaccinationsTable, consommationEauTable, traitementsTable, observationsJournalTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { logFromRequest } from "./activity-log";
-import { getParam, getVaccinationSchedule } from "../lib/parametres";
+import { getParam, getVaccinationSchedule, REFERENCE_WEIGHT_CURVE } from "../lib/parametres";
 
 const router = Router();
 
@@ -94,6 +94,10 @@ router.post("/", async (req, res) => {
     statut: r.statut,
     createdAt: r.createdAt,
   });
+});
+
+router.get("/reference-poids", async (_req, res) => {
+  res.json(REFERENCE_WEIGHT_CURVE);
 });
 
 router.get("/:id", async (req, res) => {
@@ -549,6 +553,89 @@ router.post("/:id/vaccinations", async (req, res) => {
     id: r.id, bandeId: r.bandeId, jourPrevu: r.jourPrevu, nom: r.nom,
     description: r.description, fait: r.fait, dateFait: r.dateFait, commentaire: r.commentaire,
   });
+});
+
+router.get("/:id/consommation-eau", async (req, res) => {
+  const bandeId = parseInt(req.params.id);
+  const rows = await db.select().from(consommationEauTable).where(eq(consommationEauTable.bandeId, bandeId)).orderBy(consommationEauTable.ageJours);
+  res.json(rows.map(r => ({
+    id: r.id, bandeId: r.bandeId, date: r.date, ageJours: r.ageJours,
+    quantiteLitres: parseFloat(r.quantiteLitres),
+  })));
+});
+
+router.post("/:id/consommation-eau", async (req, res) => {
+  const bandeId = parseInt(req.params.id);
+  const { date, ageJours, quantiteLitres } = req.body;
+  const rows = await db.insert(consommationEauTable).values({
+    bandeId, date, ageJours, quantiteLitres: String(quantiteLitres),
+  }).returning();
+  const r = rows[0];
+  res.status(201).json({
+    id: r.id, bandeId: r.bandeId, date: r.date, ageJours: r.ageJours,
+    quantiteLitres: parseFloat(r.quantiteLitres),
+  });
+});
+
+router.delete("/:id/consommation-eau/:eauId", async (req, res) => {
+  const bandeId = parseInt(req.params.id);
+  await db.delete(consommationEauTable).where(and(eq(consommationEauTable.id, parseInt(req.params.eauId)), eq(consommationEauTable.bandeId, bandeId)));
+  res.json({ success: true });
+});
+
+router.get("/:id/traitements", async (req, res) => {
+  const bandeId = parseInt(req.params.id);
+  const rows = await db.select().from(traitementsTable).where(eq(traitementsTable.bandeId, bandeId)).orderBy(traitementsTable.ageJours);
+  res.json(rows.map(r => ({
+    id: r.id, bandeId: r.bandeId, date: r.date, ageJours: r.ageJours,
+    produit: r.produit, type: r.type, dosage: r.dosage, observations: r.observations,
+  })));
+});
+
+router.post("/:id/traitements", async (req, res) => {
+  const bandeId = parseInt(req.params.id);
+  const { date, ageJours, produit, type, dosage, observations } = req.body;
+  const rows = await db.insert(traitementsTable).values({
+    bandeId, date, ageJours, produit, type: type || "traitement",
+    dosage: dosage || null, observations: observations || null,
+  }).returning();
+  const r = rows[0];
+  res.status(201).json({
+    id: r.id, bandeId: r.bandeId, date: r.date, ageJours: r.ageJours,
+    produit: r.produit, type: r.type, dosage: r.dosage, observations: r.observations,
+  });
+});
+
+router.delete("/:id/traitements/:traitId", async (req, res) => {
+  const bandeId = parseInt(req.params.id);
+  await db.delete(traitementsTable).where(and(eq(traitementsTable.id, parseInt(req.params.traitId)), eq(traitementsTable.bandeId, bandeId)));
+  res.json({ success: true });
+});
+
+router.get("/:id/observations", async (req, res) => {
+  const bandeId = parseInt(req.params.id);
+  const rows = await db.select().from(observationsJournalTable).where(eq(observationsJournalTable.bandeId, bandeId)).orderBy(observationsJournalTable.ageJours);
+  res.json(rows.map(r => ({
+    id: r.id, bandeId: r.bandeId, date: r.date, ageJours: r.ageJours, contenu: r.contenu,
+  })));
+});
+
+router.post("/:id/observations", async (req, res) => {
+  const bandeId = parseInt(req.params.id);
+  const { date, ageJours, contenu } = req.body;
+  const rows = await db.insert(observationsJournalTable).values({
+    bandeId, date, ageJours, contenu,
+  }).returning();
+  const r = rows[0];
+  res.status(201).json({
+    id: r.id, bandeId: r.bandeId, date: r.date, ageJours: r.ageJours, contenu: r.contenu,
+  });
+});
+
+router.delete("/:id/observations/:obsId", async (req, res) => {
+  const bandeId = parseInt(req.params.id);
+  await db.delete(observationsJournalTable).where(and(eq(observationsJournalTable.id, parseInt(req.params.obsId)), eq(observationsJournalTable.bandeId, bandeId)));
+  res.json({ success: true });
 });
 
 export default router;

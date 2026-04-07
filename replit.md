@@ -134,9 +134,21 @@ French-language React + Vite web app for managing a family poultry farm in Camer
 
 **Production Tracking** (bande detail tabs):
 - Mortalité journalière avec alertes (configurable via paramètres), décès cumulés, taux de mortalité
-- Pesées avec objectifs et écarts (seuil configurable)
-- Consommation aliment & Indice de Conversion (IC): seuils configurables via paramètres
-- Calendrier vaccination configurable via paramètres, avec auto-seed et fallback par défaut
+- Analyse mortalité par phase: Démarrage (J1-15), Croissance (J16-28), Finition (J29-45), Réformé (J46+)
+- Pesées avec objectifs et écarts (seuil configurable), overlay courbe de référence COBB 500
+- Consommation aliment & Indice de Conversion (IC): seuils configurables via paramètres, IC par phase
+- Consommation eau journalière (onglet Eau): saisie litres/jour, graphique évolution
+- Log traitements et vaccins (onglet Traitements): produit, type, dosage, observations
+- Journal d'observations quotidien (onglet Journal): texte libre par jour
+- Calendrier vaccination: protocole complet (J1 bipestos, J4-6 antibio, J8 Gumboro, J14 rappel, J21 rappel bipestos)
+- Import historique Excel: parsing fichier Biofarm Valley (4 bandes), route POST /api/import-historical
+
+**DB tables for bande tracking**:
+- `consommation_eau` (bande_id, date, age_jours, quantite_litres)
+- `traitements` (bande_id, date, age_jours, produit, type, dosage, observations)
+- `observations_journal` (bande_id, date, age_jours, contenu)
+
+**Custom hooks** (bande-extras-api.ts): useConsommationEau, useTraitements, useObservations, useReferencePoids
 
 **Currency**: All amounts in FCFA. No emojis. French UI throughout.
 
