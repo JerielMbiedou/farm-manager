@@ -159,9 +159,15 @@ function parseSheet(ws: XLSX.WorkSheet): { rows: DayRow[]; sujetsDepart: number 
 
 router.post("/", async (req, res) => {
   try {
-    const filePath = path.resolve(process.cwd(), "../..", "attached_assets", "Fiche_de_suivie_Excel_2025__1775602472969.xlsx");
-    if (!fs.existsSync(filePath)) {
-      res.status(404).json({ error: "Fichier Excel introuvable", path: filePath });
+    const candidates = [
+      path.resolve(process.cwd(), "../..", "attached_assets", "Fiche_de_suivie_Excel_2025__1775602472969.xlsx"),
+      path.resolve(process.cwd(), "..", "attached_assets", "Fiche_de_suivie_Excel_2025__1775602472969.xlsx"),
+      path.resolve("/home/runner/workspace", "attached_assets", "Fiche_de_suivie_Excel_2025__1775602472969.xlsx"),
+      path.resolve(process.cwd(), "attached_assets", "Fiche_de_suivie_Excel_2025__1775602472969.xlsx"),
+    ];
+    const filePath = candidates.find(p => fs.existsSync(p));
+    if (!filePath) {
+      res.status(404).json({ error: "Fichier Excel introuvable", tried: candidates });
       return;
     }
 
