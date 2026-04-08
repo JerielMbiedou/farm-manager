@@ -1,0 +1,62 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Mowr9Gm2HQI7qePNul_fA"
+uri = "file://attached_assets/stock_images/poultry_farm_hero_1.jpg"
+type = "image"
+title = "poultry farm chickens barn rural Africa"
+
+[[outputs]]
+id = "BA0jYPkeM1P9-qUq02Kq7"
+uri = "file://attached_assets/stock_images/poultry_farm_hero_2.jpg"
+type = "image"
+title = "poultry farm chickens barn rural Africa"
+
+[[outputs]]
+id = "_yhpeF0op7lJNOhY0SpsY"
+uri = "file://attached_assets/stock_images/poultry_farm_hero_3.jpg"
+type = "image"
+title = "poultry farm chickens barn rural Africa"
+
+[[outputs]]
+id = "I7lNGSbPUr-SujrlD1EdL"
+uri = "file://attached_assets/stock_images/baby_chicks_1.jpg"
+type = "image"
+title = "baby chicks poultry broiler farming"
+
+[[outputs]]
+id = "bDOK1h3Et6R4bC9ulSkj3"
+uri = "file://attached_assets/stock_images/baby_chicks_2.jpg"
+type = "image"
+title = "baby chicks poultry broiler farming"
+
+[[outputs]]
+id = "_jsA58D-sJY2BjLKWa57K"
+uri = "file://attached_assets/stock_images/baby_chicks_3.jpg"
+type = "image"
+title = "baby chicks poultry broiler farming"
+
+[[outputs]]
+id = "v1vH1ZyWHyTVXP8PMKvW_"
+uri = "file://attached_assets/stock_images/eggs_farm_1.jpg"
+type = "image"
+title = "chicken eggs farm basket organic"
+
+[[outputs]]
+id = "n-ae7JeYtt7n_JDH-NHFR"
+uri = "file://attached_assets/stock_images/eggs_farm_2.jpg"
+type = "image"
+title = "chicken eggs farm basket organic"
+
+[[outputs]]
+id = "re7y50gDIbQgBLA8wVn-U"
+uri = "file://attached_assets/stock_images/chicken_feed_1.jpg"
+type = "image"
+title = "chicken feed grain poultry"
+
+[[outputs]]
+id = "-QqwOJQz6B11mwYeZUbB3"
+uri = "file://attached_assets/stock_images/chicken_feed_2.jpg"
+type = "image"
+title = "chicken feed grain poultry"

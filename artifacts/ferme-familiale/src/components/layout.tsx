@@ -37,7 +37,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [user, isLoading, location, setLocation]);
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-background text-primary">Chargement...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <span className="text-sm text-muted-foreground">Chargement...</span>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -47,10 +54,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const handleLogout = async () => {
     try {
       await logout.mutateAsync();
-      toast({ title: "À bientôt", description: "Vous êtes déconnecté." });
+      toast({ title: "A bientot", description: "Vous etes deconnecte." });
       setLocation("/login");
     } catch {
-      toast({ title: "Erreur", description: "Impossible de se déconnecter", variant: "destructive" });
+      toast({ title: "Erreur", description: "Impossible de se deconnecter", variant: "destructive" });
     }
   };
 
@@ -62,17 +69,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, roles: allRoles },
     { href: "/financement", label: "Financement", icon: Wallet, roles: allRoles },
     { href: "/devis", label: "Devis construction", icon: HardHat, roles: [UserRole.admin] },
-    { href: "/depenses", label: "Dépenses", icon: Receipt, roles: [UserRole.admin, UserRole.gestionnaire] },
+    { href: "/depenses", label: "Depenses", icon: Receipt, roles: [UserRole.admin, UserRole.gestionnaire] },
     { href: "/bandes", label: "Bandes de poulets", icon: Bird, roles: [UserRole.admin, UserRole.gestionnaire, "lecteur" as UserRole] },
     { href: "/historique-caisse", label: "Historique caisse", icon: BookOpen, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
     { href: "/comparaison-bandes", label: "Comparaison", icon: BarChart3, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
     { href: "/stocks", label: "Stocks", icon: Package, roles: [UserRole.admin, UserRole.gestionnaire] },
     { href: "/simulation", label: "Simulation", icon: Calculator, roles: allRoles },
-    { href: "/tresorerie", label: "Trésorerie", icon: TrendingUp, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
+    { href: "/tresorerie", label: "Tresorerie", icon: TrendingUp, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
     { href: "/planification", label: "Planification", icon: CalendarDays, roles: [UserRole.admin, UserRole.gestionnaire] },
-    { href: "/activity-log", label: "Journal d'activité", icon: ClipboardList, roles: [UserRole.admin] },
+    { href: "/activity-log", label: "Journal d'activite", icon: ClipboardList, roles: [UserRole.admin] },
     { href: "/utilisateurs", label: "Utilisateurs", icon: Users, roles: [UserRole.admin] },
-    { href: "/parametres", label: "Paramètres", icon: Settings, roles: allRoles },
+    { href: "/parametres", label: "Parametres", icon: Settings, roles: allRoles },
   ].filter(item => item.roles.includes(role));
 
   const roleLabel: Record<string, string> = {
@@ -83,64 +90,75 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
   const roleName = roleLabel[role] || "Utilisateur";
 
+  const userInitials = user.nom ? user.nom.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) : "U";
+
   return (
     <div className="min-h-screen flex w-full bg-background selection:bg-primary/20">
       <div className="lg:hidden fixed top-4 right-4 z-50">
-        <Button variant="outline" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+        <Button variant="outline" size="icon" className="bg-white shadow-md" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
           {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
       </div>
 
       <aside className={`
-        fixed inset-y-0 left-0 z-40 w-64 bg-sidebar text-sidebar-foreground transform transition-transform duration-300 ease-in-out
-        lg:relative lg:translate-x-0
+        fixed inset-y-0 left-0 z-40 w-[260px] bg-sidebar text-sidebar-foreground transform transition-transform duration-300 ease-in-out
+        lg:relative lg:translate-x-0 flex flex-col
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
-        <div className="flex flex-col h-full">
-          <div className="p-6">
-            <h1 className="text-2xl font-bold tracking-tight text-sidebar-primary flex items-center gap-2">
-              <Bird className="h-6 w-6" />
-              Ferme Mbiedou
-            </h1>
-            <div className="mt-4 flex flex-col gap-1">
-              <span className="text-sm font-medium text-sidebar-foreground/80">Connecté en tant que</span>
-              <span className="text-base font-semibold">{user.nom}</span>
-              <span className="inline-flex items-center px-2 py-0.5 mt-1 rounded text-xs font-medium bg-sidebar-primary/20 text-sidebar-primary self-start border border-sidebar-primary/30">
-                {roleName}
-              </span>
+        <div className="p-5 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-sidebar-primary/20 flex items-center justify-center">
+              <Bird className="h-5 w-5 text-sidebar-primary" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-sidebar-primary leading-tight">
+                Ferme Mbiedou
+              </h1>
+              <p className="text-[11px] text-sidebar-foreground/50 leading-tight">Gestion avicole</p>
             </div>
           </div>
+        </div>
 
-          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location === item.href || location.startsWith(item.href + "/");
-              return (
-                <Link key={item.href} href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
-                  <div className={`
-                    flex items-center gap-3 px-3 py-2 rounded-md transition-colors cursor-pointer
-                    ${isActive 
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium" 
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}
-                  `}>
-                    <Icon className="h-5 w-5 shrink-0" />
-                    <span className="text-sm">{item.label}</span>
-                  </div>
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="p-4 mt-auto">
-            <Button 
-              variant="outline" 
-              className="w-full justify-start gap-2 bg-transparent border-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-4 w-4" />
-              Se déconnecter
-            </Button>
+        <div className="mx-4 mb-3 p-3 rounded-lg bg-sidebar-accent/50 border border-sidebar-accent">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground text-sm font-bold shrink-0">
+              {userInitials}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold truncate">{user.nom}</div>
+              <div className="text-[11px] text-sidebar-foreground/60">{roleName}</div>
+            </div>
           </div>
+        </div>
+
+        <nav className="flex-1 px-3 py-1 space-y-0.5 overflow-y-auto">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location === item.href || location.startsWith(item.href + "/");
+            return (
+              <Link key={item.href} href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
+                <div className={`
+                  flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer
+                  ${isActive 
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm" 
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"}
+                `}>
+                  <Icon className="h-[18px] w-[18px] shrink-0" />
+                  <span className="text-[13px]">{item.label}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="p-3 mt-auto border-t border-sidebar-accent/50">
+          <button 
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground transition-all duration-150 text-[13px]"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-[18px] w-[18px]" />
+            Se deconnecter
+          </button>
         </div>
       </aside>
 
@@ -154,7 +172,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}

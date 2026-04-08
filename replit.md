@@ -155,6 +155,16 @@ French-language React + Vite web app for managing a family poultry farm in Camer
 
 **AI Integration**: Gemini via Replit AI Integrations (env vars AI_INTEGRATIONS_GEMINI_BASE_URL, AI_INTEGRATIONS_GEMINI_API_KEY). Used for OCR fiche de suivi scanning. Lazy-loaded to avoid server crash if env vars missing. Route: POST /api/ocr-fiche (multipart, field 'photo', max 8MB). Auth required.
 
+**Design System**:
+- Typography: Inter (body), Fraunces (h1-h3 headings) loaded from Google Fonts
+- Color palette: Deep forest green primary, golden amber secondary, terracotta accent, warm cream background
+- Border radius: 0.5rem default; cards, buttons, badges use rounded-lg/xl
+- Shadows: Subtle layered shadows with green-tinted hsla for depth
+- Login: Split-screen layout with real stock photo (chicken in barn) on left, form on right
+- Dashboard: Dark green gradient hero banner with background photo, icon badges on cards
+- Sidebar: User avatar with initials, compact nav with active state highlight
+- Real stock photos: farm-hero.jpg, chicks.jpg, chicks-grass.jpg, rooster.jpg, eggs.jpg, feed.jpg in public/images/
+
 **Currency**: All amounts in FCFA. No emojis. French UI throughout.
 
 ### `scripts` (`@workspace/scripts`)
