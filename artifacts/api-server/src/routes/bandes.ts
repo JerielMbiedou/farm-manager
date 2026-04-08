@@ -790,7 +790,8 @@ Extrais pour chaque ligne (jour) les données suivantes au format JSON strict:
       "decesJour": number,
       "alimentKg": number,
       "eauLitres": number,
-      "poidsMoyenG": number | null,
+      "poidsMinG": number | null,
+      "poidsMaxG": number | null,
       "traitement": string | null
     }
   ]
@@ -802,7 +803,9 @@ Règles:
 - "decesJour": nombre de décès ce jour (colonne "Jour/day" sous Mortalité)
 - "alimentKg": quantité d'aliment consommée ce jour en kg (colonne "Jour/day" sous Aliments/Feed)
 - "eauLitres": quantité d'eau consommée ce jour en litres (colonne Eau/Water)
-- "poidsMoyenG": poids moyen en grammes si indiqué (convertis depuis kg si nécessaire), sinon null
+- "poidsMinG": poids minimum en grammes si indiqué sur la fiche (convertis depuis kg si nécessaire, ex: 0,080 kg → 80 g), sinon null
+- "poidsMaxG": poids maximum en grammes si indiqué sur la fiche (convertis depuis kg si nécessaire), sinon null
+- Sur la fiche il peut y avoir 2 colonnes de poids par jour (min et max) — extrait les deux séparément
 - "traitement": traitement ou vaccin administré ce jour si lisible, sinon null
 - Si une valeur est illisible ou absente, mets 0 pour les numériques et null pour les textes
 - Retourne UNIQUEMENT le JSON, sans texte avant ou après`;
