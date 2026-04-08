@@ -2,9 +2,47 @@ import { db, usersTable, financementTable, devisConstructionTable, puitsItemsTab
 import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
+async function fixSpelling() {
+  try {
+    const corrections: [string, string][] = [
+      ["Desinfectant", "Désinfectant"],
+      ["Medicaments", "Médicaments"],
+      ["Aliments demarrage", "Aliments démarrage"],
+      ["Aliment demarrage", "Aliment démarrage"],
+      ["Aliment finitions", "Aliment finition"],
+      ["Aliments finition", "Aliment finition"],
+      ["Electricite", "Électricité"],
+      ["Complement aliment", "Complément aliment"],
+      ["Salaire du mois de Fevrier", "Salaire du mois de février"],
+      ["Salaire ventes et tresoreries", "Salaire ventes et trésorerie"],
+    ];
+    for (const [wrong, correct] of corrections) {
+      await db.execute(sql`UPDATE bande_depenses SET designation = ${correct} WHERE designation = ${wrong}`);
+    }
+    const capFixes: [string, string][] = [
+      ["lait", "Lait"],
+      ["compteur", "Compteur"],
+      ["carburant", "Carburant"],
+      ["concentre", "Concentré"],
+    ];
+    for (const [wrong, correct] of capFixes) {
+      await db.execute(sql`UPDATE bande_depenses SET designation = ${correct} WHERE designation = ${wrong}`);
+    }
+    await db.execute(sql`UPDATE bande_depenses SET designation = 'Concentré' WHERE designation = 'Concentre'`);
+    await db.execute(sql`UPDATE bande_depenses SET designation = 'Sacs vides' WHERE designation = 'Sacs vide'`);
+    await db.execute(sql`UPDATE bande_depenses SET categorie = 'prophylaxie' WHERE categorie = 'veterinaire'`);
+    await db.execute(sql`UPDATE bande_depenses SET categorie = 'prophylaxie' WHERE categorie = 'medicaments'`);
+    console.log("Spelling corrections applied");
+  } catch (e) {
+    console.log("Spelling fix skipped (table may not exist yet)");
+  }
+}
+
 export async function seedDefaults() {
   await db.execute(sql`CREATE TABLE IF NOT EXISTS session (sid VARCHAR NOT NULL COLLATE "default", sess JSON NOT NULL, expire TIMESTAMP(6) NOT NULL, CONSTRAINT session_pkey PRIMARY KEY (sid))`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON session (expire)`);
+
+  await fixSpelling();
 
   const existingUsers = await db.select().from(usersTable);
   if (existingUsers.length > 0) {
@@ -143,51 +181,51 @@ export async function seedDefaults() {
     { bandeId: bande.id, designation: "Poussin 1 j", categorie: "poussins", quantite: "3750", prixUnitaire: "550" },
     { bandeId: bande.id, designation: "Koppo", categorie: "autre", quantite: "20", prixUnitaire: "500" },
     { bandeId: bande.id, designation: "Bois", categorie: "autre", quantite: "1", prixUnitaire: "100000" },
-    { bandeId: bande.id, designation: "Desinfectant", categorie: "prophylaxie", quantite: "1", prixUnitaire: "10000" },
+    { bandeId: bande.id, designation: "Désinfectant", categorie: "prophylaxie", quantite: "1", prixUnitaire: "10000" },
     { bandeId: bande.id, designation: "Pointes", categorie: "autre", quantite: "1", prixUnitaire: "1000" },
     { bandeId: bande.id, designation: "Aliments", categorie: "aliments", quantite: "10", prixUnitaire: "12745" },
-    { bandeId: bande.id, designation: "Concentre", categorie: "aliments", quantite: "3", prixUnitaire: "52000" },
-    { bandeId: bande.id, designation: "Concentre", categorie: "aliments", quantite: "7", prixUnitaire: "52000" },
+    { bandeId: bande.id, designation: "Concentré", categorie: "aliments", quantite: "3", prixUnitaire: "52000" },
+    { bandeId: bande.id, designation: "Concentré", categorie: "aliments", quantite: "7", prixUnitaire: "52000" },
     { bandeId: bande.id, designation: "Police", categorie: "autre", quantite: "1", prixUnitaire: "1000" },
     { bandeId: bande.id, designation: "Carburant", categorie: "transport", quantite: "1", prixUnitaire: "30000" },
-    { bandeId: bande.id, designation: "lait", categorie: "aliments", quantite: "1", prixUnitaire: "25000" },
+    { bandeId: bande.id, designation: "Lait", categorie: "aliments", quantite: "1", prixUnitaire: "25000" },
     { bandeId: bande.id, designation: "Poulets", categorie: "autre", quantite: "1", prixUnitaire: "10000" },
-    { bandeId: bande.id, designation: "Medicaments", categorie: "prophylaxie", quantite: "1", prixUnitaire: "220000" },
+    { bandeId: bande.id, designation: "Médicaments", categorie: "prophylaxie", quantite: "1", prixUnitaire: "220000" },
     { bandeId: bande.id, designation: "Carburant Mr Denis", categorie: "transport", quantite: "1", prixUnitaire: "10000" },
-    { bandeId: bande.id, designation: "Aliments demarrage", categorie: "aliments", quantite: "15", prixUnitaire: "8370" },
+    { bandeId: bande.id, designation: "Aliments démarrage", categorie: "aliments", quantite: "15", prixUnitaire: "8370" },
     { bandeId: bande.id, designation: "Vaccin", categorie: "prophylaxie", quantite: "1", prixUnitaire: "14000" },
     { bandeId: bande.id, designation: "Carburant", categorie: "transport", quantite: "1", prixUnitaire: "5000" },
     { bandeId: bande.id, designation: "Carburant", categorie: "transport", quantite: "1", prixUnitaire: "10000" },
-    { bandeId: bande.id, designation: "Aliment demarrage", categorie: "aliments", quantite: "20", prixUnitaire: "13161" },
-    { bandeId: bande.id, designation: "Aliment demarrage", categorie: "aliments", quantite: "5", prixUnitaire: "7375" },
-    { bandeId: bande.id, designation: "Aliment demarrage", categorie: "aliments", quantite: "35", prixUnitaire: "7521" },
-    { bandeId: bande.id, designation: "Electricite", categorie: "autre", quantite: "1", prixUnitaire: "9500" },
+    { bandeId: bande.id, designation: "Aliment démarrage", categorie: "aliments", quantite: "20", prixUnitaire: "13161" },
+    { bandeId: bande.id, designation: "Aliment démarrage", categorie: "aliments", quantite: "5", prixUnitaire: "7375" },
+    { bandeId: bande.id, designation: "Aliment démarrage", categorie: "aliments", quantite: "35", prixUnitaire: "7521" },
+    { bandeId: bande.id, designation: "Électricité", categorie: "autre", quantite: "1", prixUnitaire: "9500" },
     { bandeId: bande.id, designation: "Aliment croissance", categorie: "aliments", quantite: "60", prixUnitaire: "7494" },
     { bandeId: bande.id, designation: "Aliment croissance", categorie: "aliments", quantite: "20", prixUnitaire: "7809" },
-    { bandeId: bande.id, designation: "concentre", categorie: "aliments", quantite: "8", prixUnitaire: "52000" },
+    { bandeId: bande.id, designation: "Concentré", categorie: "aliments", quantite: "8", prixUnitaire: "52000" },
     { bandeId: bande.id, designation: "Aliment croissance", categorie: "aliments", quantite: "15", prixUnitaire: "7136" },
-    { bandeId: bande.id, designation: "compteur", categorie: "autre", quantite: "1", prixUnitaire: "5000" },
+    { bandeId: bande.id, designation: "Compteur", categorie: "autre", quantite: "1", prixUnitaire: "5000" },
     { bandeId: bande.id, designation: "Marteau", categorie: "autre", quantite: "1", prixUnitaire: "2000" },
     { bandeId: bande.id, designation: "Fide", categorie: "autre", quantite: "1", prixUnitaire: "2500" },
-    { bandeId: bande.id, designation: "Sacs vide", categorie: "autre", quantite: "1", prixUnitaire: "1000" },
+    { bandeId: bande.id, designation: "Sacs vides", categorie: "autre", quantite: "1", prixUnitaire: "1000" },
     { bandeId: bande.id, designation: "Carburant", categorie: "transport", quantite: "1", prixUnitaire: "5000" },
     { bandeId: bande.id, designation: "Balance", categorie: "autre", quantite: "1", prixUnitaire: "2000" },
     { bandeId: bande.id, designation: "Koppo", categorie: "autre", quantite: "10", prixUnitaire: "500" },
-    { bandeId: bande.id, designation: "Aliment finitions", categorie: "aliments", quantite: "70", prixUnitaire: "7404" },
+    { bandeId: bande.id, designation: "Aliment finition", categorie: "aliments", quantite: "70", prixUnitaire: "7404" },
     { bandeId: bande.id, designation: "Ampoules", categorie: "autre", quantite: "1", prixUnitaire: "7000" },
     { bandeId: bande.id, designation: "Koppo", categorie: "autre", quantite: "5", prixUnitaire: "500" },
-    { bandeId: bande.id, designation: "concentre", categorie: "aliments", quantite: "7", prixUnitaire: "52000" },
-    { bandeId: bande.id, designation: "Sacs vide", categorie: "autre", quantite: "1", prixUnitaire: "1500" },
-    { bandeId: bande.id, designation: "concentre", categorie: "aliments", quantite: "10", prixUnitaire: "52000" },
-    { bandeId: bande.id, designation: "Aliments finition", categorie: "aliments", quantite: "60", prixUnitaire: "7543" },
-    { bandeId: bande.id, designation: "Aliments finition", categorie: "aliments", quantite: "40", prixUnitaire: "7585" },
-    { bandeId: bande.id, designation: "Salaire du mois de Fevrier", categorie: "main_oeuvre", quantite: "1", prixUnitaire: "110000" },
+    { bandeId: bande.id, designation: "Concentré", categorie: "aliments", quantite: "7", prixUnitaire: "52000" },
+    { bandeId: bande.id, designation: "Sacs vides", categorie: "autre", quantite: "1", prixUnitaire: "1500" },
+    { bandeId: bande.id, designation: "Concentré", categorie: "aliments", quantite: "10", prixUnitaire: "52000" },
+    { bandeId: bande.id, designation: "Aliment finition", categorie: "aliments", quantite: "60", prixUnitaire: "7543" },
+    { bandeId: bande.id, designation: "Aliment finition", categorie: "aliments", quantite: "40", prixUnitaire: "7585" },
+    { bandeId: bande.id, designation: "Salaire du mois de février", categorie: "main_oeuvre", quantite: "1", prixUnitaire: "110000" },
     { bandeId: bande.id, designation: "Salaire du mois de mars", categorie: "main_oeuvre", quantite: "1", prixUnitaire: "110000" },
-    { bandeId: bande.id, designation: "Salaire ventes et tresoreries", categorie: "main_oeuvre", quantite: "1", prixUnitaire: "200000" },
-    { bandeId: bande.id, designation: "carburant", categorie: "transport", quantite: "1", prixUnitaire: "15000" },
+    { bandeId: bande.id, designation: "Salaire ventes et trésorerie", categorie: "main_oeuvre", quantite: "1", prixUnitaire: "200000" },
+    { bandeId: bande.id, designation: "Carburant", categorie: "transport", quantite: "1", prixUnitaire: "15000" },
     { bandeId: bande.id, designation: "Mangeoires", categorie: "autre", quantite: "1", prixUnitaire: "25000" },
-    { bandeId: bande.id, designation: "Electricite", categorie: "autre", quantite: "1", prixUnitaire: "12000" },
-    { bandeId: bande.id, designation: "Complement aliment", categorie: "aliments", quantite: "1", prixUnitaire: "12000" },
+    { bandeId: bande.id, designation: "Électricité", categorie: "autre", quantite: "1", prixUnitaire: "12000" },
+    { bandeId: bande.id, designation: "Complément aliment", categorie: "aliments", quantite: "1", prixUnitaire: "12000" },
   ] as any);
   console.log("Bande dépenses seeded: 48 rows");
 
