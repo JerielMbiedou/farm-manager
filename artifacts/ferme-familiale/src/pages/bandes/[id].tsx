@@ -670,7 +670,7 @@ export default function BandeDetailView() {
                       <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger></FormControl>
                       <SelectContent>
                         {Object.values(CreateBandeDepenseBodyCategorie).map(cat => {
-                          const labels: Record<string, string> = { poussins: "Poussins", aliments: "Aliments", concentre: "Concentré", medicaments: "Prophylaxie", carburant: "Carburant", salaires: "Salaires", materiel_divers: "Matériel divers" };
+                          const labels: Record<string, string> = { poussins: "Poussins", aliments: "Aliments", concentre: "Concentré", prophylaxie: "Prophylaxie", carburant: "Carburant", salaires: "Salaires", transport: "Transport", main_oeuvre: "Main-d'oeuvre", autre: "Autre" };
                           return <SelectItem key={cat} value={cat}>{labels[cat] || cat}</SelectItem>;
                         })}
                       </SelectContent>
@@ -796,11 +796,14 @@ export default function BandeDetailView() {
               poussins: "Poussins",
               aliments: "Aliments",
               concentre: "Concentré",
+              prophylaxie: "Prophylaxie",
               medicaments: "Prophylaxie",
               veterinaire: "Prophylaxie",
               carburant: "Carburant",
               salaires: "Salaires",
-              materiel_divers: "Matériel divers",
+              transport: "Transport",
+              main_oeuvre: "Main-d'oeuvre",
+              autre: "Autre",
             };
             const catTotals: Record<string, number> = {};
             (depenses || []).forEach((d: any) => {
@@ -869,7 +872,7 @@ export default function BandeDetailView() {
                     ) : (
                       depenses?.map(item => (
                         <TableRow key={item.id}>
-                          <TableCell className="capitalize">{({ poussins: "Poussins", aliments: "Aliments", concentre: "Concentré", medicaments: "Prophylaxie", veterinaire: "Prophylaxie", carburant: "Carburant", salaires: "Salaires", materiel_divers: "Matériel divers" } as Record<string,string>)[item.categorie] || item.categorie.replace('_', ' ')}</TableCell>
+                          <TableCell className="capitalize">{({ poussins: "Poussins", aliments: "Aliments", concentre: "Concentré", prophylaxie: "Prophylaxie", medicaments: "Prophylaxie", veterinaire: "Prophylaxie", carburant: "Carburant", salaires: "Salaires", transport: "Transport", main_oeuvre: "Main-d'oeuvre", autre: "Autre" } as Record<string,string>)[item.categorie] || item.categorie.replace('_', ' ')}</TableCell>
                           <TableCell className="font-medium">{item.designation}</TableCell>
                           <TableCell className="text-right">{item.quantite}</TableCell>
                           <TableCell className="text-right">{formatFCFA(item.prixUnitaire)}</TableCell>

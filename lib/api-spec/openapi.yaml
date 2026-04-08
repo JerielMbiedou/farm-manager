@@ -1790,7 +1790,7 @@ components:
           type: string
         categorie:
           type: string
-          enum: [poussins, aliments, concentre, medicaments, carburant, salaires, materiel_divers]
+          enum: [poussins, aliments, concentre, prophylaxie, carburant, salaires, transport, main_oeuvre, autre]
         quantite:
           type: number
         prixUnitaire:
@@ -1813,7 +1813,7 @@ components:
           type: string
         categorie:
           type: string
-          enum: [poussins, aliments, concentre, medicaments, carburant, salaires, materiel_divers]
+          enum: [poussins, aliments, concentre, prophylaxie, carburant, salaires, transport, main_oeuvre, autre]
         quantite:
           type: number
         prixUnitaire:

@@ -13,8 +13,10 @@ export const CreateBandeDepenseBodyCategorie = {
   poussins: "poussins",
   aliments: "aliments",
   concentre: "concentre",
-  medicaments: "medicaments",
+  prophylaxie: "prophylaxie",
   carburant: "carburant",
   salaires: "salaires",
-  materiel_divers: "materiel_divers",
+  transport: "transport",
+  main_oeuvre: "main_oeuvre",
+  autre: "autre",
 } as const;
