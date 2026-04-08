@@ -12,6 +12,8 @@ interface ExtractedDay {
   alimentationKg: number | null;
   eauLitres: number | null;
   mortalite: number;
+  poidsMinG: number | null;
+  poidsMaxG: number | null;
   observations: string;
 }
 
@@ -20,7 +22,6 @@ interface ExtractedData {
   periodeDu: string | null;
   periodeAu: string | null;
   effectifDebut: number | null;
-  poidsMoyenFinSemaine: number | null;
   jours: ExtractedDay[];
 }
 
@@ -107,6 +108,8 @@ export default function ScanFiche({ bandeId, bandeStartDate, onDataSaved }: Scan
         alimentationKg: j.alimentKg ?? null,
         eauLitres: j.eauLitres ?? null,
         mortalite: j.decesJour ?? 0,
+        poidsMinG: j.poidsMinG ?? null,
+        poidsMaxG: j.poidsMaxG ?? null,
         observations: j.traitement || "",
       }));
 
@@ -117,7 +120,6 @@ export default function ScanFiche({ bandeId, bandeStartDate, onDataSaved }: Scan
         periodeDu: firstDate,
         periodeAu: lastDate,
         effectifDebut: null,
-        poidsMoyenFinSemaine: jours.find((j: any) => j.poidsMoyenG)?.poidsMoyenG ?? null,
         jours: mapped,
       };
       setExtracted(extracted);
@@ -202,25 +204,24 @@ export default function ScanFiche({ bandeId, bandeStartDate, onDataSaved }: Scan
           if (!r.ok) { dayOk = false; errors.push(`${day.jour} : erreur observations`); }
         }
 
-        if (dayOk) savedCount++;
-      } catch (err: any) {
-        errors.push(`${day.jour} : ${err.message}`);
-      }
-    }
-
-    if (extracted.poidsMoyenFinSemaine && extracted.poidsMoyenFinSemaine > 0 && extracted.periodeAu) {
-      const endDate = new Date(extracted.periodeAu + "T00:00:00");
-      const ageFinSemaine = Math.floor((endDate.getTime() - bandStart.getTime()) / 86400000) + 1;
-      if (ageFinSemaine > 0) {
-        try {
+        const hasMin = day.poidsMinG != null && day.poidsMinG > 0;
+        const hasMax = day.poidsMaxG != null && day.poidsMaxG > 0;
+        if (hasMin || hasMax) {
+          const poidsMoyenG = hasMin && hasMax
+            ? Math.round(((day.poidsMinG as number) + (day.poidsMaxG as number)) / 2)
+            : (day.poidsMinG ?? day.poidsMaxG) as number;
           const r = await fetch(`${base}api/bandes/${bandeId}/pesees`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ date: extracted.periodeAu, ageJours: ageFinSemaine, poidsMoyenG: extracted.poidsMoyenFinSemaine }),
+            body: JSON.stringify({ date: dateStr, ageJours, poidsMoyenG }),
           });
-          if (!r.ok) errors.push("Erreur enregistrement poids moyen");
-        } catch {}
+          if (!r.ok) { dayOk = false; errors.push(`${day.jour} : erreur poids`); }
+        }
+
+        if (dayOk) savedCount++;
+      } catch (err: any) {
+        errors.push(`${day.jour} : ${err.message}`);
       }
     }
 
@@ -300,11 +301,12 @@ export default function ScanFiche({ bandeId, bandeStartDate, onDataSaved }: Scan
                 {extracted.semaine != null && <p>Semaine N° : <strong>{extracted.semaine}</strong></p>}
                 {extracted.periodeDu && <p>Période : <strong>{extracted.periodeDu}</strong> au <strong>{extracted.periodeAu}</strong></p>}
                 {extracted.effectifDebut != null && <p>Effectif début : <strong>{extracted.effectifDebut}</strong></p>}
-                {extracted.poidsMoyenFinSemaine != null && <p>Poids moyen fin semaine : <strong>{extracted.poidsMoyenFinSemaine} g</strong></p>}
               </div>
             </div>
 
             <p className="text-sm font-medium">Vérifiez et corrigez les données avant de les enregistrer :</p>
+            <p className="text-xs text-muted-foreground">Le poids moyen sauvegardé sera calculé automatiquement : (min + max) / 2</p>
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -312,14 +314,21 @@ export default function ScanFiche({ bandeId, bandeStartDate, onDataSaved }: Scan
                   <TableHead>Date</TableHead>
                   <TableHead>Aliment (kg)</TableHead>
                   <TableHead>Eau (L)</TableHead>
-                  <TableHead>Mortalité</TableHead>
+                  <TableHead>Décès</TableHead>
+                  <TableHead>Poids min (g)</TableHead>
+                  <TableHead>Poids max (g)</TableHead>
+                  <TableHead>Moy. (g)</TableHead>
                   <TableHead>Observations</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {editData.map((day, i) => (
+                {editData.map((day, i) => {
+                  const moy = (day.poidsMinG != null && day.poidsMaxG != null)
+                    ? Math.round((day.poidsMinG + day.poidsMaxG) / 2)
+                    : (day.poidsMinG ?? day.poidsMaxG ?? null);
+                  return (
                   <TableRow key={i}>
-                    <TableCell className="font-medium capitalize">{day.jour}</TableCell>
+                    <TableCell className="font-medium">{day.jour}</TableCell>
                     <TableCell>
                       <Input
                         type="date"
@@ -356,15 +365,38 @@ export default function ScanFiche({ bandeId, bandeStartDate, onDataSaved }: Scan
                     </TableCell>
                     <TableCell>
                       <Input
-                        className="h-8"
+                        type="number"
+                        step="1"
+                        className="w-20 h-8"
+                        value={day.poidsMinG ?? ""}
+                        onChange={(e) => updateDay(i, "poidsMinG", e.target.value ? Number(e.target.value) : null)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="1"
+                        className="w-20 h-8"
+                        value={day.poidsMaxG ?? ""}
+                        onChange={(e) => updateDay(i, "poidsMaxG", e.target.value ? Number(e.target.value) : null)}
+                      />
+                    </TableCell>
+                    <TableCell className="text-center text-sm font-medium text-muted-foreground">
+                      {moy != null ? moy : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        className="h-8 min-w-32"
                         value={day.observations}
                         onChange={(e) => updateDay(i, "observations", e.target.value)}
                       />
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
+            </div>
 
             {error && (
               <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded text-sm dark:bg-red-900/20">

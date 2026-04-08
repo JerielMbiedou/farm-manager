@@ -841,7 +841,7 @@ Règles:
 router.post("/:id/import-fiche", async (req, res) => {
   try {
     const bandeId = parseInt(req.params.id);
-    const { jours } = req.body as { jours: Array<{date: string; ageJours: number; decesJour: number; alimentKg: number; eauLitres: number; poidsMoyenG?: number | null; traitement?: string | null}> };
+    const { jours } = req.body as { jours: Array<{date: string; ageJours: number; decesJour: number; alimentKg: number; eauLitres: number; poidsMinG?: number | null; poidsMaxG?: number | null; traitement?: string | null}> };
     if (!Array.isArray(jours) || !jours.length) { res.status(400).json({ error: "Aucune donnée à importer" }); return; }
 
     let imported = 0;
@@ -864,10 +864,15 @@ router.post("/:id/import-fiche", async (req, res) => {
           await db.insert(consommationEauTable).values({ bandeId, date: j.date, ageJours: j.ageJours, quantiteLitres: String(j.eauLitres) });
         }
       }
-      if (j.poidsMoyenG && j.poidsMoyenG > 0) {
+      const hasMin = j.poidsMinG != null && j.poidsMinG > 0;
+      const hasMax = j.poidsMaxG != null && j.poidsMaxG > 0;
+      if (hasMin || hasMax) {
+        const poidsMoyenG = hasMin && hasMax
+          ? Math.round(((j.poidsMinG as number) + (j.poidsMaxG as number)) / 2)
+          : (j.poidsMinG ?? j.poidsMaxG) as number;
         const existing = await db.select().from(peseesTable).where(and(eq(peseesTable.bandeId, bandeId), eq(peseesTable.date, j.date)));
         if (!existing.length) {
-          await db.insert(peseesTable).values({ bandeId, date: j.date, ageJours: j.ageJours, poidsMoyenG: String(j.poidsMoyenG) });
+          await db.insert(peseesTable).values({ bandeId, date: j.date, ageJours: j.ageJours, poidsMoyenG: String(poidsMoyenG) });
         }
       }
       if (j.traitement) {
