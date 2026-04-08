@@ -3,6 +3,7 @@ import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTabl
 import { eq, and, sql } from "drizzle-orm";
 import { logFromRequest } from "./activity-log";
 import { getParam, getVaccinationSchedule, REFERENCE_WEIGHT_CURVE } from "../lib/parametres";
+import { ai } from "@workspace/integrations-gemini-ai";
 
 const router = Router();
 
@@ -763,6 +764,118 @@ router.delete("/:id/observations/:obsId", async (req, res) => {
   const bandeId = parseInt(req.params.id);
   await db.delete(observationsJournalTable).where(and(eq(observationsJournalTable.id, parseInt(req.params.obsId)), eq(observationsJournalTable.bandeId, bandeId)));
   res.json({ success: true });
+});
+
+router.post("/:id/parse-fiche", async (req, res) => {
+  try {
+    const bandeId = parseInt(req.params.id);
+    const bandes = await db.select().from(bandesTable).where(eq(bandesTable.id, bandeId));
+    if (!bandes.length) { res.status(404).json({ error: "Bande introuvable" }); return; }
+    const bande = bandes[0];
+
+    const { imageBase64, mimeType } = req.body;
+    if (!imageBase64 || !mimeType) { res.status(400).json({ error: "Image requise" }); return; }
+
+    const startDate = bande.dateDeDepart as string;
+    const prompt = `Tu es un expert en aviculture. Analyse cette fiche de suivi hebdomadaire d'une bande de poulets de chair.
+
+La bande a démarré le ${startDate}.
+
+Extrais pour chaque ligne (jour) les données suivantes au format JSON strict:
+{
+  "jours": [
+    {
+      "date": "YYYY-MM-DD",
+      "ageJours": number,
+      "decesJour": number,
+      "alimentKg": number,
+      "eauLitres": number,
+      "poidsMoyenG": number | null,
+      "traitement": string | null
+    }
+  ]
+}
+
+Règles:
+- "date": déduis la date exacte depuis la date inscrite sur la fiche (format YYYY-MM-DD)
+- "ageJours": le numéro du jour (J1, J2... ou l'âge de l'oiseau)  
+- "decesJour": nombre de décès ce jour (colonne "Jour/day" sous Mortalité)
+- "alimentKg": quantité d'aliment consommée ce jour en kg (colonne "Jour/day" sous Aliments/Feed)
+- "eauLitres": quantité d'eau consommée ce jour en litres (colonne Eau/Water)
+- "poidsMoyenG": poids moyen en grammes si indiqué (convertis depuis kg si nécessaire), sinon null
+- "traitement": traitement ou vaccin administré ce jour si lisible, sinon null
+- Si une valeur est illisible ou absente, mets 0 pour les numériques et null pour les textes
+- Retourne UNIQUEMENT le JSON, sans texte avant ou après`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{
+        role: "user",
+        parts: [
+          { inlineData: { mimeType, data: imageBase64 } },
+          { text: prompt },
+        ],
+      }],
+      config: { responseMimeType: "application/json", maxOutputTokens: 8192 },
+    });
+
+    const rawText = response.text ?? "{}";
+    let parsed: any;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch {
+      const match = rawText.match(/\{[\s\S]*\}/);
+      parsed = match ? JSON.parse(match[0]) : { jours: [] };
+    }
+
+    res.json({ jours: parsed.jours || [], bandeId, startDate });
+  } catch (e: any) {
+    console.error("parse-fiche error:", e.message);
+    res.status(500).json({ error: e.message || "Erreur lors de l'analyse" });
+  }
+});
+
+router.post("/:id/import-fiche", async (req, res) => {
+  try {
+    const bandeId = parseInt(req.params.id);
+    const { jours } = req.body as { jours: Array<{date: string; ageJours: number; decesJour: number; alimentKg: number; eauLitres: number; poidsMoyenG?: number | null; traitement?: string | null}> };
+    if (!Array.isArray(jours) || !jours.length) { res.status(400).json({ error: "Aucune donnée à importer" }); return; }
+
+    let imported = 0;
+    for (const j of jours) {
+      if (j.decesJour > 0 || j.decesJour === 0) {
+        const existing = await db.select().from(mortaliteJournaliereTable).where(and(eq(mortaliteJournaliereTable.bandeId, bandeId), eq(mortaliteJournaliereTable.date, j.date)));
+        if (!existing.length) {
+          await db.insert(mortaliteJournaliereTable).values({ bandeId, date: j.date, ageJours: j.ageJours, decesJour: j.decesJour });
+        }
+      }
+      if (j.alimentKg > 0) {
+        const existing = await db.select().from(consommationAlimentTable).where(and(eq(consommationAlimentTable.bandeId, bandeId), eq(consommationAlimentTable.date, j.date)));
+        if (!existing.length) {
+          await db.insert(consommationAlimentTable).values({ bandeId, date: j.date, quantiteKg: String(j.alimentKg) });
+        }
+      }
+      if (j.eauLitres > 0) {
+        const existing = await db.select().from(consommationEauTable).where(and(eq(consommationEauTable.bandeId, bandeId), eq(consommationEauTable.date, j.date)));
+        if (!existing.length) {
+          await db.insert(consommationEauTable).values({ bandeId, date: j.date, ageJours: j.ageJours, quantiteLitres: String(j.eauLitres) });
+        }
+      }
+      if (j.poidsMoyenG && j.poidsMoyenG > 0) {
+        const existing = await db.select().from(peseesTable).where(and(eq(peseesTable.bandeId, bandeId), eq(peseesTable.date, j.date)));
+        if (!existing.length) {
+          await db.insert(peseesTable).values({ bandeId, date: j.date, ageJours: j.ageJours, poidsMoyenG: String(j.poidsMoyenG) });
+        }
+      }
+      if (j.traitement) {
+        await db.insert(traitementsTable).values({ bandeId, date: j.date, ageJours: j.ageJours, produit: j.traitement, type: "preventif" });
+      }
+      imported++;
+    }
+    res.json({ success: true, imported });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 export default router;

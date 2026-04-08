@@ -753,6 +753,9 @@ export default function BandeDetailView() {
                 queryClient.invalidateQueries({ queryKey: getGetBandeConsommationQueryKey(detail.id) });
                 queryClient.invalidateQueries({ queryKey: getGetBandePeseesQueryKey(detail.id) });
                 queryClient.invalidateQueries({ queryKey: getGetBandeQueryKey(detail.id) });
+                queryClient.invalidateQueries({ queryKey: ["consommation-eau", detail.id] });
+                queryClient.invalidateQueries({ queryKey: ["traitements", detail.id] });
+                queryClient.invalidateQueries({ queryKey: ["observations", detail.id] });
               }}
             />
             <Button variant="outline" size="sm" className="gap-2" onClick={() => exportBandePDF(detail, depenses || [], ventes || [], chargesFixes, mortaliteItems, peseesItems, consResp)}>

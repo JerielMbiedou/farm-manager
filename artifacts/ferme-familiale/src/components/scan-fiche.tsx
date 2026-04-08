@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -72,23 +71,26 @@ export default function ScanFiche({ bandeId, bandeStartDate, onDataSaved }: Scan
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => setPreview(reader.result as string);
-    reader.readAsDataURL(file);
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    setPreview(dataUrl);
 
+    const base64 = dataUrl.split(",")[1];
     setScanning(true);
     setError(null);
     setExtracted(null);
 
-    const formData = new FormData();
-    formData.append("photo", file);
-
     try {
       const base = import.meta.env.BASE_URL || "/";
-      const resp = await fetch(`${base}api/ocr-fiche`, {
+      const resp = await fetch(`${base}api/bandes/${bandeId}/parse-fiche`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
       });
 
       if (!resp.ok) {
@@ -96,9 +98,30 @@ export default function ScanFiche({ bandeId, bandeStartDate, onDataSaved }: Scan
         throw new Error(err.error || "Erreur lors de l'analyse");
       }
 
-      const data: ExtractedData = await resp.json();
-      setExtracted(data);
-      setEditData(data.jours.map(j => ({ ...j })));
+      const result = await resp.json();
+      const jours: any[] = result.jours || [];
+
+      const mapped: ExtractedDay[] = jours.map((j: any) => ({
+        jour: `J${j.ageJours}`,
+        date: j.date || null,
+        alimentationKg: j.alimentKg ?? null,
+        eauLitres: j.eauLitres ?? null,
+        mortalite: j.decesJour ?? 0,
+        observations: j.traitement || "",
+      }));
+
+      const firstDate = jours[0]?.date ?? null;
+      const lastDate = jours[jours.length - 1]?.date ?? null;
+      const extracted: ExtractedData = {
+        semaine: null,
+        periodeDu: firstDate,
+        periodeAu: lastDate,
+        effectifDebut: null,
+        poidsMoyenFinSemaine: jours.find((j: any) => j.poidsMoyenG)?.poidsMoyenG ?? null,
+        jours: mapped,
+      };
+      setExtracted(extracted);
+      setEditData(mapped);
     } catch (err: any) {
       setError(err.message || "Erreur lors de l'analyse de l'image");
     } finally {
