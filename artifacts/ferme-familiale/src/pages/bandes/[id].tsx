@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "wouter";
 import { 
   useGetBande,
@@ -64,6 +64,7 @@ import { CreateBandeDepenseBodyCategorie } from "@workspace/api-client-react";
 import { exportBandePDF, exportBandeExcel } from "@/lib/export";
 import { useConsommationEau, useCreateConsommationEau, useDeleteConsommationEau, useTraitements, useCreateTraitement, useDeleteTraitement, useObservations, useCreateObservation, useDeleteObservation, useReferencePoids } from "@/lib/bande-extras-api";
 import ScanFiche from "@/components/scan-fiche";
+import DesignationCombobox from "@/components/designation-combobox";
 
 const PHASES = [
   { nom: "Demarrage", label: "Démarrage", min: 1, max: 15, color: "#3b82f6" },
@@ -197,6 +198,15 @@ export default function BandeDetailView() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [dialogType, setDialogType] = useState<string>("");
+  const [designationSuggestions, setDesignationSuggestions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const base = import.meta.env.BASE_URL || "/";
+    fetch(`${base}api/bandes/designations-suggestions`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setDesignationSuggestions(data); })
+      .catch(() => {});
+  }, []);
 
   const isReadOnly = user?.role === "investisseur" || user?.role === "lecteur";
 
@@ -666,7 +676,7 @@ export default function BandeDetailView() {
                   </FormItem>
                 )} />
                 <FormField control={depenseForm.control} name="designation" render={({ field }) => (
-                  <FormItem><FormLabel>Désignation</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Désignation</FormLabel><FormControl><DesignationCombobox value={field.value} onChange={field.onChange} suggestions={designationSuggestions} placeholder="Ex: Aliment démarrage" /></FormControl><FormMessage /></FormItem>
                 )} />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={depenseForm.control} name="quantite" render={({ field }) => (

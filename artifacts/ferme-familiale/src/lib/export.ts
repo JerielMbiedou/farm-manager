@@ -191,6 +191,106 @@ export function exportBandeExcel(detail: any, depenses: any[], ventes: any[], ch
   });
 }
 
+export function exportConstructionPDF(items: any[], title: string) {
+  const doc = new jsPDF();
+
+  doc.setFontSize(18);
+  doc.text("Ferme Mbiedou", 14, 20);
+  doc.setFontSize(14);
+  doc.text(`Rapport - ${title}`, 14, 30);
+  doc.setFontSize(10);
+  doc.text(`Genere le ${new Date().toLocaleDateString("fr-FR")}`, 14, 37);
+
+  if (items.length > 0) {
+    const aggregated = aggregateDepenses(items.map(i => ({
+      categorie: i.categorie || "materiaux",
+      designation: i.designation,
+      quantite: i.quantite,
+      prixUnitaire: i.prixUnitaire,
+    })));
+
+    const rows: any[][] = [];
+    let currentCat = "";
+    let catTotal = 0;
+    const addCatTotal = () => {
+      if (currentCat && catTotal > 0) {
+        rows.push([{ content: `Sous-total ${currentCat}`, colSpan: 4, styles: { fontStyle: "bold", fillColor: [240, 240, 240] } }, { content: formatFCFA(catTotal), styles: { fontStyle: "bold", fillColor: [240, 240, 240] } }]);
+      }
+    };
+
+    for (const d of aggregated) {
+      if (d.categorie !== currentCat) {
+        addCatTotal();
+        currentCat = d.categorie;
+        catTotal = 0;
+      }
+      catTotal += d.montant;
+      rows.push([
+        d.categorie,
+        d.designation,
+        String(Math.round(d.quantite * 100) / 100),
+        formatFCFA(Math.round(d.prixUnitaireMoyen)),
+        formatFCFA(d.montant),
+      ]);
+    }
+    addCatTotal();
+
+    const grandTotal = aggregated.reduce((s, d) => s + d.montant, 0);
+    rows.push([{ content: "TOTAL GENERAL", colSpan: 4, styles: { fontStyle: "bold", fillColor: [220, 230, 220] } }, { content: formatFCFA(grandTotal), styles: { fontStyle: "bold", fillColor: [220, 230, 220] } }]);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [["Categorie", "Designation", "Qte totale", "Prix U. moyen", "Montant total"]],
+      body: rows,
+      theme: "striped",
+    });
+  }
+
+  doc.save(`rapport_${title.replace(/\s+/g, "_")}.pdf`);
+}
+
+export function exportConstructionExcel(items: any[], title: string) {
+  import("xlsx").then(XLSX => {
+    const wb = XLSX.utils.book_new();
+
+    if (items.length > 0) {
+      const aggregated = aggregateDepenses(items.map(i => ({
+        categorie: i.categorie || "materiaux",
+        designation: i.designation,
+        quantite: i.quantite,
+        prixUnitaire: i.prixUnitaire,
+      })));
+
+      const depData: any[][] = [
+        ["Categorie", "Designation", "Quantite totale", "Prix Unitaire moyen", "Montant total"],
+      ];
+
+      let currentCat = "";
+      let catTotal = 0;
+      for (const d of aggregated) {
+        if (d.categorie !== currentCat) {
+          if (currentCat && catTotal > 0) {
+            depData.push([`Sous-total ${currentCat}`, "", "", "", catTotal]);
+          }
+          currentCat = d.categorie;
+          catTotal = 0;
+        }
+        catTotal += d.montant;
+        depData.push([d.categorie, d.designation, Math.round(d.quantite * 100) / 100, Math.round(d.prixUnitaireMoyen), d.montant]);
+      }
+      if (currentCat && catTotal > 0) {
+        depData.push([`Sous-total ${currentCat}`, "", "", "", catTotal]);
+      }
+      depData.push(["TOTAL GENERAL", "", "", "", aggregated.reduce((s, d) => s + d.montant, 0)]);
+
+      const ws = XLSX.utils.aoa_to_sheet(depData);
+      XLSX.utils.book_append_sheet(wb, ws, "Depenses");
+    }
+
+    XLSX.writeFile(wb, `rapport_${title.replace(/\s+/g, "_")}.xlsx`);
+  });
+}
+
 function formatFCFA(n: number): string {
   const formatted = Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   return formatted + " FCFA";

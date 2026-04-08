@@ -53,6 +53,12 @@ async function getBandeDetail(id: number) {
   };
 }
 
+router.get("/designations-suggestions", async (_req, res) => {
+  const rows = await db.selectDistinct({ designation: bandeDepensesTable.designation }).from(bandeDepensesTable);
+  const designations = rows.map(r => r.designation).filter(Boolean).sort();
+  res.json(designations);
+});
+
 router.get("/", async (req, res) => {
   const rows = await db.select().from(bandesTable).orderBy(bandesTable.numero);
   res.json(rows.map(r => ({

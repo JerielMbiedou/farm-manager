@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { 
   useListBatimentItems, 
   useCreateBatimentItem, 
@@ -34,7 +34,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Construction, Droplets, Wallet, Search, ChevronDown, ChevronRight, MessageSquare } from "lucide-react";
+import { Plus, Pencil, Trash2, Construction, Droplets, Wallet, Search, ChevronDown, ChevronRight, MessageSquare, FileText, FileSpreadsheet } from "lucide-react";
+import DesignationCombobox from "@/components/designation-combobox";
+import { exportConstructionPDF, exportConstructionExcel } from "@/lib/export";
 
 const CATEGORIES = [
   { value: "materiaux", label: "Matériaux" },
@@ -302,6 +304,15 @@ export default function Depenses() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [designationSuggestions, setDesignationSuggestions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const base = import.meta.env.BASE_URL || "/";
+    fetch(`${base}api/depenses/designations-suggestions`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setDesignationSuggestions(data); })
+      .catch(() => {});
+  }, []);
 
   const form = useForm<z.infer<typeof depenseSchema>>({
     resolver: zodResolver(depenseSchema),
@@ -388,6 +399,21 @@ export default function Depenses() {
           <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Dépenses construction</h1>
           <p className="text-muted-foreground mt-1">Suivi des dépenses réelles vs budget prévisionnel</p>
         </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+            const items = activeTab === "batiment" ? (batimentItems || []) : (puitsItems || []);
+            const title = activeTab === "batiment" ? "Depenses Batiment" : "Depenses Forage";
+            exportConstructionPDF(items, title);
+          }}>
+            <FileText className="h-4 w-4" /> PDF
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+            const items = activeTab === "batiment" ? (batimentItems || []) : (puitsItems || []);
+            const title = activeTab === "batiment" ? "Depenses Batiment" : "Depenses Forage";
+            exportConstructionExcel(items, title);
+          }}>
+            <FileSpreadsheet className="h-4 w-4" /> Excel
+          </Button>
         {!isReadOnly && (
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
@@ -410,7 +436,7 @@ export default function Depenses() {
                   <FormField control={form.control} name="designation" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Désignation</FormLabel>
-                      <FormControl><Input placeholder="Ex: Sac de ciment, Fer de 8..." {...field} /></FormControl>
+                      <FormControl><DesignationCombobox value={field.value} onChange={field.onChange} suggestions={designationSuggestions} placeholder="Ex: Sac de ciment, Fer de 8..." /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
@@ -470,6 +496,7 @@ export default function Depenses() {
             </DialogContent>
           </Dialog>
         )}
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

@@ -116,7 +116,9 @@ French-language React + Vite web app for managing a family poultry farm in Camer
 - `/utilisateurs` — Gestion des utilisateurs (admin only): liste, changement de rôle, suppression
 - `/parametres` — Paramètres configurables de l'application (tous les rôles en lecture, admin en écriture)
 
-**Export**: PDF export via jspdf + jspdf-autotable, Excel export via xlsx. Available on bande résumé tab.
+**Export**: PDF export via jspdf + jspdf-autotable, Excel export via xlsx. Available on bande résumé tab and dépenses construction page (per-tab: Bâtiment or Forage). Reports aggregate by catégorie+désignation with subtotals and grand total.
+
+**Designation Combobox**: Both bande depenses and construction depenses forms use a combobox that suggests existing designations from the DB (fetched from `/api/bandes/designations-suggestions` and `/api/depenses/designations-suggestions` respectively) while still allowing free text entry.
 
 **Charts**: recharts used for mortalité curves, growth curves, cost breakdown pie charts, simulation charts, trésorerie bar charts, planification comparisons.
 

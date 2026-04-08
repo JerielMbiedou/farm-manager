@@ -73,6 +73,15 @@ function formatBatItem(r: any) {
   return { id: r.id, designation: r.designation, quantite: parseFloat(r.quantite), prixUnitaire: parseFloat(r.prixUnitaire), prixTotal: parseFloat(r.quantite) * parseFloat(r.prixUnitaire), categorie: r.categorie || "materiaux", date: r.date || null, commentaire: r.commentaire || null };
 }
 
+router.get("/designations-suggestions", async (_req, res) => {
+  const batRows = await db.selectDistinct({ designation: depensesBatimentTable.designation }).from(depensesBatimentTable);
+  const puitsRows = await db.selectDistinct({ designation: depensesPuitsTable.designation }).from(depensesPuitsTable);
+  const all = new Set<string>();
+  for (const r of batRows) { if (r.designation) all.add(r.designation); }
+  for (const r of puitsRows) { if (r.designation) all.add(r.designation); }
+  res.json([...all].sort());
+});
+
 router.get("/batiment-items", async (req, res) => {
   const rows = await db.select().from(depensesBatimentTable);
   res.json(rows.map(formatBatItem));
