@@ -10,6 +10,7 @@ import activityLogRouter from "./activity-log";
 import parametresRouter from "./parametres";
 import stocksRouter from "./stocks";
 import importHistoricalRouter from "./import-historical";
+import ocrFicheRouter from "./ocr-fiche";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use("/activity-log", activityLogRouter);
 router.use("/parametres", parametresRouter);
 router.use("/stocks", stocksRouter);
 router.use("/import-historical", importHistoricalRouter);
+router.use("/ocr-fiche", ocrFicheRouter);
 
 export default router;

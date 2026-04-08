@@ -142,6 +142,7 @@ French-language React + Vite web app for managing a family poultry farm in Camer
 - Journal d'observations quotidien (onglet Journal): texte libre par jour
 - Calendrier vaccination: protocole complet (J1 bipestos, J4-6 antibio, J8 Gumboro, J14 rappel, J21 rappel bipestos)
 - Import historique Excel: parsing fichier Biofarm Valley (4 bandes), route POST /api/import-historical
+- Scanner fiche de suivi (OCR): upload photo de fiche papier -> Gemini AI extrait les données -> preview/correction -> enregistrement automatique (alimentation, eau, mortalité, observations, poids)
 
 **DB tables for bande tracking**:
 - `consommation_eau` (bande_id, date, age_jours, quantite_litres)
@@ -149,6 +150,8 @@ French-language React + Vite web app for managing a family poultry farm in Camer
 - `observations_journal` (bande_id, date, age_jours, contenu)
 
 **Custom hooks** (bande-extras-api.ts): useConsommationEau, useTraitements, useObservations, useReferencePoids
+
+**AI Integration**: Gemini via Replit AI Integrations (env vars AI_INTEGRATIONS_GEMINI_BASE_URL, AI_INTEGRATIONS_GEMINI_API_KEY). Used for OCR fiche de suivi scanning. Lazy-loaded to avoid server crash if env vars missing. Route: POST /api/ocr-fiche (multipart, field 'photo', max 8MB). Auth required.
 
 **Currency**: All amounts in FCFA. No emojis. French UI throughout.
 

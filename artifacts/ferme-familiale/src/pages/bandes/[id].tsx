@@ -63,6 +63,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { CreateBandeDepenseBodyCategorie } from "@workspace/api-client-react";
 import { exportBandePDF, exportBandeExcel } from "@/lib/export";
 import { useConsommationEau, useCreateConsommationEau, useDeleteConsommationEau, useTraitements, useCreateTraitement, useDeleteTraitement, useObservations, useCreateObservation, useDeleteObservation, useReferencePoids } from "@/lib/bande-extras-api";
+import ScanFiche from "@/components/scan-fiche";
 
 const PHASES = [
   { nom: "Demarrage", label: "Démarrage", min: 1, max: 15, color: "#3b82f6" },
@@ -730,7 +731,17 @@ export default function BandeDetailView() {
         </TabsList>
 
         <TabsContent value="resume" className="space-y-6">
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 flex-wrap">
+            <ScanFiche
+              bandeId={detail.id}
+              bandeStartDate={detail.dateDeDepart}
+              onDataSaved={() => {
+                queryClient.invalidateQueries({ queryKey: getGetBandeMortaliteQueryKey(detail.id) });
+                queryClient.invalidateQueries({ queryKey: getGetBandeConsommationQueryKey(detail.id) });
+                queryClient.invalidateQueries({ queryKey: getGetBandePeseesQueryKey(detail.id) });
+                queryClient.invalidateQueries({ queryKey: getGetBandeQueryKey(detail.id) });
+              }}
+            />
             <Button variant="outline" size="sm" className="gap-2" onClick={() => exportBandePDF(detail, depenses || [], ventes || [], chargesFixes, mortaliteItems, peseesItems, consResp)}>
               <Download className="h-4 w-4" /> PDF
             </Button>
