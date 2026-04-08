@@ -192,5 +192,6 @@ export function exportBandeExcel(detail: any, depenses: any[], ventes: any[], ch
 }
 
 function formatFCFA(n: number): string {
-  return new Intl.NumberFormat("fr-FR").format(Math.round(n)) + " FCFA";
+  const formatted = Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return formatted + " FCFA";
 }
