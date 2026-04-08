@@ -3,6 +3,9 @@ import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export async function seedDefaults() {
+  await db.execute(sql`CREATE TABLE IF NOT EXISTS session (sid VARCHAR NOT NULL COLLATE "default", sess JSON NOT NULL, expire TIMESTAMP(6) NOT NULL, CONSTRAINT session_pkey PRIMARY KEY (sid))`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON session (expire)`);
+
   const existingUsers = await db.select().from(usersTable);
   if (existingUsers.length > 0) {
     console.log("Database already has data, skipping seed");
