@@ -669,9 +669,10 @@ export default function BandeDetailView() {
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger></FormControl>
                       <SelectContent>
-                        {Object.values(CreateBandeDepenseBodyCategorie).map(cat => (
-                          <SelectItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1).replace('_', ' ')}</SelectItem>
-                        ))}
+                        {Object.values(CreateBandeDepenseBodyCategorie).map(cat => {
+                          const labels: Record<string, string> = { poussins: "Poussins", aliments: "Aliments", concentre: "Concentré", medicaments: "Prophylaxie", carburant: "Carburant", salaires: "Salaires", materiel_divers: "Matériel divers" };
+                          return <SelectItem key={cat} value={cat}>{labels[cat] || cat}</SelectItem>;
+                        })}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -791,27 +792,54 @@ export default function BandeDetailView() {
           </div>
 
           {(() => {
+            const CAT_LABELS: Record<string, string> = {
+              poussins: "Poussins",
+              aliments: "Aliments",
+              concentre: "Concentré",
+              medicaments: "Prophylaxie",
+              veterinaire: "Prophylaxie",
+              carburant: "Carburant",
+              salaires: "Salaires",
+              materiel_divers: "Matériel divers",
+            };
             const catTotals: Record<string, number> = {};
             (depenses || []).forEach((d: any) => {
-              const cat = d.categorie?.replace('_', ' ') || 'Autre';
+              const cat = CAT_LABELS[d.categorie] || d.categorie?.replace('_', ' ') || 'Autre';
               catTotals[cat] = (catTotals[cat] || 0) + (d.montant || 0);
             });
             if (detail.chargesFixesTotal > 0) catTotals["Charges fixes"] = detail.chargesFixesTotal;
-            const pieData = Object.entries(catTotals).map(([name, value]) => ({ name, value }));
-            const COLORS = ["#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#64748b"];
+            const pieData = Object.entries(catTotals).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+            const COLORS = ["#2d6a4f", "#40916c", "#52b788", "#74c69d", "#d4a373", "#e07a5f", "#8b5cf6", "#64748b"];
             if (pieData.length === 0) return null;
+            const total = pieData.reduce((s, d) => s + d.value, 0);
             return (
               <Card>
                 <CardHeader><CardTitle className="text-xl font-serif">Répartition des coûts</CardTitle></CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <PieChart>
-                      <Pie data={pieData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}>
-                        {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                      </Pie>
-                      <Tooltip formatter={(v: number) => formatFCFA(v)} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <div className="grid md:grid-cols-2 gap-6 items-center">
+                    <ResponsiveContainer width="100%" height={280}>
+                      <PieChart>
+                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={110} dataKey="value" paddingAngle={2} label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                          {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="white" strokeWidth={2} />)}
+                        </Pie>
+                        <Tooltip formatter={(v: number) => formatFCFA(v)} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="space-y-2">
+                      {pieData.map((entry, i) => (
+                        <div key={entry.name} className="flex items-center justify-between gap-3 py-1.5 border-b last:border-0">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                            <span className="text-sm">{entry.name}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-medium">{formatFCFA(entry.value)}</span>
+                            <span className="text-xs text-muted-foreground ml-2">({(entry.value / total * 100).toFixed(0)}%)</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -841,7 +869,7 @@ export default function BandeDetailView() {
                     ) : (
                       depenses?.map(item => (
                         <TableRow key={item.id}>
-                          <TableCell className="capitalize">{item.categorie.replace('_', ' ')}</TableCell>
+                          <TableCell className="capitalize">{({ poussins: "Poussins", aliments: "Aliments", concentre: "Concentré", medicaments: "Prophylaxie", veterinaire: "Prophylaxie", carburant: "Carburant", salaires: "Salaires", materiel_divers: "Matériel divers" } as Record<string,string>)[item.categorie] || item.categorie.replace('_', ' ')}</TableCell>
                           <TableCell className="font-medium">{item.designation}</TableCell>
                           <TableCell className="text-right">{item.quantite}</TableCell>
                           <TableCell className="text-right">{formatFCFA(item.prixUnitaire)}</TableCell>
@@ -1459,9 +1487,9 @@ export default function BandeDetailView() {
 
         <TabsContent value="charges">
           <div className="grid gap-6 md:grid-cols-2">
-            <Card>
+            <Card className="flex flex-col">
               <CardHeader><CardTitle className="text-xl font-serif">Loyer de l'exploitation</CardTitle></CardHeader>
-              <CardContent>
+              <CardContent className="flex-1 flex flex-col justify-end">
                 {isReadOnly ? (
                   <div className="text-2xl font-bold">{formatFCFA(chargesFixes?.loyer || 0)}</div>
                 ) : (
@@ -1470,15 +1498,15 @@ export default function BandeDetailView() {
                       <FormField control={chargesFixesForm.control} name="loyer" render={({ field }) => (
                         <FormItem><FormLabel>Montant du loyer pour cette bande (FCFA)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
                       )} />
-                      <Button type="submit" className="w-full" disabled={updateChargesFixes.isPending}>Mettre à jour le loyer</Button>
+                      <Button type="submit" className="w-full" disabled={updateChargesFixes.isPending}>Mettre à jour</Button>
                     </form>
                   </Form>
                 )}
               </CardContent>
             </Card>
-            <Card>
+            <Card className="flex flex-col">
               <CardHeader><CardTitle className="text-xl font-serif">Valeur matériel fixe</CardTitle></CardHeader>
-              <CardContent>
+              <CardContent className="flex-1 flex flex-col justify-end">
                 {isReadOnly ? (
                   <div className="text-2xl font-bold">{formatFCFA(detail?.valeurMaterielFixe || 0)}</div>
                 ) : (
@@ -1498,7 +1526,7 @@ export default function BandeDetailView() {
                       <p className="text-xs text-muted-foreground mb-2">Mangeoires, abreuvoirs, lampes, etc. Le taux de dépréciation sera appliqué sur cette valeur.</p>
                       <Input type="number" name="valeurMaterielFixe" defaultValue={detail?.valeurMaterielFixe || 0} />
                     </div>
-                    <Button type="submit" className="w-full" disabled={updateBande.isPending}>Mettre à jour la valeur</Button>
+                    <Button type="submit" className="w-full" disabled={updateBande.isPending}>Mettre à jour</Button>
                   </form>
                 )}
               </CardContent>

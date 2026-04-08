@@ -116,7 +116,7 @@ export default function Simulation() {
     { name: "Alim. Démarrage", value: coutAlimDemarrage, color: "#34d399" },
     { name: "Alim. Croissance", value: coutAlimCroissance, color: "#10b981" },
     { name: "Alim. Finition", value: coutAlimFinition, color: "#059669" },
-    { name: "Vétérinaire", value: coutVeto, color: "#6366f1" },
+    { name: "Prophylaxie", value: coutVeto, color: "#6366f1" },
     { name: "Main-d'oeuvre", value: coutMainOeuvre, color: "#ec4899" },
     { name: "Transport", value: coutTransport, color: "#8b5cf6" },
     { name: "Autres", value: autresDepenses, color: "#78716c" },
@@ -308,7 +308,7 @@ export default function Simulation() {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-medium">Coût vétérinaire / sujet</label>
+                  <label className="text-sm font-medium">Coût prophylaxie / sujet</label>
                   <Input type="number" value={coutVeterinaire} onChange={e => setCoutVeterinaire(Number(e.target.value))} />
                 </div>
                 <div>
@@ -375,7 +375,7 @@ export default function Simulation() {
               <div className="flex justify-between py-1 border-b pl-4 text-xs"><span className="text-muted-foreground">Démarrage</span><span>{formatFCFA(coutAlimDemarrage)}</span></div>
               <div className="flex justify-between py-1 border-b pl-4 text-xs"><span className="text-muted-foreground">Croissance</span><span>{formatFCFA(coutAlimCroissance)}</span></div>
               <div className="flex justify-between py-1 border-b pl-4 text-xs"><span className="text-muted-foreground">Finition</span><span>{formatFCFA(coutAlimFinition)}</span></div>
-              <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground">Coût vétérinaire</span><span className="font-medium text-red-600">{formatFCFA(coutVeto)}</span></div>
+              <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground">Coût prophylaxie</span><span className="font-medium text-red-600">{formatFCFA(coutVeto)}</span></div>
               <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground">Charges fixes</span><span className="font-medium text-red-600">{formatFCFA(chargesFixes)}</span></div>
               <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground font-semibold">Coût total</span><span className="font-bold text-red-600">{formatFCFA(totalCouts)}</span></div>
               <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground">Recettes totales</span><span className="font-medium text-green-600">{formatFCFA(totalRecettes)}</span></div>
