@@ -284,7 +284,7 @@ export default function BandeDetailView() {
 
   const onDepenseSubmit = async (values: z.infer<typeof depenseSchema>) => {
     try {
-      if (editingId) await updateDepense.mutateAsync({ id: editingId, data: { ...values, bandeId } as any });
+      if (editingId) await updateDepense.mutateAsync({ id: bandeId, depenseId: editingId, data: values as any });
       else await createDepense.mutateAsync({ data: { ...values, bandeId } as any });
       queryClient.invalidateQueries({ queryKey: getListBandeDepensesQueryKey(bandeId) });
       invalidateBandeData();
@@ -296,7 +296,7 @@ export default function BandeDetailView() {
 
   const onVenteSubmit = async (values: z.infer<typeof venteSchema>) => {
     try {
-      if (editingId) await updateVente.mutateAsync({ id: editingId, data: { ...values, bandeId } as any });
+      if (editingId) await updateVente.mutateAsync({ id: bandeId, venteId: editingId, data: values as any });
       else await createVente.mutateAsync({ data: { ...values, bandeId } as any });
       queryClient.invalidateQueries({ queryKey: getListBandeVentesQueryKey(bandeId) });
       invalidateBandeData();
@@ -308,7 +308,7 @@ export default function BandeDetailView() {
 
   const onDepenseVenteSubmit = async (values: z.infer<typeof depenseVenteSchema>) => {
     try {
-      if (editingId) await updateDepenseVente.mutateAsync({ id: editingId, data: { ...values, bandeId } as any });
+      if (editingId) await updateDepenseVente.mutateAsync({ id: bandeId, depenseId: editingId, data: values as any });
       else await createDepenseVente.mutateAsync({ data: { ...values, bandeId } as any });
       queryClient.invalidateQueries({ queryKey: getListBandeDepensesVenteQueryKey(bandeId) });
       invalidateBandeData();
@@ -420,13 +420,13 @@ export default function BandeDetailView() {
     if (!confirm("Voulez-vous vraiment supprimer cet élément ?")) return;
     try {
       if (type === 'depense') {
-        await deleteDepense.mutateAsync({ id });
+        await deleteDepense.mutateAsync({ id: bandeId, depenseId: id });
         queryClient.invalidateQueries({ queryKey: getListBandeDepensesQueryKey(bandeId) });
       } else if (type === 'vente') {
-        await deleteVente.mutateAsync({ id });
+        await deleteVente.mutateAsync({ id: bandeId, venteId: id });
         queryClient.invalidateQueries({ queryKey: getListBandeVentesQueryKey(bandeId) });
       } else if (type === 'depenseVente') {
-        await deleteDepenseVente.mutateAsync({ id });
+        await deleteDepenseVente.mutateAsync({ id: bandeId, depenseId: id });
         queryClient.invalidateQueries({ queryKey: getListBandeDepensesVenteQueryKey(bandeId) });
       }
       invalidateBandeData();
