@@ -823,18 +823,34 @@ Règles:
     });
 
     const rawText = response.text ?? "{}";
-    let parsed: any;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      const match = rawText.match(/\{[\s\S]*\}/);
-      parsed = match ? JSON.parse(match[0]) : { jours: [] };
+
+    function cleanAndParseJson(text: string): any {
+      // Try direct parse first
+      try { return JSON.parse(text); } catch {}
+      // Extract first JSON object
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) return null;
+      let s = match[0];
+      // Remove single-line comments (// ...)
+      s = s.replace(/\/\/[^\n]*/g, "");
+      // Remove multi-line comments (/* ... */)
+      s = s.replace(/\/\*[\s\S]*?\*\//g, "");
+      // Remove trailing commas before } or ]
+      s = s.replace(/,\s*([\]}])/g, "$1");
+      // Replace undefined with null
+      s = s.replace(/:\s*undefined/g, ": null");
+      try { return JSON.parse(s); } catch {}
+      return null;
     }
 
+    const parsed = cleanAndParseJson(rawText) ?? { jours: [] };
     res.json({ jours: parsed.jours || [], bandeId, startDate });
   } catch (e: any) {
     console.error("parse-fiche error:", e.message);
-    res.status(500).json({ error: e.message || "Erreur lors de l'analyse" });
+    const userMsg = (e.message || "").includes("JSON")
+      ? "L'IA a retourné une réponse mal formatée. Réessayez avec une photo plus nette ou recadrez la fiche."
+      : (e.message || "Erreur lors de l'analyse");
+    res.status(500).json({ error: userMsg });
   }
 });
 
