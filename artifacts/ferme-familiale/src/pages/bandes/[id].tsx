@@ -28,6 +28,7 @@ import {
   useGetBandeVaccinations,
   useCreateBandeVaccination,
   useUpdateBandeVaccination,
+  useUpdateBande,
   useGetMe,
   getGetBandeQueryKey,
   getListBandeDepensesQueryKey,
@@ -173,6 +174,7 @@ export default function BandeDetailView() {
   const updateVente = useUpdateBandeVente();
   const deleteVente = useDeleteBandeVente();
   const updateChargesFixes = useUpdateBandeChargesFixe();
+  const updateBande = useUpdateBande();
   const createDepenseVente = useCreateBandeDepenseVente();
   const updateDepenseVente = useUpdateBandeDepenseVente();
   const deleteDepenseVente = useDeleteBandeDepenseVente();
@@ -1474,9 +1476,40 @@ export default function BandeDetailView() {
                 )}
               </CardContent>
             </Card>
-            <Card className="bg-muted/30">
+            <Card>
+              <CardHeader><CardTitle className="text-xl font-serif">Valeur matériel fixe</CardTitle></CardHeader>
+              <CardContent>
+                {isReadOnly ? (
+                  <div className="text-2xl font-bold">{formatFCFA(detail?.valeurMaterielFixe || 0)}</div>
+                ) : (
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const val = Number(formData.get("valeurMaterielFixe")) || 0;
+                    try {
+                      await updateBande.mutateAsync({ id: bandeId, data: { valeurMaterielFixe: val } });
+                      queryClient.invalidateQueries({ queryKey: getGetBandeQueryKey(bandeId) });
+                      queryClient.invalidateQueries({ queryKey: getGetBandeChargesFixeQueryKey(bandeId) });
+                      toast({ title: "Valeur matériel mise à jour" });
+                    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+                  }} className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Valeur totale du matériel fixe (FCFA)</label>
+                      <p className="text-xs text-muted-foreground mb-2">Mangeoires, abreuvoirs, lampes, etc. Le taux de dépréciation sera appliqué sur cette valeur.</p>
+                      <Input type="number" name="valeurMaterielFixe" defaultValue={detail?.valeurMaterielFixe || 0} />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={updateBande.isPending}>Mettre à jour la valeur</Button>
+                  </form>
+                )}
+              </CardContent>
+            </Card>
+            <Card className="bg-muted/30 md:col-span-2">
               <CardHeader><CardTitle className="text-xl font-serif">Dépréciation & Imprévus</CardTitle></CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-muted-foreground">Valeur matériel fixe</span>
+                  <span className="font-medium">{formatFCFA(detail?.valeurMaterielFixe || 0)}</span>
+                </div>
                 <div className="flex justify-between items-center py-2 border-b">
                   <span className="text-muted-foreground">Valeur perdue matériel (estimée)</span>
                   <span className="font-medium">{formatFCFA(chargesFixes?.valeurPerdueMateriel || 0)}</span>

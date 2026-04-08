@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface ExtractedDay {
   jour: string;
+  date: string | null;
   alimentationKg: number | null;
   eauLitres: number | null;
   mortalite: number;
@@ -122,7 +123,7 @@ export default function ScanFiche({ bandeId, bandeStartDate, onDataSaved }: Scan
     let errors: string[] = [];
 
     for (const day of editData) {
-      const dateStr = jourToDate(day.jour, extracted.periodeDu);
+      const dateStr = day.date || jourToDate(day.jour, extracted.periodeDu);
       if (!dateStr) {
         errors.push(`Date introuvable pour ${day.jour}`);
         continue;
@@ -285,6 +286,7 @@ export default function ScanFiche({ bandeId, bandeStartDate, onDataSaved }: Scan
               <TableHeader>
                 <TableRow>
                   <TableHead>Jour</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Aliment (kg)</TableHead>
                   <TableHead>Eau (L)</TableHead>
                   <TableHead>Mortalité</TableHead>
@@ -295,6 +297,14 @@ export default function ScanFiche({ bandeId, bandeStartDate, onDataSaved }: Scan
                 {editData.map((day, i) => (
                   <TableRow key={i}>
                     <TableCell className="font-medium capitalize">{day.jour}</TableCell>
+                    <TableCell>
+                      <Input
+                        type="date"
+                        className="w-36 h-8"
+                        value={day.date ?? ""}
+                        onChange={(e) => updateDay(i, "date", e.target.value || null)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Input
                         type="number"
