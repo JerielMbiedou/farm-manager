@@ -773,7 +773,7 @@ export default function BandeDetailView() {
             <Card className="shadow-sm border-t-4 border-t-destructive">
               <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Coût de production</CardTitle></CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-foreground">{formatFCFA(detail.totalDepenses)}</div>
+                <div className="text-2xl font-bold text-foreground">{formatFCFA(detail.totalDepenses + detail.chargesFixesTotal)}</div>
                 <p className="text-xs text-muted-foreground mt-1">Coût / sujet : {formatFCFA(detail.coutParSujet)}</p>
               </CardContent>
             </Card>
