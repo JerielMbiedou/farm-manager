@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, Fragment, useMemo } from "react";
 import { useParams } from "wouter";
 import { 
   useGetBande,
@@ -57,7 +57,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download, Droplets, Pill, BookOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download, Droplets, Pill, BookOpen, ChevronDown, ChevronRight, Search } from "lucide-react";
 import { Link } from "wouter";
 import { BandeDetail } from "@workspace/api-client-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, PieChart, Pie, Cell, ComposedChart, Area } from "recharts";
@@ -144,6 +144,170 @@ const observationSchema = z.object({
   ageJours: z.coerce.number().min(1, "L'âge est requis"),
   contenu: z.string().min(1, "Le contenu est requis"),
 });
+
+const PROD_CAT_LABELS: Record<string, string> = {
+  poussins: "Poussins", aliments: "Aliments", concentre: "Concentré",
+  prophylaxie: "Prophylaxie", medicaments: "Prophylaxie", veterinaire: "Prophylaxie",
+  carburant: "Carburant", salaires: "Salaires", transport: "Transport",
+  main_oeuvre: "Main-d'œuvre", autre: "Autre",
+};
+const PROD_CAT_ORDER = ["poussins", "aliments", "concentre", "prophylaxie", "carburant", "salaires", "transport", "main_oeuvre", "autre"];
+const PROD_CAT_COLORS: Record<string, string> = {
+  poussins: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  aliments: "bg-green-100 text-green-800 border-green-200",
+  concentre: "bg-lime-100 text-lime-800 border-lime-200",
+  prophylaxie: "bg-blue-100 text-blue-800 border-blue-200",
+  medicaments: "bg-blue-100 text-blue-800 border-blue-200",
+  veterinaire: "bg-blue-100 text-blue-800 border-blue-200",
+  carburant: "bg-red-100 text-red-800 border-red-200",
+  salaires: "bg-purple-100 text-purple-800 border-purple-200",
+  transport: "bg-orange-100 text-orange-800 border-orange-200",
+  main_oeuvre: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  autre: "bg-gray-100 text-gray-800 border-gray-200",
+};
+
+function DepensesGroupedTable({
+  items,
+  isReadOnly,
+  onEdit,
+  onDelete,
+}: {
+  items: Array<{ id: number; designation: string; categorie: string; quantite: number; prixUnitaire: number; montant: number }>;
+  isReadOnly: boolean;
+  onEdit: (item: any) => void;
+  onDelete: (id: number) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return items;
+    const q = search.toLowerCase();
+    return items.filter(i => i.designation.toLowerCase().includes(q));
+  }, [items, search]);
+
+  const grouped = useMemo(() => {
+    const g: Record<string, typeof items> = {};
+    for (const item of filtered) {
+      const cat = item.categorie || "autre";
+      if (!g[cat]) g[cat] = [];
+      g[cat].push(item);
+    }
+    return g;
+  }, [filtered]);
+
+  const sortedCats = useMemo(() =>
+    Object.keys(grouped).sort((a, b) => {
+      const ai = PROD_CAT_ORDER.indexOf(a); const bi = PROD_CAT_ORDER.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    }), [grouped]);
+
+  const filteredTotal = filtered.reduce((s, i) => s + (i.montant || 0), 0);
+  const colCount = isReadOnly ? 5 : 6;
+
+  return (
+    <div className="space-y-0">
+      <div className="px-6 pt-4 pb-3 border-b flex items-center gap-3">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            className="w-full pl-9 pr-3 py-1.5 text-sm border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+            placeholder="Rechercher une désignation..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        {search && (
+          <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setSearch("")}>Effacer</button>
+        )}
+      </div>
+      <div className="overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30">
+              <TableHead className="w-10"></TableHead>
+              <TableHead>Désignation</TableHead>
+              <TableHead className="text-right">Qté</TableHead>
+              <TableHead className="text-right">Prix unit.</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              {!isReadOnly && <TableHead className="text-right w-24">Actions</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={colCount} className="text-center py-10 text-muted-foreground">
+                  {search ? "Aucun résultat pour cette recherche" : "Aucune dépense enregistrée"}
+                </TableCell>
+              </TableRow>
+            ) : (
+              sortedCats.map(cat => {
+                const catItems = grouped[cat]!;
+                const subtotal = catItems.reduce((s, i) => s + (i.montant || 0), 0);
+                const isCollapsed = collapsed[cat];
+                const label = PROD_CAT_LABELS[cat] || cat.replace('_', ' ');
+                const badgeColor = PROD_CAT_COLORS[cat] || PROD_CAT_COLORS.autre;
+                return (
+                  <Fragment key={cat}>
+                    <TableRow
+                      className="bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors"
+                      onClick={() => setCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }))}
+                    >
+                      <TableCell className="w-10 px-3">
+                        {isCollapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                      </TableCell>
+                      <TableCell colSpan={2} className="font-semibold">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${badgeColor}`}>{label}</span>
+                          <span className="text-muted-foreground text-sm font-normal">
+                            ({catItems.length} {catItems.length > 1 ? "lignes" : "ligne"})
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground font-medium">Sous-total</TableCell>
+                      <TableCell className="text-right font-semibold">{formatFCFA(subtotal)}</TableCell>
+                      {!isReadOnly && <TableCell></TableCell>}
+                    </TableRow>
+                    {!isCollapsed && catItems.map(item => (
+                      <TableRow key={item.id} className="hover:bg-muted/10">
+                        <TableCell></TableCell>
+                        <TableCell className="font-medium text-sm">{item.designation}</TableCell>
+                        <TableCell className="text-right text-sm">{item.quantite}</TableCell>
+                        <TableCell className="text-right text-sm">{formatFCFA(item.prixUnitaire)}</TableCell>
+                        <TableCell className="text-right font-medium text-sm">{formatFCFA(item.montant)}</TableCell>
+                        {!isReadOnly && (
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); onEdit(item); }}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={e => { e.stopPropagation(); onDelete(item.id); }}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </Fragment>
+                );
+              })
+            )}
+          </TableBody>
+          {filtered.length > 0 && (
+            <TableFooter>
+              <TableRow className="bg-primary/5">
+                <TableCell colSpan={4} className="font-bold">Total Dépenses</TableCell>
+                <TableCell className="text-right font-bold text-primary">{formatFCFA(filteredTotal)}</TableCell>
+                {!isReadOnly && <TableCell></TableCell>}
+              </TableRow>
+            </TableFooter>
+          )}
+        </Table>
+      </div>
+    </div>
+  );
+}
 
 export default function BandeDetailView() {
   const params = useParams<{ id: string }>();
@@ -899,79 +1063,14 @@ export default function BandeDetailView() {
               <CardTitle className="text-xl font-serif">Dépenses de Production</CardTitle>
               {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => { setDialogType("depense"); setIsDialogOpen(true); }}><Plus className="w-4 h-4" /> Ajouter</Button>}
             </CardHeader>
-            <CardContent>
-              {(() => {
-                const CAT_LABELS: Record<string, string> = { poussins: "Poussins", aliments: "Aliments", concentre: "Concentré", prophylaxie: "Prophylaxie", medicaments: "Prophylaxie", veterinaire: "Prophylaxie", carburant: "Carburant", salaires: "Salaires", transport: "Transport", main_oeuvre: "Main-d'œuvre", autre: "Autre" };
-                const CAT_ORDER = ["poussins", "aliments", "concentre", "prophylaxie", "carburant", "salaires", "transport", "main_oeuvre", "autre"];
-                const grouped: Record<string, typeof depenses> = {};
-                (depenses || []).forEach(item => {
-                  const cat = item.categorie || "autre";
-                  if (!grouped[cat]) grouped[cat] = [];
-                  grouped[cat]!.push(item);
-                });
-                const sortedCats = Object.keys(grouped).sort((a, b) => {
-                  const ai = CAT_ORDER.indexOf(a); const bi = CAT_ORDER.indexOf(b);
-                  return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-                });
-                if (sortedCats.length === 0) return (
-                  <div className="text-center py-10 text-muted-foreground">Aucune dépense enregistrée</div>
-                );
-                return (
-                  <div className="border rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/30">
-                          <TableHead>Désignation</TableHead>
-                          <TableHead className="text-right">Qté</TableHead><TableHead className="text-right">Prix U.</TableHead>
-                          <TableHead className="text-right">Montant</TableHead>
-                          {!isReadOnly && <TableHead className="text-right w-20">Actions</TableHead>}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {sortedCats.map(cat => {
-                          const items = grouped[cat]!;
-                          const subtotal = items.reduce((s, i) => s + (i.montant || 0), 0);
-                          return (
-                            <Fragment key={cat}>
-                              <TableRow className="bg-muted/40">
-                                <TableCell colSpan={isReadOnly ? 4 : 5} className="py-2">
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-semibold text-sm text-foreground">{CAT_LABELS[cat] || cat.replace('_', ' ')}</span>
-                                    <span className="text-sm font-semibold text-primary">{formatFCFA(subtotal)}</span>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                              {items.map(item => (
-                                <TableRow key={item.id} className="hover:bg-muted/20">
-                                  <TableCell className="pl-6 text-sm">{item.designation}</TableCell>
-                                  <TableCell className="text-right text-sm">{item.quantite}</TableCell>
-                                  <TableCell className="text-right text-sm">{formatFCFA(item.prixUnitaire)}</TableCell>
-                                  <TableCell className="text-right font-medium text-sm">{formatFCFA(item.montant)}</TableCell>
-                                  {!isReadOnly && (
-                                    <TableCell className="text-right">
-                                      <div className="flex justify-end gap-1">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setDialogType("depense"); handleEdit(item, 'depense'); }}><Pencil className="h-3.5 w-3.5" /></Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(item.id, 'depense')}><Trash2 className="h-3.5 w-3.5" /></Button>
-                                      </div>
-                                    </TableCell>
-                                  )}
-                                </TableRow>
-                              ))}
-                            </Fragment>
-                          );
-                        })}
-                      </TableBody>
-                      <TableFooter>
-                        <TableRow className="bg-primary/5">
-                          <TableCell colSpan={3} className="font-bold">Total Dépenses</TableCell>
-                          <TableCell className="text-right font-bold text-primary">{formatFCFA(detail.totalDepenses)}</TableCell>
-                          {!isReadOnly && <TableCell></TableCell>}
-                        </TableRow>
-                      </TableFooter>
-                    </Table>
-                  </div>
-                );
-              })()}
+            <CardContent className="p-0">
+              <DepensesGroupedTable
+                items={(depenses || []) as any}
+                isReadOnly={isReadOnly}
+                grandTotal={detail.totalDepenses}
+                onEdit={(item) => { setDialogType("depense"); handleEdit(item, 'depense'); }}
+                onDelete={(id) => handleDelete(id, 'depense')}
+              />
             </CardContent>
           </Card>
         </TabsContent>
