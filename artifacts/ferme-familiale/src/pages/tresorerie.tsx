@@ -1,11 +1,15 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { formatFCFA } from "@/lib/format";
 import {
   TrendingUp, TrendingDown, Wallet, Construction, ArrowUpRight, ArrowDownRight,
-  Building2, BarChart3, Target, AlertCircle, CheckCircle2, Clock, Bird,
+  Building2, BarChart3, Target, AlertCircle, CheckCircle2, Clock, Bird, BookOpen,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
@@ -137,10 +141,11 @@ export default function Finances() {
       </div>
 
       <Tabs defaultValue="tresorerie" className="space-y-6">
-        <TabsList className="grid grid-cols-3 w-full max-w-lg">
+        <TabsList className="grid grid-cols-4 w-full max-w-2xl">
           <TabsTrigger value="tresorerie" className="gap-2"><Wallet className="h-4 w-4" />Trésorerie</TabsTrigger>
           <TabsTrigger value="amortissement" className="gap-2"><Building2 className="h-4 w-4" />Amortissement</TabsTrigger>
           <TabsTrigger value="roi" className="gap-2"><Target className="h-4 w-4" />ROI & Projections</TabsTrigger>
+          <TabsTrigger value="historique" className="gap-2"><BookOpen className="h-4 w-4" />Historique</TabsTrigger>
         </TabsList>
 
         {/* ─── TAB 1 : TRÉSORERIE ─── */}
@@ -443,7 +448,97 @@ export default function Finances() {
             </Card>
           )}
         </TabsContent>
+
+        {/* ─── TAB 4 : HISTORIQUE CAISSE ─── */}
+        <TabsContent value="historique" className="space-y-6">
+          <HistoriqueCaisseTab />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+async function fetchHistoriqueCaisse() {
+  const res = await fetch(`${BASE}/api/dashboard/historique-caisse`, { credentials: "include" });
+  if (!res.ok) throw new Error("Erreur chargement historique caisse");
+  return res.json();
+}
+
+function HistoriqueCaisseTab() {
+  const { data, isLoading } = useQuery({ queryKey: ["historique-caisse"], queryFn: fetchHistoriqueCaisse });
+  const [dateFilter, setDateFilter] = useState("");
+  const [catFilter, setCatFilter] = useState("all");
+
+  if (isLoading) return <div className="min-h-[20vh] flex items-center justify-center text-muted-foreground text-sm">Chargement...</div>;
+  if (!data) return <div className="text-destructive text-sm">Erreur de chargement</div>;
+
+  const categories: string[] = [...new Set<string>((data.entries || []).map((e: Record<string, unknown>) => String(e.categorie || "")))].filter(Boolean);
+  const filtered = (data.entries || []).filter((e: Record<string, unknown>) => {
+    if (dateFilter && !(e.date as string).startsWith(dateFilter)) return false;
+    if (catFilter !== "all" && e.categorie !== catFilter) return false;
+    return true;
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-lg">Journal de caisse</h3>
+          <p className="text-sm text-muted-foreground">Tous les mouvements financiers de l'exploitation</p>
+        </div>
+        <div className={`text-xl font-bold ${data.soldeCourant >= 0 ? "text-green-700" : "text-red-600"}`}>
+          Solde : {formatFCFA(data.soldeCourant)}
+        </div>
+      </div>
+      <div className="flex gap-3 flex-wrap">
+        <Input type="month" placeholder="Filtrer par mois" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-44" />
+        <Select value={catFilter} onValueChange={setCatFilter}>
+          <SelectTrigger className="w-52"><SelectValue placeholder="Catégorie" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes les catégories</SelectItem>
+            {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="border rounded-lg overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead>Date</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Catégorie</TableHead>
+              <TableHead>Désignation</TableHead>
+              <TableHead className="text-right">Montant</TableHead>
+              <TableHead className="text-right">Solde après</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Aucun mouvement.</TableCell></TableRow>
+            ) : (
+              filtered.map((e: Record<string, unknown>, i: number) => (
+                <TableRow key={i}>
+                  <TableCell className="text-sm">{e.date as string}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`text-xs ${e.type === "entree" ? "bg-green-100 text-green-800 border-green-200" : "bg-red-100 text-red-800 border-red-200"}`}>
+                      {e.type === "entree" ? <ArrowUpRight className="h-3 w-3 mr-1 inline" /> : <ArrowDownRight className="h-3 w-3 mr-1 inline" />}
+                      {e.type === "entree" ? "Entrée" : "Sortie"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{e.categorie as string}</TableCell>
+                  <TableCell className="text-sm">{e.designation as string}</TableCell>
+                  <TableCell className={`text-right text-sm font-medium ${e.type === "entree" ? "text-green-700" : "text-red-600"}`}>
+                    {e.type === "entree" ? "+" : "−"}{formatFCFA(e.montant as number)}
+                  </TableCell>
+                  <TableCell className={`text-right text-sm font-medium ${(e.soldeApres as number) >= 0 ? "" : "text-red-600"}`}>
+                    {formatFCFA(e.soldeApres as number)}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

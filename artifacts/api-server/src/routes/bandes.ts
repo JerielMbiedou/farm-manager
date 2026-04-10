@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, peseesTable, consommationAlimentTable, vaccinationsTable, consommationEauTable, traitementsTable, observationsJournalTable } from "@workspace/db";
+import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, peseesTable, consommationAlimentTable, vaccinationsTable, consommationEauTable, traitementsTable, observationsJournalTable, bandeActifsTable, actifsTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { logFromRequest } from "./activity-log";
 import { getParam, getVaccinationSchedule, REFERENCE_WEIGHT_CURVE } from "../lib/parametres";
@@ -917,6 +917,59 @@ router.post("/:id/import-fiche", async (req, res) => {
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
+});
+
+router.get("/:id/actifs", async (req, res) => {
+  const bandeId = parseInt(req.params.id);
+  const allocations = await db.select().from(bandeActifsTable).where(eq(bandeActifsTable.bandeId, bandeId));
+  const result = await Promise.all(allocations.map(async (a) => {
+    const actifRows = await db.select().from(actifsTable).where(eq(actifsTable.id, a.actifId));
+    if (actifRows.length === 0) return null;
+    const actif = actifRows[0];
+    const bande = await db.select().from(bandesTable).where(eq(bandesTable.id, bandeId));
+    const bandeRow = bande[0];
+    const fraction = parseFloat(a.fractionUtilisee);
+    const valeur = parseFloat(actif.valeur);
+    const taux = parseFloat(actif.tauxAmortissementAnnuel);
+    const dateDebut = bandeRow?.dateDeDepart ? new Date(bandeRow.dateDeDepart) : new Date();
+    const dureeJours = Math.max(1, Math.floor((Date.now() - dateDebut.getTime()) / (1000 * 60 * 60 * 24)));
+    const amortissement = valeur * fraction * (taux / 100) * (dureeJours / 365);
+    return {
+      id: a.id,
+      actifId: a.actifId,
+      bandeId: a.bandeId,
+      fractionUtilisee: fraction,
+      actif: { ...actif, valeur, tauxAmortissementAnnuel: taux },
+      amortissement: Math.round(amortissement),
+    };
+  }));
+  res.json(result.filter(Boolean));
+});
+
+router.post("/:id/actifs", async (req, res) => {
+  const bandeId = parseInt(req.params.id);
+  const { actifId, fractionUtilisee } = req.body;
+  if (!actifId) return res.status(400).json({ message: "actifId requis" });
+  const rows = await db.insert(bandeActifsTable).values({
+    bandeId,
+    actifId: parseInt(actifId),
+    fractionUtilisee: String(fractionUtilisee ?? 1),
+  }).returning();
+  res.status(201).json(rows[0]);
+});
+
+router.put("/:id/actifs/:allocationId", async (req, res) => {
+  const allocationId = parseInt(req.params.allocationId);
+  const { fractionUtilisee } = req.body;
+  const rows = await db.update(bandeActifsTable).set({ fractionUtilisee: String(fractionUtilisee) }).where(eq(bandeActifsTable.id, allocationId)).returning();
+  if (rows.length === 0) return res.status(404).json({ message: "Allocation introuvable" });
+  res.json(rows[0]);
+});
+
+router.delete("/:id/actifs/:allocationId", async (req, res) => {
+  const allocationId = parseInt(req.params.allocationId);
+  await db.delete(bandeActifsTable).where(eq(bandeActifsTable.id, allocationId));
+  res.json({ success: true });
 });
 
 export default router;

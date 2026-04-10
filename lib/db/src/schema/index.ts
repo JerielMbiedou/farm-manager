@@ -6,3 +6,5 @@ export * from "./bandes";
 export * from "./activity-log";
 export * from "./parametres";
 export * from "./stocks";
+export * from "./chantiers";
+export * from "./actifs";

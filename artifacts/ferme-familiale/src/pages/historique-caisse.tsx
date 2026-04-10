@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useGetHistoriqueCaisse } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -7,15 +7,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatFCFA } from "@/lib/format";
 import { Wallet, ArrowUpRight, ArrowDownRight } from "lucide-react";
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+async function fetchHistoriqueCaisse() {
+  const res = await fetch(`${BASE}/api/dashboard/historique-caisse`, { credentials: "include" });
+  if (!res.ok) throw new Error("Erreur chargement historique caisse");
+  return res.json();
+}
+
 export default function HistoriqueCaisse() {
-  const { data, isLoading } = useGetHistoriqueCaisse();
+  const { data, isLoading } = useQuery({ queryKey: ["historique-caisse"], queryFn: fetchHistoriqueCaisse });
   const [dateFilter, setDateFilter] = useState("");
   const [catFilter, setCatFilter] = useState("all");
 
   if (isLoading) return <div className="min-h-[50vh] flex items-center justify-center text-muted-foreground">Chargement...</div>;
   if (!data) return <div className="text-destructive">Erreur de chargement</div>;
 
-  const categories = [...new Set((data.entries || []).map((e: Record<string, unknown>) => e.categorie as string))];
+  const categories: string[] = [...new Set<string>((data.entries || []).map((e: Record<string, unknown>) => String(e.categorie || "")))].filter(Boolean);
 
   const filtered = (data.entries || []).filter((e: Record<string, unknown>) => {
     if (dateFilter && !(e.date as string).startsWith(dateFilter)) return false;
@@ -78,8 +86,8 @@ export default function HistoriqueCaisse() {
                       {e.type === "entree" ? "Entrée" : "Sortie"}
                     </span>
                   </TableCell>
-                  <TableCell>{e.categorie as string}</TableCell>
-                  <TableCell>{e.designation as string}</TableCell>
+                  <TableCell>{String(e.categorie || "")}</TableCell>
+                  <TableCell>{String(e.designation || "")}</TableCell>
                   <TableCell className={`text-right font-medium ${e.type === "entree" ? "text-green-700" : "text-red-600"}`}>
                     {e.type === "entree" ? "+" : "-"}{formatFCFA(e.montant as number)}
                   </TableCell>

@@ -40,7 +40,7 @@ import {
   getGetBandeConsommationQueryKey,
   getGetBandeVaccinationsQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { formatFCFA } from "@/lib/format";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -459,6 +459,208 @@ function VentesGroupedTable({
           )}
         </Table>
       </div>
+    </div>
+  );
+}
+
+type BandeActifAllocation = {
+  id: number;
+  actifId: number;
+  bandeId: number;
+  fractionUtilisee: number;
+  amortissement: number;
+  actif: { id: number; nom: string; type: string; valeur: number; tauxAmortissementAnnuel: number; dateAcquisition: string };
+};
+
+function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
+  bandeId: number;
+  isReadOnly: boolean;
+  chargesFixes: any;
+  detail: any;
+}) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [addingActif, setAddingActif] = useState(false);
+  const [selectedActifId, setSelectedActifId] = useState<string>("");
+  const [fraction, setFraction] = useState<string>("100");
+
+  const { data: allocations = [] } = useQuery<BandeActifAllocation[]>({
+    queryKey: ["/api/bandes", bandeId, "actifs"],
+    queryFn: async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/bandes/${bandeId}/actifs`, { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+  });
+
+  const { data: actifsDisponibles = [] } = useQuery<any[]>({
+    queryKey: ["/api/actifs"],
+    queryFn: async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/actifs`, { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+  });
+
+  const addAllocation = useMutation({
+    mutationFn: async ({ actifId, fractionUtilisee }: { actifId: number; fractionUtilisee: number }) => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/bandes/${bandeId}/actifs`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actifId, fractionUtilisee }),
+      });
+      if (!res.ok) throw new Error("Erreur");
+      return res.json();
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/bandes", bandeId, "actifs"] }); toast({ title: "Actif ajouté" }); setAddingActif(false); setSelectedActifId(""); setFraction("100"); },
+    onError: () => toast({ title: "Erreur", variant: "destructive" }),
+  });
+
+  const removeAllocation = useMutation({
+    mutationFn: async (allocationId: number) => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/bandes/${bandeId}/actifs/${allocationId}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error("Erreur");
+      return res.json();
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/bandes", bandeId, "actifs"] }); toast({ title: "Actif retiré" }); },
+  });
+
+  const updateAllocation = useMutation({
+    mutationFn: async ({ id, fractionUtilisee }: { id: number; fractionUtilisee: number }) => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/bandes/${bandeId}/actifs/${id}`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fractionUtilisee }),
+      });
+      if (!res.ok) throw new Error("Erreur");
+      return res.json();
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/bandes", bandeId, "actifs"] }); toast({ title: "Fraction mise à jour" }); },
+  });
+
+  const totalAmortissementActifs = allocations.reduce((s: number, a: BandeActifAllocation) => s + a.amortissement, 0);
+  const loyerLegacy = chargesFixes?.loyer || 0;
+  const imprevus = chargesFixes?.imprévus || 0;
+  const totalCharges = totalAmortissementActifs + loyerLegacy + imprevus;
+
+  const actifsDejaAlloues = new Set(allocations.map((a: BandeActifAllocation) => a.actifId));
+  const actifsDispo = actifsDisponibles.filter((a: any) => !actifsDejaAlloues.has(a.id));
+
+  const typeLabel: Record<string, string> = { terrain: "Terrain", batiment: "Bâtiment", materiel: "Matériel" };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Actifs utilisés pour cette bande</CardTitle>
+            {!isReadOnly && !addingActif && actifsDispo.length > 0 && (
+              <Button size="sm" variant="outline" onClick={() => setAddingActif(true)}>
+                <Plus className="h-4 w-4 mr-1" />Associer un actif
+              </Button>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">Sélectionnez les actifs (bâtiments, matériel) utilisés par cette bande et indiquez la fraction allouée. L'amortissement est calculé automatiquement.</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {addingActif && (
+            <div className="p-4 border rounded-lg bg-muted/20 space-y-3">
+              <div className="font-medium text-sm">Ajouter un actif</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Actif</label>
+                  <select
+                    className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                    value={selectedActifId}
+                    onChange={e => setSelectedActifId(e.target.value)}
+                  >
+                    <option value="">Choisir un actif...</option>
+                    {actifsDispo.map((a: any) => (
+                      <option key={a.id} value={String(a.id)}>{a.nom} ({typeLabel[a.type] || a.type}) — {formatFCFA(a.valeur)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Fraction utilisée (%)</label>
+                  <Input type="number" min={1} max={100} step={1} value={fraction} onChange={e => setFraction(e.target.value)} />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" disabled={!selectedActifId || addAllocation.isPending} onClick={() => addAllocation.mutate({ actifId: parseInt(selectedActifId), fractionUtilisee: parseFloat(fraction) / 100 })}>Confirmer</Button>
+                <Button size="sm" variant="outline" onClick={() => setAddingActif(false)}>Annuler</Button>
+              </div>
+            </div>
+          )}
+          {allocations.length === 0 && !addingActif ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              <p>Aucun actif associé à cette bande</p>
+              {!isReadOnly && actifsDisponibles.length === 0 && (
+                <p className="text-xs mt-1">Ajoutez d'abord des actifs dans le module Infrastructure</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {allocations.map((a: BandeActifAllocation) => (
+                <div key={a.id} className="flex items-center gap-3 p-3 border rounded-lg bg-card">
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{a.actif.nom}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {typeLabel[a.actif.type] || a.actif.type} · {formatFCFA(a.actif.valeur)} · Taux : {a.actif.tauxAmortissementAnnuel}%/an
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold">{formatFCFA(a.amortissement)}</div>
+                    <div className="text-xs text-muted-foreground">{Math.round(a.fractionUtilisee * 100)}% utilisé</div>
+                  </div>
+                  {!isReadOnly && (
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 shrink-0" onClick={() => removeAllocation.mutate(a.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {allocations.length > 0 && (
+            <div className="flex justify-between items-center pt-2 border-t font-semibold">
+              <span>Total amortissement actifs</span>
+              <span>{formatFCFA(totalAmortissementActifs)}</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-muted/30">
+        <CardHeader><CardTitle className="text-lg">Récapitulatif charges fixes</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex justify-between items-center py-2 border-b">
+            <span className="text-muted-foreground">Amortissement actifs</span>
+            <span className="font-medium">{formatFCFA(totalAmortissementActifs)}</span>
+          </div>
+          {loyerLegacy > 0 && (
+            <div className="flex justify-between items-center py-2 border-b">
+              <span className="text-muted-foreground">Autres charges fixes (loyer hérité)</span>
+              <span className="font-medium">{formatFCFA(loyerLegacy)}</span>
+            </div>
+          )}
+          <div className="flex justify-between items-center py-2 border-b">
+            <span className="text-muted-foreground">Imprévus (5% des dépenses)</span>
+            <span className="font-medium">{formatFCFA(imprevus)}</span>
+          </div>
+          <div className="flex justify-between items-center pt-2 font-bold text-base">
+            <span>Total Charges Fixes</span>
+            <span className="text-destructive">{formatFCFA(chargesFixes?.total || 0)}</span>
+          </div>
+          {totalAmortissementActifs > 0 && (
+            <p className="text-xs text-muted-foreground italic pt-1">
+              Note : Le total affiché dans le récapitulatif vient du calcul du serveur (basé sur loyer + matériel). L'amortissement actifs sera intégré dans un prochain calcul unifié.
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -1782,73 +1984,7 @@ export default function BandeDetailView() {
         </TabsContent>
 
         <TabsContent value="charges">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="flex flex-col">
-              <CardHeader><CardTitle className="text-xl font-serif">Loyer de l'exploitation</CardTitle></CardHeader>
-              <CardContent className="flex-1 flex flex-col justify-end">
-                {isReadOnly ? (
-                  <div className="text-2xl font-bold">{formatFCFA(chargesFixes?.loyer || 0)}</div>
-                ) : (
-                  <Form {...chargesFixesForm}>
-                    <form onSubmit={chargesFixesForm.handleSubmit(onChargesFixesSubmit)} className="space-y-4">
-                      <FormField control={chargesFixesForm.control} name="loyer" render={({ field }) => (
-                        <FormItem><FormLabel>Montant du loyer pour cette bande (FCFA)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-                      )} />
-                      <Button type="submit" className="w-full" disabled={updateChargesFixes.isPending}>Mettre à jour</Button>
-                    </form>
-                  </Form>
-                )}
-              </CardContent>
-            </Card>
-            <Card className="flex flex-col">
-              <CardHeader><CardTitle className="text-xl font-serif">Valeur matériel fixe</CardTitle></CardHeader>
-              <CardContent className="flex-1 flex flex-col justify-end">
-                {isReadOnly ? (
-                  <div className="text-2xl font-bold">{formatFCFA(detail?.valeurMaterielFixe || 0)}</div>
-                ) : (
-                  <form onSubmit={async (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    const val = Number(formData.get("valeurMaterielFixe")) || 0;
-                    try {
-                      await updateBande.mutateAsync({ id: bandeId, data: { valeurMaterielFixe: val } });
-                      queryClient.invalidateQueries({ queryKey: getGetBandeQueryKey(bandeId) });
-                      queryClient.invalidateQueries({ queryKey: getGetBandeChargesFixeQueryKey(bandeId) });
-                      toast({ title: "Valeur matériel mise à jour" });
-                    } catch { toast({ title: "Erreur", variant: "destructive" }); }
-                  }} className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium">Valeur totale du matériel fixe (FCFA)</label>
-                      <p className="text-xs text-muted-foreground mb-2">Mangeoires, abreuvoirs, lampes, etc. Le taux de dépréciation sera appliqué sur cette valeur.</p>
-                      <Input type="number" name="valeurMaterielFixe" defaultValue={detail?.valeurMaterielFixe || 0} />
-                    </div>
-                    <Button type="submit" className="w-full" disabled={updateBande.isPending}>Mettre à jour</Button>
-                  </form>
-                )}
-              </CardContent>
-            </Card>
-            <Card className="bg-muted/30 md:col-span-2">
-              <CardHeader><CardTitle className="text-xl font-serif">Dépréciation & Imprévus</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-muted-foreground">Valeur matériel fixe</span>
-                  <span className="font-medium">{formatFCFA(detail?.valeurMaterielFixe || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-muted-foreground">Valeur perdue matériel (estimée)</span>
-                  <span className="font-medium">{formatFCFA(chargesFixes?.valeurPerdueMateriel || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-muted-foreground">Imprévus (5%)</span>
-                  <span className="font-medium">{formatFCFA(chargesFixes?.imprévus || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 pt-4">
-                  <span className="font-bold">Total Charges Fixes</span>
-                  <span className="font-bold text-destructive">{formatFCFA(chargesFixes?.total || 0)}</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <BandeChargesFixesPanel bandeId={bandeId} isReadOnly={isReadOnly} chargesFixes={chargesFixes} detail={detail} />
         </TabsContent>
       </Tabs>
     </div>

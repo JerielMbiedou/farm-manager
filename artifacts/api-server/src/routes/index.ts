@@ -11,6 +11,8 @@ import parametresRouter from "./parametres";
 import stocksRouter from "./stocks";
 import importHistoricalRouter from "./import-historical";
 import ocrFicheRouter from "./ocr-fiche";
+import chantiersRouter from "./chantiers";
+import actifsRouter from "./actifs";
 
 const router: IRouter = Router();
 
@@ -26,5 +28,7 @@ router.use("/parametres", parametresRouter);
 router.use("/stocks", stocksRouter);
 router.use("/import-historical", importHistoricalRouter);
 router.use("/ocr-fiche", ocrFicheRouter);
+router.use("/chantiers", chantiersRouter);
+router.use("/actifs", actifsRouter);
 
 export default router;

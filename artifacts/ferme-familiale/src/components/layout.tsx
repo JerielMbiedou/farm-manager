@@ -3,13 +3,10 @@ import { Link, useLocation } from "wouter";
 import { 
   LayoutDashboard, 
   Wallet, 
-  HardHat, 
-  Receipt, 
   Bird, 
   LogOut, 
   Menu,
   X,
-  BookOpen,
   BarChart3,
   ClipboardList,
   Users,
@@ -17,7 +14,9 @@ import {
   Package,
   Calculator,
   TrendingUp,
-  CalendarDays
+  CalendarDays,
+  Construction,
+  BookOpen,
 } from "lucide-react";
 import { useGetMe, useLogout, UserRole } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -62,25 +61,56 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
 
   const role = user.role as UserRole;
-  
   const allRoles = [UserRole.admin, UserRole.investisseur, UserRole.gestionnaire, "lecteur" as UserRole];
-  
-  const navItems = [
-    { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, roles: allRoles },
-    { href: "/financement", label: "Financement", icon: Wallet, roles: allRoles },
-    { href: "/devis", label: "Devis construction", icon: HardHat, roles: [UserRole.admin] },
-    { href: "/depenses", label: "Depenses", icon: Receipt, roles: [UserRole.admin, UserRole.gestionnaire] },
-    { href: "/bandes", label: "Bandes de poulets", icon: Bird, roles: [UserRole.admin, UserRole.gestionnaire, "lecteur" as UserRole] },
-    { href: "/historique-caisse", label: "Historique caisse", icon: BookOpen, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
-    { href: "/comparaison-bandes", label: "Comparaison", icon: BarChart3, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
-    { href: "/stocks", label: "Stocks", icon: Package, roles: [UserRole.admin, UserRole.gestionnaire] },
-    { href: "/simulation", label: "Simulation", icon: Calculator, roles: allRoles },
-    { href: "/tresorerie", label: "Finances", icon: TrendingUp, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
-    { href: "/planification", label: "Planification", icon: CalendarDays, roles: [UserRole.admin, UserRole.gestionnaire] },
-    { href: "/activity-log", label: "Journal d'activite", icon: ClipboardList, roles: [UserRole.admin] },
-    { href: "/utilisateurs", label: "Utilisateurs", icon: Users, roles: [UserRole.admin] },
-    { href: "/parametres", label: "Parametres", icon: Settings, roles: allRoles },
-  ].filter(item => item.roles.includes(role));
+
+  type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; roles: UserRole[] };
+  type NavGroup = { label: string; items: NavItem[] };
+
+  const navGroups: NavGroup[] = [
+    {
+      label: "Exploitation",
+      items: [
+        { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, roles: allRoles },
+        { href: "/bandes", label: "Bandes de poulets", icon: Bird, roles: [UserRole.admin, UserRole.gestionnaire, "lecteur" as UserRole] },
+      ],
+    },
+    {
+      label: "Finances",
+      items: [
+        { href: "/tresorerie", label: "Finances", icon: TrendingUp, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
+        { href: "/financement", label: "Financement", icon: Wallet, roles: allRoles },
+      ],
+    },
+    {
+      label: "Infrastructure",
+      items: [
+        { href: "/infrastructure", label: "Infrastructure", icon: Construction, roles: [UserRole.admin, UserRole.gestionnaire] },
+        { href: "/stocks", label: "Stocks", icon: Package, roles: [UserRole.admin, UserRole.gestionnaire] },
+      ],
+    },
+    {
+      label: "Outils",
+      items: [
+        { href: "/comparaison-bandes", label: "Comparaison", icon: BarChart3, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
+        { href: "/simulation", label: "Simulation", icon: Calculator, roles: allRoles },
+        { href: "/planification", label: "Planification", icon: CalendarDays, roles: [UserRole.admin, UserRole.gestionnaire] },
+        { href: "/historique-caisse", label: "Historique caisse", icon: BookOpen, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
+      ],
+    },
+    {
+      label: "Administration",
+      items: [
+        { href: "/activity-log", label: "Journal d'activite", icon: ClipboardList, roles: [UserRole.admin] },
+        { href: "/utilisateurs", label: "Utilisateurs", icon: Users, roles: [UserRole.admin] },
+        { href: "/parametres", label: "Parametres", icon: Settings, roles: allRoles },
+      ],
+    },
+  ];
+
+  const filteredGroups = navGroups.map(g => ({
+    ...g,
+    items: g.items.filter(item => item.roles.includes(role)),
+  })).filter(g => g.items.length > 0);
 
   const roleLabel: Record<string, string> = {
     [UserRole.admin]: "Administrateur",
@@ -89,7 +119,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     "lecteur": "Lecteur",
   };
   const roleName = roleLabel[role] || "Utilisateur";
-
   const userInitials = user.nom ? user.nom.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) : "U";
 
   return (
@@ -131,24 +160,33 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-1 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location === item.href || location.startsWith(item.href + "/");
-            return (
-              <Link key={item.href} href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
-                <div className={`
-                  flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer
-                  ${isActive 
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm" 
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"}
-                `}>
-                  <Icon className="h-[18px] w-[18px] shrink-0" />
-                  <span className="text-[13px]">{item.label}</span>
-                </div>
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-3 py-1 overflow-y-auto">
+          {filteredGroups.map((group, gi) => (
+            <div key={group.label} className={gi > 0 ? "mt-4" : ""}>
+              <div className="px-3 py-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">{group.label}</span>
+              </div>
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location === item.href || location.startsWith(item.href + "/");
+                  return (
+                    <Link key={item.href} href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
+                      <div className={`
+                        flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer
+                        ${isActive 
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm" 
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"}
+                      `}>
+                        <Icon className="h-[18px] w-[18px] shrink-0" />
+                        <span className="text-[13px]">{item.label}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="p-3 mt-auto border-t border-sidebar-accent/50">

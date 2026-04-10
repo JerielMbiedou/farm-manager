@@ -175,7 +175,14 @@ router.post("/", async (req, res) => {
     const results: any[] = [];
 
     const existingBandes = await db.select().from(bandesTable);
-    let nextNumero = existingBandes.length + 1;
+    let nextNumero = Math.max(0, ...existingBandes.filter(b => b.numero > 0).map(b => b.numero)) + 1;
+
+    const SHEET_NAMES_TO_FRENCH: Record<string, string> = {
+      "Bande3 #4079  Biofarm Valle": "Historique A — Biofarm (2024)",
+      "Bande2 #3700  Biofarm Valle ": "Historique B — Biofarm (2025)",
+      "Bande1 #2900 Biofarm Valley ": "Historique C — Biofarm (2025)",
+      "Bande4 #xxxxx  Biofarm Valle": "Historique D — Biofarm",
+    };
 
     for (let si = 0; si < workbook.SheetNames.length; si++) {
       const sheetName = workbook.SheetNames[si];
@@ -187,15 +194,20 @@ router.post("/", async (req, res) => {
         continue;
       }
 
-      const bandeName = sheetName.trim();
-      const existingDuplicate = existingBandes.find(b => b.nom === bandeName);
+      const bandeName = SHEET_NAMES_TO_FRENCH[sheetName.trim()] || sheetName.trim();
+      const existingDuplicate = existingBandes.find(b => b.nom === bandeName || b.nom === sheetName.trim());
       if (existingDuplicate) {
         results.push({ sheet: sheetName, status: "skipped", reason: "already imported", bandeId: existingDuplicate.id });
         continue;
       }
+      const startDate = rows[0]?.date || "2024-01-01";
+      const alreadyByDate = existingBandes.find(b => b.dateDeDepart === startDate && b.sujetsDepart === sujetsDepart);
+      if (alreadyByDate) {
+        results.push({ sheet: sheetName, status: "skipped", reason: "already imported (same date+sujets)", bandeId: alreadyByDate.id });
+        continue;
+      }
 
       const totalDeces = rows.reduce((s, r) => s + r.mortaliteJour, 0);
-      const startDate = rows[0].date || "2024-01-01";
 
       const [bande] = await db.insert(bandesTable).values({
         numero: nextNumero++,
