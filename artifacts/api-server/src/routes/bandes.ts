@@ -19,6 +19,7 @@ async function getBandeDetail(id: number) {
 
   const totalDepenses = depenses.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
   const totalRecettes = ventes.reduce((s, v) => s + v.quantiteVendue * parseFloat(v.prixUnitaire), 0);
+  const totalVendus = ventes.reduce((s, v) => s + v.quantiteVendue, 0);
 
   const tauxDepreciation = await getParam("taux_depreciation_materiel", 10);
   const tauxImprevus = await getParam("taux_imprevus", 5);
@@ -28,7 +29,7 @@ async function getBandeDetail(id: number) {
   const loyer = chargesRows.length > 0 ? parseFloat(chargesRows[0].loyer) : 0;
   const chargesFixesTotal = valeurPerdueMateriel + imprevus + loyer;
 
-  const sujetsRestants = bande.sujetsDepart - bande.nombreDeces;
+  const sujetsRestants = bande.sujetsDepart - bande.nombreDeces - totalVendus;
   const totalDepensesVente = depensesVente.reduce((s, d) => s + parseFloat(d.montant), 0);
   const beneficeNetSansCharges = totalRecettes - totalDepenses - totalDepensesVente;
   const beneficeNet = totalRecettes - totalDepenses - chargesFixesTotal - totalDepensesVente;
@@ -40,6 +41,7 @@ async function getBandeDetail(id: number) {
     nom: bande.nom,
     sujetsDepart: bande.sujetsDepart,
     nombreDeces: bande.nombreDeces,
+    totalVendus,
     sujetsRestants,
     valeurMaterielFixe: valeurMateriel,
     statut: bande.statut,
@@ -599,7 +601,9 @@ router.get("/:id/consommation", async (req, res) => {
   let icStatus: string | null = null;
   if (pesees.length > 0 && bande) {
     const dernierPoids = parseFloat(pesees[pesees.length - 1].poidsMoyenG);
-    const sujetsRestants = bande.sujetsDepart - bande.nombreDeces;
+    const totalVendusIC = await db.select({ total: sql<number>`sum(quantite_vendue)` }).from(bandeVentesTable).where(eq(bandeVentesTable.bandeId, bandeId));
+    const venduCount = Number(totalVendusIC[0]?.total || 0);
+    const sujetsRestants = bande.sujetsDepart - bande.nombreDeces - venduCount;
     const poidsGagneTotal = (dernierPoids / 1000) * sujetsRestants;
     if (poidsGagneTotal > 0) {
       ic = Math.round((totalAlimentKg / poidsGagneTotal) * 100) / 100;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useParams } from "wouter";
 import { 
   useGetBande,
@@ -766,33 +766,74 @@ export default function BandeDetailView() {
             </Button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="shadow-sm border-t-4 border-t-primary">
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Sujets restants</CardTitle></CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">{detail.sujetsRestants}</div>
-                <p className="text-xs text-muted-foreground mt-1">{detail.nombreDeces} décès</p>
-              </CardContent>
-            </Card>
-            <Card className="shadow-sm border-t-4 border-t-destructive">
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Coût de production</CardTitle></CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">{formatFCFA(detail.totalDepenses + detail.chargesFixesTotal)}</div>
-                <p className="text-xs text-muted-foreground mt-1">Coût / sujet : {formatFCFA(detail.coutParSujet)}</p>
-              </CardContent>
-            </Card>
-            <Card className="shadow-sm border-t-4 border-t-sidebar-primary">
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Recettes brutes</CardTitle></CardHeader>
-              <CardContent><div className="text-2xl font-bold text-foreground">{formatFCFA(detail.totalRecettes)}</div></CardContent>
-            </Card>
-            <Card className={`shadow-sm border-t-4 ${detail.beneficeNet >= 0 ? 'border-t-green-500' : 'border-t-red-500'}`}>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Bénéfice net</CardTitle></CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${detail.beneficeNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatFCFA(detail.beneficeNet)}</div>
-                <p className="text-xs text-muted-foreground mt-1">Sans charges : {formatFCFA(detail.beneficeNetSansCharges)}</p>
-              </CardContent>
-            </Card>
-          </div>
+          {(() => {
+            const dernierePesee = peseesItems.length > 0 ? peseesItems[peseesItems.length - 1] as any : null;
+            const poidsActuelG = dernierePesee?.poidsMoyenG ?? null;
+            const coutRevientKgVif = (poidsActuelG && poidsActuelG > 0 && (detail.sujetsRestants || 0) > 0)
+              ? Math.round((detail.totalDepenses + detail.chargesFixesTotal) / ((detail.sujetsRestants * poidsActuelG) / 1000))
+              : null;
+
+            const poidsVenteTarget = 2000;
+            let estimVente: { joursRestants: number; datePrevue: string } | null = null;
+            if (peseesItems.length >= 2 && poidsActuelG && poidsActuelG < poidsVenteTarget) {
+              const first = peseesItems[0] as any;
+              const last = peseesItems[peseesItems.length - 1] as any;
+              const gainTotal = last.poidsMoyenG - first.poidsMoyenG;
+              const joursTotal = last.ageJours - first.ageJours;
+              if (gainTotal > 0 && joursTotal > 0) {
+                const gainParJour = gainTotal / joursTotal;
+                const joursRestants = Math.ceil((poidsVenteTarget - last.poidsMoyenG) / gainParJour);
+                if (joursRestants > 0 && joursRestants < 90) {
+                  const datePrevue = new Date(detail.dateDeDepart + "T00:00:00");
+                  datePrevue.setDate(datePrevue.getDate() + last.ageJours + joursRestants - 1);
+                  estimVente = { joursRestants, datePrevue: datePrevue.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) };
+                }
+              }
+            }
+
+            const tauxMortalite = detail.sujetsDepart > 0 ? ((detail.nombreDeces / detail.sujetsDepart) * 100).toFixed(1) : "0";
+            const totalVendus = (detail as any).totalVendus ?? 0;
+
+            return (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <Card className="shadow-sm border-t-4 border-t-primary">
+                  <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Sujets restants</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">{detail.sujetsRestants}</div>
+                    <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                      <p>{detail.sujetsDepart} départ − {detail.nombreDeces} décès ({tauxMortalite}%)</p>
+                      {totalVendus > 0 && <p>− {totalVendus} vendus</p>}
+                    </div>
+                    {estimVente && (
+                      <p className="text-xs text-primary mt-1 font-medium">Vente ~dans {estimVente.joursRestants}j ({estimVente.datePrevue})</p>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card className="shadow-sm border-t-4 border-t-destructive">
+                  <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Coût de production</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">{formatFCFA(detail.totalDepenses + detail.chargesFixesTotal)}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Coût / sujet départ : {formatFCFA(detail.coutParSujet)}</p>
+                    {coutRevientKgVif && <p className="text-xs text-muted-foreground">Revient / kg vif : {formatFCFA(coutRevientKgVif)}</p>}
+                  </CardContent>
+                </Card>
+                <Card className="shadow-sm border-t-4 border-t-sidebar-primary">
+                  <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Recettes brutes</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">{formatFCFA(detail.totalRecettes)}</div>
+                    {totalVendus > 0 && <p className="text-xs text-muted-foreground mt-1">{totalVendus} poulets vendus</p>}
+                  </CardContent>
+                </Card>
+                <Card className={`shadow-sm border-t-4 ${detail.beneficeNet >= 0 ? 'border-t-green-500' : 'border-t-red-500'}`}>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Bénéfice net</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${detail.beneficeNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatFCFA(detail.beneficeNet)}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Sans charges : {formatFCFA(detail.beneficeNetSansCharges)}</p>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
 
           {(() => {
             const CAT_LABELS: Record<string, string> = {
@@ -859,48 +900,78 @@ export default function BandeDetailView() {
               {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => { setDialogType("depense"); setIsDialogOpen(true); }}><Plus className="w-4 h-4" /> Ajouter</Button>}
             </CardHeader>
             <CardContent>
-              <div className="border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      <TableHead>Catégorie</TableHead><TableHead>Désignation</TableHead>
-                      <TableHead className="text-right">Qté</TableHead><TableHead className="text-right">Prix U.</TableHead>
-                      <TableHead className="text-right">Montant</TableHead>
-                      {!isReadOnly && <TableHead className="text-right w-24">Actions</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {depenses?.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Aucune dépense enregistrée</TableCell></TableRow>
-                    ) : (
-                      depenses?.map(item => (
-                        <TableRow key={item.id}>
-                          <TableCell className="capitalize">{({ poussins: "Poussins", aliments: "Aliments", concentre: "Concentré", prophylaxie: "Prophylaxie", medicaments: "Prophylaxie", veterinaire: "Prophylaxie", carburant: "Carburant", salaires: "Salaires", transport: "Transport", main_oeuvre: "Main-d'oeuvre", autre: "Autre" } as Record<string,string>)[item.categorie] || item.categorie.replace('_', ' ')}</TableCell>
-                          <TableCell className="font-medium">{item.designation}</TableCell>
-                          <TableCell className="text-right">{item.quantite}</TableCell>
-                          <TableCell className="text-right">{formatFCFA(item.prixUnitaire)}</TableCell>
-                          <TableCell className="text-right font-medium">{formatFCFA(item.montant)}</TableCell>
-                          {!isReadOnly && (
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-1">
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setDialogType("depense"); handleEdit(item, 'depense'); }}><Pencil className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(item.id, 'depense')}><Trash2 className="h-4 w-4" /></Button>
-                              </div>
-                            </TableCell>
-                          )}
+              {(() => {
+                const CAT_LABELS: Record<string, string> = { poussins: "Poussins", aliments: "Aliments", concentre: "Concentré", prophylaxie: "Prophylaxie", medicaments: "Prophylaxie", veterinaire: "Prophylaxie", carburant: "Carburant", salaires: "Salaires", transport: "Transport", main_oeuvre: "Main-d'œuvre", autre: "Autre" };
+                const CAT_ORDER = ["poussins", "aliments", "concentre", "prophylaxie", "carburant", "salaires", "transport", "main_oeuvre", "autre"];
+                const grouped: Record<string, typeof depenses> = {};
+                (depenses || []).forEach(item => {
+                  const cat = item.categorie || "autre";
+                  if (!grouped[cat]) grouped[cat] = [];
+                  grouped[cat]!.push(item);
+                });
+                const sortedCats = Object.keys(grouped).sort((a, b) => {
+                  const ai = CAT_ORDER.indexOf(a); const bi = CAT_ORDER.indexOf(b);
+                  return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+                });
+                if (sortedCats.length === 0) return (
+                  <div className="text-center py-10 text-muted-foreground">Aucune dépense enregistrée</div>
+                );
+                return (
+                  <div className="border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/30">
+                          <TableHead>Désignation</TableHead>
+                          <TableHead className="text-right">Qté</TableHead><TableHead className="text-right">Prix U.</TableHead>
+                          <TableHead className="text-right">Montant</TableHead>
+                          {!isReadOnly && <TableHead className="text-right w-20">Actions</TableHead>}
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                  <TableFooter>
-                    <TableRow className="bg-primary/5">
-                      <TableCell colSpan={4} className="font-bold">Total Dépenses</TableCell>
-                      <TableCell className="text-right font-bold text-primary">{formatFCFA(detail.totalDepenses)}</TableCell>
-                      {!isReadOnly && <TableCell></TableCell>}
-                    </TableRow>
-                  </TableFooter>
-                </Table>
-              </div>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedCats.map(cat => {
+                          const items = grouped[cat]!;
+                          const subtotal = items.reduce((s, i) => s + (i.montant || 0), 0);
+                          return (
+                            <Fragment key={cat}>
+                              <TableRow className="bg-muted/40">
+                                <TableCell colSpan={isReadOnly ? 4 : 5} className="py-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-semibold text-sm text-foreground">{CAT_LABELS[cat] || cat.replace('_', ' ')}</span>
+                                    <span className="text-sm font-semibold text-primary">{formatFCFA(subtotal)}</span>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                              {items.map(item => (
+                                <TableRow key={item.id} className="hover:bg-muted/20">
+                                  <TableCell className="pl-6 text-sm">{item.designation}</TableCell>
+                                  <TableCell className="text-right text-sm">{item.quantite}</TableCell>
+                                  <TableCell className="text-right text-sm">{formatFCFA(item.prixUnitaire)}</TableCell>
+                                  <TableCell className="text-right font-medium text-sm">{formatFCFA(item.montant)}</TableCell>
+                                  {!isReadOnly && (
+                                    <TableCell className="text-right">
+                                      <div className="flex justify-end gap-1">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setDialogType("depense"); handleEdit(item, 'depense'); }}><Pencil className="h-3.5 w-3.5" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(item.id, 'depense')}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                      </div>
+                                    </TableCell>
+                                  )}
+                                </TableRow>
+                              ))}
+                            </Fragment>
+                          );
+                        })}
+                      </TableBody>
+                      <TableFooter>
+                        <TableRow className="bg-primary/5">
+                          <TableCell colSpan={3} className="font-bold">Total Dépenses</TableCell>
+                          <TableCell className="text-right font-bold text-primary">{formatFCFA(detail.totalDepenses)}</TableCell>
+                          {!isReadOnly && <TableCell></TableCell>}
+                        </TableRow>
+                      </TableFooter>
+                    </Table>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
@@ -925,7 +996,7 @@ export default function BandeDetailView() {
                     {ventes?.length === 0 ? (
                       <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Aucune vente enregistrée</TableCell></TableRow>
                     ) : (
-                      ventes?.map(item => (
+                      [...(ventes || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(item => (
                         <TableRow key={item.id}>
                           <TableCell>{format(new Date(item.date), 'dd/MM/yyyy')}</TableCell>
                           <TableCell className="text-right">{item.quantiteVendue}</TableCell>

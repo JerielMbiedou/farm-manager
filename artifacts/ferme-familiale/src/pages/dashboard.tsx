@@ -1,9 +1,10 @@
 import { useGetDashboardSummary } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatFCFA } from "@/lib/format";
-import { Wallet, Receipt, Construction, Bird, AlertTriangle, Syringe, Skull, TrendingUp, ArrowRight } from "lucide-react";
+import { Wallet, Receipt, Construction, Bird, AlertTriangle, Syringe, TrendingUp, ArrowRight } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { Link } from "wouter";
+import SaisieRapide from "@/components/saisie-rapide";
 
 export default function Dashboard() {
   const { data: summary, isLoading, error } = useGetDashboardSummary();
@@ -125,6 +126,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      <SaisieRapide />
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="overflow-hidden">
