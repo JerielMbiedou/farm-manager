@@ -45,7 +45,7 @@ async function getBandeDetail(id: number) {
   const totalDepensesVente = depensesVente.reduce((s, d) => s + parseFloat(d.montant), 0);
   const beneficeNetSansCharges = totalRecettes - totalDepenses - totalDepensesVente;
   const beneficeNet = totalRecettes - totalDepenses - chargesFixesTotal - totalDepensesVente;
-  const coutParSujet = bande.sujetsDepart > 0 ? (totalDepenses + chargesFixesTotal) / bande.sujetsDepart : 0;
+  const coutParSujet = sujetsRestants > 0 ? (totalDepenses + chargesFixesTotal) / sujetsRestants : 0;
 
   return {
     id: bande.id,
