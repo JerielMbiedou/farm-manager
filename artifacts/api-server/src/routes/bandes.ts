@@ -17,6 +17,18 @@ async function getBandeDetail(id: number) {
   const chargesRows = await db.select().from(chargesFixesTable).where(eq(chargesFixesTable.bandeId, id));
   const depensesVente = await db.select().from(depensesVenteTable).where(eq(depensesVenteTable.bandeId, id));
 
+  // Compute nombreDeces from the actual mortalite table (avoids drift from denormalized column)
+  const mortaliteSumRows = await db
+    .select({ total: sql<number>`COALESCE(SUM(${mortaliteJournaliereTable.decesJour}), 0)` })
+    .from(mortaliteJournaliereTable)
+    .where(eq(mortaliteJournaliereTable.bandeId, id));
+  const nombreDeces = Number(mortaliteSumRows[0]?.total ?? 0);
+
+  // Keep the denormalized column in sync silently
+  if (nombreDeces !== bande.nombreDeces) {
+    await db.update(bandesTable).set({ nombreDeces }).where(eq(bandesTable.id, id));
+  }
+
   const totalDepenses = depenses.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
   const totalRecettes = ventes.reduce((s, v) => s + v.quantiteVendue * parseFloat(v.prixUnitaire), 0);
   const totalVendus = ventes.reduce((s, v) => s + v.quantiteVendue, 0);
@@ -29,7 +41,7 @@ async function getBandeDetail(id: number) {
   const loyer = chargesRows.length > 0 ? parseFloat(chargesRows[0].loyer) : 0;
   const chargesFixesTotal = valeurPerdueMateriel + imprevus + loyer;
 
-  const sujetsRestants = bande.sujetsDepart - bande.nombreDeces - totalVendus;
+  const sujetsRestants = bande.sujetsDepart - nombreDeces - totalVendus;
   const totalDepensesVente = depensesVente.reduce((s, d) => s + parseFloat(d.montant), 0);
   const beneficeNetSansCharges = totalRecettes - totalDepenses - totalDepensesVente;
   const beneficeNet = totalRecettes - totalDepenses - chargesFixesTotal - totalDepensesVente;
@@ -40,7 +52,7 @@ async function getBandeDetail(id: number) {
     numero: bande.numero,
     nom: bande.nom,
     sujetsDepart: bande.sujetsDepart,
-    nombreDeces: bande.nombreDeces,
+    nombreDeces,
     totalVendus,
     sujetsRestants,
     valeurMaterielFixe: valeurMateriel,
@@ -530,10 +542,9 @@ router.post("/:id/mortalite", async (req, res) => {
   const bandeId = parseInt(req.params.id);
   const { date, ageJours, decesJour } = req.body;
   const rows = await db.insert(mortaliteJournaliereTable).values({ bandeId, date, ageJours, decesJour: decesJour ?? 0 }).returning();
-  const bande = (await db.select().from(bandesTable).where(eq(bandesTable.id, bandeId)))[0];
-  if (bande) {
-    await db.update(bandesTable).set({ nombreDeces: bande.nombreDeces + (decesJour ?? 0) }).where(eq(bandesTable.id, bandeId));
-  }
+  // Recompute from source of truth to avoid drift
+  const sumRows = await db.select({ total: sql<number>`COALESCE(SUM(${mortaliteJournaliereTable.decesJour}), 0)` }).from(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.bandeId, bandeId));
+  await db.update(bandesTable).set({ nombreDeces: Number(sumRows[0]?.total ?? 0) }).where(eq(bandesTable.id, bandeId));
   const r = rows[0];
   await logFromRequest(req, "Ajout mortalité", `${decesJour} décès - Bande ID: ${bandeId}`);
   res.status(201).json({ id: r.id, bandeId: r.bandeId, date: r.date, ageJours: r.ageJours, decesJour: r.decesJour });
@@ -544,10 +555,11 @@ router.delete("/:id/mortalite/:mortaliteId", async (req, res) => {
   const existing = await db.select().from(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.id, mortaliteId));
   if (existing.length > 0) {
     const bandeId = existing[0].bandeId;
-    const bande = (await db.select().from(bandesTable).where(eq(bandesTable.id, bandeId)))[0];
-    if (bande) {
-      await db.update(bandesTable).set({ nombreDeces: Math.max(0, bande.nombreDeces - existing[0].decesJour) }).where(eq(bandesTable.id, bandeId));
-    }
+    await db.delete(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.id, mortaliteId));
+    // Recompute from source of truth
+    const sumRows = await db.select({ total: sql<number>`COALESCE(SUM(${mortaliteJournaliereTable.decesJour}), 0)` }).from(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.bandeId, bandeId));
+    await db.update(bandesTable).set({ nombreDeces: Number(sumRows[0]?.total ?? 0) }).where(eq(bandesTable.id, bandeId));
+    return res.json({ success: true });
   }
   await db.delete(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.id, mortaliteId));
   res.json({ success: true });
