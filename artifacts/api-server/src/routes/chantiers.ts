@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { db, chantiersTable, chantierDevisLignesTable, chantierDepensesTable, actifsTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { db, chantiersTable, chantierDevisLignesTable, chantierDepensesTable, chantierLotsTable, actifsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
+// ── Liste des chantiers ──────────────────────────────────────────────────────
 router.get("/", async (_req, res) => {
   const chantiers = await db.select().from(chantiersTable).orderBy(chantiersTable.createdAt);
   const result = await Promise.all(chantiers.map(async (c) => {
@@ -23,17 +24,36 @@ router.post("/", async (req, res) => {
   res.status(201).json(rows[0]);
 });
 
+// ── Détail d'un chantier (avec lots) ────────────────────────────────────────
 router.get("/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const rows = await db.select().from(chantiersTable).where(eq(chantiersTable.id, id));
   if (rows.length === 0) return res.status(404).json({ message: "Chantier introuvable" });
   const chantier = rows[0];
-  const depenses = await db.select().from(chantierDepensesTable).where(eq(chantierDepensesTable.chantierId, id)).orderBy(chantierDepensesTable.createdAt);
-  const devisLignes = await db.select().from(chantierDevisLignesTable).where(eq(chantierDevisLignesTable.chantierId, id)).orderBy(chantierDevisLignesTable.ordre);
-  const totalReel = depenses.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
-  const totalPrevu = devisLignes.reduce((s, l) => s + parseFloat(l.montantPrevu), 0);
-  const depensesWithTotal = depenses.map(d => ({ ...d, prixTotal: parseFloat(d.quantite) * parseFloat(d.prixUnitaire) }));
-  res.json({ ...chantier, depenses: depensesWithTotal, devisLignes, totalReel, totalPrevu });
+
+  const [allDepenses, allDevis, lots] = await Promise.all([
+    db.select().from(chantierDepensesTable).where(eq(chantierDepensesTable.chantierId, id)).orderBy(chantierDepensesTable.createdAt),
+    db.select().from(chantierDevisLignesTable).where(eq(chantierDevisLignesTable.chantierId, id)).orderBy(chantierDevisLignesTable.ordre),
+    db.select().from(chantierLotsTable).where(eq(chantierLotsTable.chantierId, id)).orderBy(chantierLotsTable.ordre),
+  ]);
+
+  const depensesWithTotal = allDepenses.map(d => ({ ...d, prixTotal: parseFloat(d.quantite) * parseFloat(d.prixUnitaire) }));
+  const totalReel = depensesWithTotal.reduce((s, d) => s + d.prixTotal, 0);
+  const totalPrevu = allDevis.reduce((s, l) => s + parseFloat(l.montantPrevu), 0);
+
+  const lotsWithData = lots.map(lot => {
+    const lotDepenses = depensesWithTotal.filter(d => d.lotId === lot.id);
+    const lotDevis = allDevis.filter(l => l.lotId === lot.id);
+    return {
+      ...lot,
+      depenses: lotDepenses,
+      devisLignes: lotDevis,
+      totalReel: lotDepenses.reduce((s, d) => s + d.prixTotal, 0),
+      totalPrevu: lotDevis.reduce((s, l) => s + parseFloat(l.montantPrevu), 0),
+    };
+  });
+
+  res.json({ ...chantier, depenses: depensesWithTotal, devisLignes: allDevis, lots: lotsWithData, totalReel, totalPrevu });
 });
 
 router.put("/:id", async (req, res) => {
@@ -50,6 +70,7 @@ router.delete("/:id", async (req, res) => {
   res.json({ success: true });
 });
 
+// ── Clôture ──────────────────────────────────────────────────────────────────
 router.post("/:id/cloture", async (req, res) => {
   const id = parseInt(req.params.id);
   const rows = await db.select().from(chantiersTable).where(eq(chantiersTable.id, id));
@@ -61,18 +82,39 @@ router.post("/:id/cloture", async (req, res) => {
   const taux = tauxAmortissement ?? 5;
   const dateAcq = dateAcquisition ?? new Date().toISOString().split("T")[0];
   const actifRows = await db.insert(actifsTable).values({
-    nom: chantier.nom,
-    type: "batiment",
-    valeur: String(totalReel),
-    tauxAmortissementAnnuel: String(taux),
-    dateAcquisition: dateAcq,
-    description: chantier.description,
-    chantierId: id,
+    nom: chantier.nom, type: "batiment", valeur: String(totalReel),
+    tauxAmortissementAnnuel: String(taux), dateAcquisition: dateAcq,
+    description: chantier.description, chantierId: id,
   }).returning();
   await db.update(chantiersTable).set({ statut: "cloture", dateCloture: dateAcq }).where(eq(chantiersTable.id, id));
   res.json({ chantier: { ...chantier, statut: "cloture" }, actif: actifRows[0] });
 });
 
+// ── Lots ─────────────────────────────────────────────────────────────────────
+router.post("/:id/lots", async (req, res) => {
+  const chantierId = parseInt(req.params.id);
+  const { nom, description } = req.body;
+  if (!nom) return res.status(400).json({ message: "Le nom est requis" });
+  const existing = await db.select().from(chantierLotsTable).where(eq(chantierLotsTable.chantierId, chantierId));
+  const rows = await db.insert(chantierLotsTable).values({ chantierId, nom, description, ordre: existing.length }).returning();
+  res.status(201).json(rows[0]);
+});
+
+router.put("/:id/lots/:lotId", async (req, res) => {
+  const lotId = parseInt(req.params.lotId);
+  const { nom, description } = req.body;
+  const rows = await db.update(chantierLotsTable).set({ nom, description }).where(eq(chantierLotsTable.id, lotId)).returning();
+  if (rows.length === 0) return res.status(404).json({ message: "Lot introuvable" });
+  res.json(rows[0]);
+});
+
+router.delete("/:id/lots/:lotId", async (req, res) => {
+  const lotId = parseInt(req.params.lotId);
+  await db.delete(chantierLotsTable).where(eq(chantierLotsTable.id, lotId));
+  res.json({ success: true });
+});
+
+// ── Dépenses ─────────────────────────────────────────────────────────────────
 router.get("/:id/depenses", async (req, res) => {
   const id = parseInt(req.params.id);
   const rows = await db.select().from(chantierDepensesTable).where(eq(chantierDepensesTable.chantierId, id)).orderBy(chantierDepensesTable.createdAt);
@@ -81,17 +123,24 @@ router.get("/:id/depenses", async (req, res) => {
 
 router.post("/:id/depenses", async (req, res) => {
   const chantierId = parseInt(req.params.id);
-  const { designation, quantite, prixUnitaire, categorie, date, commentaire } = req.body;
+  const { designation, quantite, prixUnitaire, categorie, date, commentaire, lotId } = req.body;
   if (!designation) return res.status(400).json({ message: "La désignation est requise" });
-  const rows = await db.insert(chantierDepensesTable).values({ chantierId, designation, quantite: String(quantite ?? 1), prixUnitaire: String(prixUnitaire ?? 0), categorie: categorie || "materiaux", date, commentaire }).returning();
+  const rows = await db.insert(chantierDepensesTable).values({
+    chantierId, designation, quantite: String(quantite ?? 1),
+    prixUnitaire: String(prixUnitaire ?? 0), categorie: categorie || "materiaux",
+    date, commentaire, lotId: lotId || null,
+  }).returning();
   const d = rows[0];
   res.status(201).json({ ...d, prixTotal: parseFloat(d.quantite) * parseFloat(d.prixUnitaire) });
 });
 
 router.put("/:id/depenses/:depId", async (req, res) => {
   const depId = parseInt(req.params.depId);
-  const { designation, quantite, prixUnitaire, categorie, date, commentaire } = req.body;
-  const rows = await db.update(chantierDepensesTable).set({ designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire), categorie, date, commentaire }).where(eq(chantierDepensesTable.id, depId)).returning();
+  const { designation, quantite, prixUnitaire, categorie, date, commentaire, lotId } = req.body;
+  const rows = await db.update(chantierDepensesTable).set({
+    designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire),
+    categorie, date, commentaire, lotId: lotId || null,
+  }).where(eq(chantierDepensesTable.id, depId)).returning();
   if (rows.length === 0) return res.status(404).json({ message: "Dépense introuvable" });
   const d = rows[0];
   res.json({ ...d, prixTotal: parseFloat(d.quantite) * parseFloat(d.prixUnitaire) });
@@ -103,6 +152,7 @@ router.delete("/:id/depenses/:depId", async (req, res) => {
   res.json({ success: true });
 });
 
+// ── Devis / Lignes budgétaires ────────────────────────────────────────────────
 router.get("/:id/devis", async (req, res) => {
   const id = parseInt(req.params.id);
   const rows = await db.select().from(chantierDevisLignesTable).where(eq(chantierDevisLignesTable.chantierId, id)).orderBy(chantierDevisLignesTable.ordre);
@@ -111,11 +161,13 @@ router.get("/:id/devis", async (req, res) => {
 
 router.post("/:id/devis", async (req, res) => {
   const chantierId = parseInt(req.params.id);
-  const { poste, montantPrevu, ordre } = req.body;
+  const { poste, montantPrevu, ordre, lotId } = req.body;
   if (!poste) return res.status(400).json({ message: "Le poste est requis" });
   const existing = await db.select().from(chantierDevisLignesTable).where(eq(chantierDevisLignesTable.chantierId, chantierId));
   const nextOrdre = ordre ?? existing.length;
-  const rows = await db.insert(chantierDevisLignesTable).values({ chantierId, poste, montantPrevu: String(montantPrevu ?? 0), ordre: nextOrdre }).returning();
+  const rows = await db.insert(chantierDevisLignesTable).values({
+    chantierId, poste, montantPrevu: String(montantPrevu ?? 0), ordre: nextOrdre, lotId: lotId || null,
+  }).returning();
   res.status(201).json(rows[0]);
 });
 

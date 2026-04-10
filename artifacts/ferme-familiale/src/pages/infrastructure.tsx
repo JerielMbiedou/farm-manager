@@ -73,6 +73,12 @@ const depenseSchema = z.object({
   categorie: z.string().optional(),
   date: z.string().optional(),
   commentaire: z.string().optional(),
+  lotId: z.coerce.number().optional(),
+});
+
+const lotSchema = z.object({
+  nom: z.string().min(1, "Le nom est requis"),
+  description: z.string().optional(),
 });
 
 const devisLigneSchema = z.object({
@@ -95,9 +101,10 @@ const clotureSchema = z.object({
 });
 
 type ChantierSummary = { id: number; nom: string; description?: string; statut: string; dateDebut?: string; dateCloture?: string; totalReel: number; totalPrevu: number; nbDepenses: number; createdAt: string };
-type ChantierDetail = ChantierSummary & { depenses: DepenseItem[]; devisLignes: DevisLigne[] };
-type DepenseItem = { id: number; chantierId: number; designation: string; quantite: string; prixUnitaire: string; prixTotal: number; categorie?: string; date?: string; commentaire?: string };
-type DevisLigne = { id: number; chantierId: number; poste: string; montantPrevu: string; ordre: number };
+type DepenseItem = { id: number; chantierId: number; lotId?: number | null; designation: string; quantite: string; prixUnitaire: string; prixTotal: number; categorie?: string; date?: string; commentaire?: string };
+type DevisLigne = { id: number; chantierId: number; lotId?: number | null; poste: string; montantPrevu: string; ordre: number };
+type LotDetail = { id: number; chantierId: number; nom: string; description?: string; ordre: number; depenses: DepenseItem[]; devisLignes: DevisLigne[]; totalReel: number; totalPrevu: number };
+type ChantierDetail = ChantierSummary & { depenses: DepenseItem[]; devisLignes: DevisLigne[]; lots: LotDetail[] };
 type Actif = { id: number; nom: string; type: string; valeur: number; tauxAmortissementAnnuel: number; dateAcquisition: string; description?: string; chantierId?: number; createdAt: string };
 
 function useChantiers() {
@@ -144,20 +151,22 @@ function ChantierFormDialog({ onSuccess, trigger }: { onSuccess: () => void; tri
   );
 }
 
-function DepenseFormDialog({ chantierId, depense, onSuccess, trigger }: { chantierId: number; depense?: DepenseItem; onSuccess: () => void; trigger: React.ReactNode }) {
+function DepenseFormDialog({ chantierId, depense, lots, defaultLotId, onSuccess, trigger }: { chantierId: number; depense?: DepenseItem; lots?: LotDetail[]; defaultLotId?: number; onSuccess: () => void; trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
   const isEdit = !!depense;
   const form = useForm<z.infer<typeof depenseSchema>>({
     resolver: zodResolver(depenseSchema),
-    defaultValues: depense ? { designation: depense.designation, quantite: parseFloat(depense.quantite), prixUnitaire: parseFloat(depense.prixUnitaire), categorie: depense.categorie || "materiaux", date: depense.date || "", commentaire: depense.commentaire || "" } : { designation: "", quantite: 1, prixUnitaire: 0, categorie: "materiaux", date: "", commentaire: "" },
+    defaultValues: depense
+      ? { designation: depense.designation, quantite: parseFloat(depense.quantite), prixUnitaire: parseFloat(depense.prixUnitaire), categorie: depense.categorie || "materiaux", date: depense.date || "", commentaire: depense.commentaire || "", lotId: depense.lotId || undefined }
+      : { designation: "", quantite: 1, prixUnitaire: 0, categorie: "materiaux", date: "", commentaire: "", lotId: defaultLotId },
   });
   const mutation = useMutation({
     mutationFn: (data: z.infer<typeof depenseSchema>) => isEdit
       ? apiFetch(`/chantiers/${chantierId}/depenses/${depense!.id}`, { method: "PUT", body: JSON.stringify(data) })
       : apiFetch(`/chantiers/${chantierId}/depenses`, { method: "POST", body: JSON.stringify(data) }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/chantiers"] }); toast({ title: isEdit ? "Dépense mise à jour" : "Dépense ajoutée" }); setOpen(false); if (!isEdit) form.reset(); onSuccess(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/chantiers"] }); toast({ title: isEdit ? "Dépense mise à jour" : "Dépense ajoutée" }); setOpen(false); if (!isEdit) form.reset({ designation: "", quantite: 1, prixUnitaire: 0, categorie: "materiaux", date: "", commentaire: "", lotId: defaultLotId }); onSuccess(); },
     onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
   return (
@@ -178,14 +187,26 @@ function DepenseFormDialog({ chantierId, depense, onSuccess, trigger }: { chanti
                 <FormItem><FormLabel>Prix unitaire</FormLabel><FormControl><Input type="number" step="1" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
             </div>
-            <FormField control={form.control} name="categorie" render={({ field }) => (
-              <FormItem><FormLabel>Catégorie</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                  <SelectContent>{CATEGORIES_CONSTRUCTION.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
-                </Select>
-              </FormItem>
-            )} />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField control={form.control} name="categorie" render={({ field }) => (
+                <FormItem><FormLabel>Catégorie</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>{CATEGORIES_CONSTRUCTION.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </FormItem>
+              )} />
+              {lots && lots.length > 0 && (
+                <FormField control={form.control} name="lotId" render={({ field }) => (
+                  <FormItem><FormLabel>Lot</FormLabel>
+                    <Select onValueChange={v => field.onChange(parseInt(v))} defaultValue={field.value ? String(field.value) : undefined}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
+                      <SelectContent>{lots.map(l => <SelectItem key={l.id} value={String(l.id)}>{l.nom}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </FormItem>
+                )} />
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <FormField control={form.control} name="date" render={({ field }) => (
                 <FormItem><FormLabel>Date (optionnel)</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>
@@ -202,7 +223,7 @@ function DepenseFormDialog({ chantierId, depense, onSuccess, trigger }: { chanti
   );
 }
 
-function DevisLigneFormDialog({ chantierId, ligne, onSuccess, trigger }: { chantierId: number; ligne?: DevisLigne; onSuccess: () => void; trigger: React.ReactNode }) {
+function DevisLigneFormDialog({ chantierId, ligne, lots, defaultLotId, onSuccess, trigger }: { chantierId: number; ligne?: DevisLigne; lots?: LotDetail[]; defaultLotId?: number; onSuccess: () => void; trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -214,7 +235,7 @@ function DevisLigneFormDialog({ chantierId, ligne, onSuccess, trigger }: { chant
   const mutation = useMutation({
     mutationFn: (data: z.infer<typeof devisLigneSchema>) => isEdit
       ? apiFetch(`/chantiers/${chantierId}/devis/${ligne!.id}`, { method: "PUT", body: JSON.stringify(data) })
-      : apiFetch(`/chantiers/${chantierId}/devis`, { method: "POST", body: JSON.stringify(data) }),
+      : apiFetch(`/chantiers/${chantierId}/devis`, { method: "POST", body: JSON.stringify({ ...data, lotId: defaultLotId }) }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/chantiers"] }); toast({ title: isEdit ? "Ligne mise à jour" : "Ligne ajoutée" }); setOpen(false); if (!isEdit) form.reset(); onSuccess(); },
     onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
   });
@@ -232,6 +253,43 @@ function DevisLigneFormDialog({ chantierId, ligne, onSuccess, trigger }: { chant
               <FormItem><FormLabel>Montant prévu (FCFA)</FormLabel><FormControl><Input type="number" step="1" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <Button type="submit" disabled={mutation.isPending} className="w-full">{isEdit ? "Mettre à jour" : "Ajouter"}</Button>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LotFormDialog({ chantierId, lot, onSuccess, trigger }: { chantierId: number; lot?: LotDetail; onSuccess: () => void; trigger: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const isEdit = !!lot;
+  const form = useForm<z.infer<typeof lotSchema>>({
+    resolver: zodResolver(lotSchema),
+    defaultValues: lot ? { nom: lot.nom, description: lot.description || "" } : { nom: "", description: "" },
+  });
+  const mutation = useMutation({
+    mutationFn: (data: z.infer<typeof lotSchema>) => isEdit
+      ? apiFetch(`/chantiers/${chantierId}/lots/${lot!.id}`, { method: "PUT", body: JSON.stringify(data) })
+      : apiFetch(`/chantiers/${chantierId}/lots`, { method: "POST", body: JSON.stringify(data) }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/chantiers"] }); toast({ title: isEdit ? "Lot mis à jour" : "Lot ajouté" }); setOpen(false); form.reset(); onSuccess(); },
+    onError: (e: Error) => toast({ title: "Erreur", description: e.message, variant: "destructive" }),
+  });
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{isEdit ? "Modifier le lot" : "Nouveau lot"}</DialogTitle></DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(d => mutation.mutate(d))} className="space-y-4">
+            <FormField control={form.control} name="nom" render={({ field }) => (
+              <FormItem><FormLabel>Nom du lot</FormLabel><FormControl><Input placeholder="Ex : Bâtiment principal, Forage..." {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="description" render={({ field }) => (
+              <FormItem><FormLabel>Description (optionnel)</FormLabel><FormControl><Textarea rows={2} {...field} /></FormControl></FormItem>
+            )} />
+            <Button type="submit" disabled={mutation.isPending} className="w-full">{isEdit ? "Mettre à jour" : "Créer le lot"}</Button>
           </form>
         </Form>
       </DialogContent>
@@ -280,10 +338,10 @@ function ClotureDialog({ chantier, onSuccess }: { chantier: ChantierSummary; onS
 }
 
 function DepenseGroupSection({
-  category, label, items, isCollapsed, onToggle, isCloture, chantierId, onDelete,
+  category, label, items, isCollapsed, onToggle, isCloture, chantierId, lots, onDelete,
 }: {
   category: string; label: string; items: DepenseItem[]; isCollapsed: boolean;
-  onToggle: () => void; isCloture: boolean; chantierId: number; onDelete: (id: number) => void;
+  onToggle: () => void; isCloture: boolean; chantierId: number; lots?: LotDetail[]; onDelete: (id: number) => void;
 }) {
   const total = items.reduce((s, d) => s + d.prixTotal, 0);
   return (
@@ -326,7 +384,7 @@ function DepenseGroupSection({
           {!isCloture && (
             <TableCell>
               <div className="flex justify-end gap-1">
-                <DepenseFormDialog chantierId={chantierId} depense={d} onSuccess={() => {}} trigger={
+                <DepenseFormDialog chantierId={chantierId} depense={d} lots={lots} onSuccess={() => {}} trigger={
                   <Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>
                 } />
                 <AlertDialog>
@@ -347,8 +405,8 @@ function DepenseGroupSection({
   );
 }
 
-function GroupedDepensesTable({ items, isCloture, chantierId, onDelete }: {
-  items: DepenseItem[]; isCloture: boolean; chantierId: number; onDelete: (id: number) => void;
+function GroupedDepensesTable({ items, isCloture, chantierId, lots, onDelete }: {
+  items: DepenseItem[]; isCloture: boolean; chantierId: number; lots?: LotDetail[]; onDelete: (id: number) => void;
 }) {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
@@ -411,6 +469,7 @@ function GroupedDepensesTable({ items, isCloture, chantierId, onDelete }: {
                     onToggle={() => toggle(cat.value)}
                     isCloture={isCloture}
                     chantierId={chantierId}
+                    lots={lots}
                     onDelete={onDelete}
                   />
                 );
@@ -432,6 +491,122 @@ function GroupedDepensesTable({ items, isCloture, chantierId, onDelete }: {
   );
 }
 
+function LotTabContent({ lot, chantier, isCloture, onDeleteDepense, onDeleteDevis }: {
+  lot: LotDetail; chantier: ChantierDetail; isCloture: boolean;
+  onDeleteDepense: (id: number) => void; onDeleteDevis: (id: number) => void;
+}) {
+  const ecart = lot.totalReel - lot.totalPrevu;
+  const ecartPct = lot.totalPrevu > 0 ? (ecart / lot.totalPrevu) * 100 : 0;
+  return (
+    <div className="space-y-4">
+      {lot.totalPrevu > 0 && (
+        <div className="p-4 border rounded-lg bg-card space-y-3">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Budget prévu</div>
+              <div className="font-bold">{formatFCFA(lot.totalPrevu)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Dépensé</div>
+              <div className="font-bold">{formatFCFA(lot.totalReel)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Écart</div>
+              <div className={`font-bold ${ecart > 0 ? "text-red-600" : ecart < 0 ? "text-green-600" : ""}`}>
+                {ecart > 0 ? "+" : ""}{formatFCFA(ecart)}
+              </div>
+            </div>
+          </div>
+          <Progress value={lot.totalPrevu > 0 ? Math.min(100, (lot.totalReel / lot.totalPrevu) * 100) : 0} className="h-2" />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{lot.totalPrevu > 0 ? Math.round((lot.totalReel / lot.totalPrevu) * 100) : 0}% du budget utilisé</span>
+            <span className={ecart > 0 ? "text-red-600" : "text-green-600"}>
+              Écart : {ecart > 0 ? "+" : ""}{ecartPct.toFixed(1)}%
+            </span>
+          </div>
+        </div>
+      )}
+
+      <Tabs defaultValue="depenses">
+        <TabsList className="h-8">
+          <TabsTrigger value="depenses" className="text-xs">Dépenses ({lot.depenses.length})</TabsTrigger>
+          <TabsTrigger value="devis" className="text-xs">Budget ({lot.devisLignes.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="depenses" className="mt-3">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-muted-foreground">{lot.depenses.length} ligne(s) — {formatFCFA(lot.totalReel)}</span>
+            {!isCloture && (
+              <DepenseFormDialog chantierId={chantier.id} lots={chantier.lots} defaultLotId={lot.id} onSuccess={() => {}} trigger={
+                <Button size="sm"><Plus className="h-3 w-3 mr-1" />Ajouter</Button>
+              } />
+            )}
+          </div>
+          {lot.depenses.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground border rounded-lg bg-muted/10">
+              <Construction className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Aucune dépense pour ce lot</p>
+            </div>
+          ) : (
+            <GroupedDepensesTable items={lot.depenses} isCloture={isCloture} chantierId={chantier.id} lots={chantier.lots} onDelete={onDeleteDepense} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="devis" className="mt-3">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-muted-foreground">{lot.devisLignes.length} poste(s) — {formatFCFA(lot.totalPrevu)}</span>
+            {!isCloture && (
+              <DevisLigneFormDialog chantierId={chantier.id} defaultLotId={lot.id} onSuccess={() => {}} trigger={
+                <Button size="sm"><Plus className="h-3 w-3 mr-1" />Ajouter un poste</Button>
+              } />
+            )}
+          </div>
+          {lot.devisLignes.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground border rounded-lg bg-muted/10">
+              <p className="text-sm">Aucun poste budgétaire pour ce lot</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30">
+                  <TableHead>Poste</TableHead>
+                  <TableHead className="text-right">Montant prévu</TableHead>
+                  {!isCloture && <TableHead className="w-16" />}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lot.devisLignes.map(l => (
+                  <TableRow key={l.id}>
+                    <TableCell className="font-medium">{l.poste}</TableCell>
+                    <TableCell className="text-right">{formatFCFA(parseFloat(l.montantPrevu))}</TableCell>
+                    {!isCloture && (
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <DevisLigneFormDialog chantierId={chantier.id} ligne={l} onSuccess={() => {}} trigger={<Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>} />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-red-500"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader><AlertDialogTitle>Supprimer ce poste ?</AlertDialogTitle><AlertDialogDescription>{l.poste}</AlertDialogDescription></AlertDialogHeader>
+                              <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={() => onDeleteDevis(l.id)} className="bg-red-600 hover:bg-red-700">Supprimer</AlertDialogAction></AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow><TableCell className="font-bold">Total prévu</TableCell><TableCell className="text-right font-bold">{formatFCFA(lot.totalPrevu)}</TableCell>{!isCloture && <TableCell />}</TableRow>
+              </TableFooter>
+            </Table>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
 function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: () => void }) {
   const { data: chantier, isLoading } = useChantier(chantierId);
   const qc = useQueryClient();
@@ -445,6 +620,10 @@ function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: ()
     mutationFn: (lgId: number) => apiFetch(`/chantiers/${chantierId}/devis/${lgId}`, { method: "DELETE" }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/chantiers"] }); toast({ title: "Ligne supprimée" }); },
   });
+  const deleteLot = useMutation({
+    mutationFn: (lotId: number) => apiFetch(`/chantiers/${chantierId}/lots/${lotId}`, { method: "DELETE" }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/chantiers"] }); toast({ title: "Lot supprimé" }); },
+  });
 
   if (isLoading || !chantier) return <div className="text-center py-12 text-muted-foreground">Chargement...</div>;
 
@@ -453,9 +632,11 @@ function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: ()
   const totalReel = chantier.depenses.reduce((s, d) => s + d.prixTotal, 0);
   const ecart = totalReel - totalPrevu;
   const ecartPct = totalPrevu > 0 ? (ecart / totalPrevu) * 100 : 0;
+  const hasLots = chantier.lots.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* En-tête */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" />Retour</Button>
         <div className="flex-1">
@@ -470,153 +651,222 @@ function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: ()
         {!isCloture && <ClotureDialog chantier={chantier} onSuccess={onBack} />}
       </div>
 
-      {chantier.devisLignes.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Card className="border-0 bg-muted/30">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-xs text-muted-foreground mb-1">Budget prévu</div>
-              <div className="text-lg font-bold">{formatFCFA(totalPrevu)}</div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 bg-muted/30">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-xs text-muted-foreground mb-1">Dépenses réelles</div>
-              <div className="text-lg font-bold">{formatFCFA(totalReel)}</div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 bg-muted/30">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-xs text-muted-foreground mb-1">Écart</div>
-              <div className={`text-lg font-bold ${ecart > 0 ? "text-red-600" : ecart < 0 ? "text-green-600" : ""}`}>
-                {ecart > 0 ? "+" : ""}{formatFCFA(ecart)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-0 bg-muted/30">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-xs text-muted-foreground mb-1">Avancement budget</div>
-              <div className="text-lg font-bold">{totalPrevu > 0 ? Math.round((totalReel / totalPrevu) * 100) : 0}%</div>
-            </CardContent>
-          </Card>
+      {/* Résumé global */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="border-0 bg-muted/30">
+          <CardContent className="pt-4 pb-3">
+            <div className="text-xs text-muted-foreground mb-1">Budget global prévu</div>
+            <div className="text-lg font-bold">{formatFCFA(totalPrevu)}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 bg-muted/30">
+          <CardContent className="pt-4 pb-3">
+            <div className="text-xs text-muted-foreground mb-1">Total dépensé</div>
+            <div className="text-lg font-bold">{formatFCFA(totalReel)}</div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 bg-muted/30">
+          <CardContent className="pt-4 pb-3">
+            <div className="text-xs text-muted-foreground mb-1">Écart global</div>
+            <div className={`text-lg font-bold ${ecart > 0 ? "text-red-600" : ecart < 0 ? "text-green-600" : ""}`}>
+              {ecart > 0 ? "+" : ""}{formatFCFA(ecart)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 bg-muted/30">
+          <CardContent className="pt-4 pb-3">
+            <div className="text-xs text-muted-foreground mb-1">Avancement</div>
+            <div className="text-lg font-bold">{totalPrevu > 0 ? Math.round((totalReel / totalPrevu) * 100) : 0}%</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Onglets : Vue globale + un par lot */}
+      <Tabs defaultValue={hasLots ? `lot-${chantier.lots[0].id}` : "global"}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <TabsList>
+            <TabsTrigger value="global">Vue globale</TabsTrigger>
+            {chantier.lots.map(lot => (
+              <TabsTrigger key={lot.id} value={`lot-${lot.id}`}>{lot.nom}</TabsTrigger>
+            ))}
+          </TabsList>
+          {!isCloture && (
+            <LotFormDialog chantierId={chantierId} onSuccess={() => {}} trigger={
+              <Button variant="outline" size="sm"><Plus className="h-3 w-3 mr-1" />Nouveau lot</Button>
+            } />
+          )}
         </div>
-      )}
 
-      <Tabs defaultValue="depenses">
-        <TabsList>
-          <TabsTrigger value="depenses">Dépenses réelles ({chantier.depenses.length})</TabsTrigger>
-          <TabsTrigger value="devis">Budget prévu ({chantier.devisLignes.length})</TabsTrigger>
-          {chantier.devisLignes.length > 0 && <TabsTrigger value="comparatif">Comparatif</TabsTrigger>}
-        </TabsList>
+        {/* Vue globale */}
+        <TabsContent value="global" className="mt-4">
+          <Tabs defaultValue="depenses">
+            <TabsList className="h-8">
+              <TabsTrigger value="depenses" className="text-xs">Toutes les dépenses ({chantier.depenses.length})</TabsTrigger>
+              <TabsTrigger value="devis" className="text-xs">Budget global ({chantier.devisLignes.length})</TabsTrigger>
+              {totalPrevu > 0 && <TabsTrigger value="comparatif" className="text-xs">Comparatif</TabsTrigger>}
+            </TabsList>
 
-        <TabsContent value="depenses" className="mt-4">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm text-muted-foreground">{chantier.depenses.length} dépense(s) — Total : {formatFCFA(totalReel)}</span>
-            {!isCloture && (
-              <DepenseFormDialog chantierId={chantierId} onSuccess={() => {}} trigger={
-                <Button size="sm"><Plus className="h-4 w-4 mr-1" />Ajouter</Button>
-              } />
-            )}
-          </div>
-          {chantier.depenses.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground border rounded-lg bg-muted/10">
-              <Construction className="h-10 w-10 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Aucune dépense enregistrée</p>
-              {!isCloture && <p className="text-xs mt-1">Ajoutez les dépenses au fur et à mesure du chantier</p>}
-            </div>
-          ) : (
-            <GroupedDepensesTable
-              items={chantier.depenses}
-              isCloture={isCloture}
-              chantierId={chantierId}
-              onDelete={(id) => deleteDepense.mutate(id)}
-            />
-          )}
-        </TabsContent>
+            <TabsContent value="depenses" className="mt-3">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-muted-foreground">{chantier.depenses.length} dépense(s) — {formatFCFA(totalReel)}</span>
+                {!isCloture && (
+                  <DepenseFormDialog chantierId={chantierId} lots={chantier.lots} onSuccess={() => {}} trigger={
+                    <Button size="sm"><Plus className="h-3 w-3 mr-1" />Ajouter</Button>
+                  } />
+                )}
+              </div>
+              {chantier.depenses.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground border rounded-lg bg-muted/10">
+                  <Construction className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">Aucune dépense enregistrée</p>
+                </div>
+              ) : (
+                <GroupedDepensesTable items={chantier.depenses} isCloture={isCloture} chantierId={chantierId} lots={chantier.lots} onDelete={id => deleteDepense.mutate(id)} />
+              )}
+            </TabsContent>
 
-        <TabsContent value="devis" className="mt-4">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm text-muted-foreground">{chantier.devisLignes.length} poste(s) — Budget : {formatFCFA(totalPrevu)}</span>
-            {!isCloture && (
-              <DevisLigneFormDialog chantierId={chantierId} onSuccess={() => {}} trigger={
-                <Button size="sm"><Plus className="h-4 w-4 mr-1" />Ajouter un poste</Button>
-              } />
-            )}
-          </div>
-          {chantier.devisLignes.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground border rounded-lg bg-muted/10">
-              <p className="text-sm">Aucun poste budgétaire défini</p>
-              {!isCloture && <p className="text-xs mt-1">Planifiez votre budget avant de commencer les travaux</p>}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30">
-                  <TableHead>Poste</TableHead>
-                  <TableHead className="text-right">Montant prévu</TableHead>
-                  {!isCloture && <TableHead className="w-16"></TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {chantier.devisLignes.map(l => (
-                  <TableRow key={l.id}>
-                    <TableCell className="font-medium">{l.poste}</TableCell>
-                    <TableCell className="text-right">{formatFCFA(parseFloat(l.montantPrevu))}</TableCell>
-                    {!isCloture && (
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <DevisLigneFormDialog chantierId={chantierId} ligne={l} onSuccess={() => {}} trigger={<Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>} />
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-red-500"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader><AlertDialogTitle>Supprimer ce poste ?</AlertDialogTitle><AlertDialogDescription>{l.poste}</AlertDialogDescription></AlertDialogHeader>
-                              <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={() => deleteDevisLigne.mutate(l.id)} className="bg-red-600 hover:bg-red-700">Supprimer</AlertDialogAction></AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    )}
-                  </TableRow>
+            <TabsContent value="devis" className="mt-3">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-muted-foreground">{chantier.devisLignes.length} poste(s) — {formatFCFA(totalPrevu)}</span>
+                {!isCloture && (
+                  <DevisLigneFormDialog chantierId={chantierId} onSuccess={() => {}} trigger={
+                    <Button size="sm"><Plus className="h-3 w-3 mr-1" />Ajouter un poste</Button>
+                  } />
+                )}
+              </div>
+              {chantier.devisLignes.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground border rounded-lg bg-muted/10">
+                  <p className="text-sm">Aucun poste budgétaire défini</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead>Poste</TableHead>
+                      {hasLots && <TableHead>Lot</TableHead>}
+                      <TableHead className="text-right">Montant prévu</TableHead>
+                      {!isCloture && <TableHead className="w-16" />}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {chantier.devisLignes.map(l => (
+                      <TableRow key={l.id}>
+                        <TableCell className="font-medium">{l.poste}</TableCell>
+                        {hasLots && (
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {chantier.lots.find(lot => lot.id === l.lotId)?.nom || "—"}
+                            </Badge>
+                          </TableCell>
+                        )}
+                        <TableCell className="text-right">{formatFCFA(parseFloat(l.montantPrevu))}</TableCell>
+                        {!isCloture && (
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <DevisLigneFormDialog chantierId={chantierId} ligne={l} onSuccess={() => {}} trigger={<Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>} />
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-red-500"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader><AlertDialogTitle>Supprimer ce poste ?</AlertDialogTitle><AlertDialogDescription>{l.poste}</AlertDialogDescription></AlertDialogHeader>
+                                  <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={() => deleteDevisLigne.mutate(l.id)} className="bg-red-600 hover:bg-red-700">Supprimer</AlertDialogAction></AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                  <TableFooter>
+                    <TableRow><TableCell colSpan={hasLots ? 2 : 1} className="font-bold">Total prévu</TableCell><TableCell className="text-right font-bold">{formatFCFA(totalPrevu)}</TableCell>{!isCloture && <TableCell />}</TableRow>
+                  </TableFooter>
+                </Table>
+              )}
+            </TabsContent>
+
+            <TabsContent value="comparatif" className="mt-3">
+              <div className="space-y-3">
+                {hasLots ? chantier.lots.map(lot => (
+                  <div key={lot.id} className="p-3 border rounded-lg bg-muted/10">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="font-semibold">{lot.nom}</span>
+                      <div className="text-right text-xs text-muted-foreground">
+                        <span>Prévu : {formatFCFA(lot.totalPrevu)}</span>
+                        <span className="mx-2">·</span>
+                        <span>Réel : {formatFCFA(lot.totalReel)}</span>
+                      </div>
+                    </div>
+                    <Progress value={lot.totalPrevu > 0 ? Math.min(100, (lot.totalReel / lot.totalPrevu) * 100) : 0} className="h-1.5" />
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                      <span>{lot.totalPrevu > 0 ? Math.round((lot.totalReel / lot.totalPrevu) * 100) : 0}%</span>
+                      <span className={(lot.totalReel - lot.totalPrevu) > 0 ? "text-red-600" : "text-green-600"}>
+                        Écart : {lot.totalReel - lot.totalPrevu > 0 ? "+" : ""}{formatFCFA(lot.totalReel - lot.totalPrevu)}
+                      </span>
+                    </div>
+                  </div>
+                )) : chantier.devisLignes.map(l => (
+                  <div key={l.id} className="p-3 border rounded-lg bg-muted/10">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="font-medium">{l.poste}</span>
+                      <span className="text-muted-foreground">Prévu : {formatFCFA(parseFloat(l.montantPrevu))}</span>
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-              <TableFooter>
-                <TableRow><TableCell className="font-bold">Total prévu</TableCell><TableCell className="text-right font-bold">{formatFCFA(totalPrevu)}</TableCell>{!isCloture && <TableCell />}</TableRow>
-              </TableFooter>
-            </Table>
-          )}
-        </TabsContent>
-
-        <TabsContent value="comparatif" className="mt-4">
-          <div className="space-y-3">
-            {chantier.devisLignes.map(l => {
-              const prevu = parseFloat(l.montantPrevu);
-              const pct = totalReel > 0 && totalPrevu > 0 ? Math.min(100, (totalReel / totalPrevu) * 100) : 0;
-              return (
-                <div key={l.id} className="p-3 border rounded-lg bg-muted/10">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium">{l.poste}</span>
-                    <span className="text-muted-foreground">Prévu : {formatFCFA(prevu)}</span>
+                <div className="p-4 border rounded-lg bg-card">
+                  <div className="flex justify-between mb-3">
+                    <span className="font-semibold">Total général</span>
+                    <div className="text-right">
+                      <div className="text-sm text-muted-foreground">Prévu : {formatFCFA(totalPrevu)}</div>
+                      <div className="font-bold">Réel : {formatFCFA(totalReel)}</div>
+                    </div>
+                  </div>
+                  <Progress value={totalPrevu > 0 ? Math.min(100, (totalReel / totalPrevu) * 100) : 0} className="h-2 mb-2" />
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{totalPrevu > 0 ? Math.round((totalReel / totalPrevu) * 100) : 0}% utilisé</span>
+                    <span className={ecart > 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                      Écart : {ecart > 0 ? "+" : ""}{formatFCFA(ecart)} ({ecartPct > 0 ? "+" : ""}{ecartPct.toFixed(1)}%)
+                    </span>
                   </div>
                 </div>
-              );
-            })}
-            <div className="p-4 border rounded-lg bg-card">
-              <div className="flex justify-between mb-3">
-                <span className="font-semibold">Total général</span>
-                <div className="text-right">
-                  <div className="text-sm text-muted-foreground">Prévu : {formatFCFA(totalPrevu)}</div>
-                  <div className="font-bold">Réel : {formatFCFA(totalReel)}</div>
-                </div>
               </div>
-              <Progress value={totalPrevu > 0 ? Math.min(100, (totalReel / totalPrevu) * 100) : 0} className="h-2 mb-2" />
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{totalPrevu > 0 ? Math.round((totalReel / totalPrevu) * 100) : 0}% du budget utilisé</span>
-                <span className={ecart > 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-                  Écart : {ecart > 0 ? "+" : ""}{formatFCFA(ecart)} ({ecartPct > 0 ? "+" : ""}{ecartPct.toFixed(1)}%)
-                </span>
-              </div>
-            </div>
-          </div>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
+
+        {/* Onglet par lot */}
+        {chantier.lots.map(lot => (
+          <TabsContent key={lot.id} value={`lot-${lot.id}`} className="mt-4">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="font-semibold">{lot.nom}</h3>
+                {lot.description && <p className="text-xs text-muted-foreground">{lot.description}</p>}
+              </div>
+              {!isCloture && (
+                <div className="flex gap-2">
+                  <LotFormDialog chantierId={chantierId} lot={lot} onSuccess={() => {}} trigger={
+                    <Button variant="outline" size="sm"><Pencil className="h-3 w-3 mr-1" />Modifier</Button>
+                  } />
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-red-500 border-red-200 hover:bg-red-50"><Trash2 className="h-3 w-3 mr-1" />Supprimer</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader><AlertDialogTitle>Supprimer ce lot ?</AlertDialogTitle><AlertDialogDescription>Les dépenses associées ne seront pas supprimées, elles perdront simplement leur affectation.</AlertDialogDescription></AlertDialogHeader>
+                      <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={() => deleteLot.mutate(lot.id)} className="bg-red-600 hover:bg-red-700">Supprimer</AlertDialogAction></AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
+            </div>
+            <LotTabContent
+              lot={lot}
+              chantier={chantier}
+              isCloture={isCloture}
+              onDeleteDepense={id => deleteDepense.mutate(id)}
+              onDeleteDevis={id => deleteDevisLigne.mutate(id)}
+            />
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );

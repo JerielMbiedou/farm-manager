@@ -1423,7 +1423,6 @@ export default function BandeDetailView() {
               <DepensesGroupedTable
                 items={(depenses || []) as any}
                 isReadOnly={isReadOnly}
-                grandTotal={detail.totalDepenses}
                 onEdit={(item) => { setDialogType("depense"); handleEdit(item, 'depense'); }}
                 onDelete={(id) => handleDelete(id, 'depense')}
               />
