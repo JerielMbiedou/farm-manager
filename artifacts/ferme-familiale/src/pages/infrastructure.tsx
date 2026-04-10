@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Pencil, ArrowLeft, Construction, Package2, CheckCircle2, Clock, ChevronRight, Building2, Wrench, MapPin, TrendingDown, Lock } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowLeft, Construction, Package2, CheckCircle2, Clock, ChevronRight, ChevronDown, Building2, Wrench, MapPin, TrendingDown, Lock, MessageSquare, Search } from "lucide-react";
 
 const API = "/api";
 
@@ -36,6 +36,14 @@ const CATEGORIES_CONSTRUCTION = [
   { value: "carburant", label: "Carburant" },
   { value: "divers", label: "Divers" },
 ];
+
+const categoryColors: Record<string, string> = {
+  materiaux: "bg-blue-100 text-blue-800 border-blue-200",
+  main_oeuvre: "bg-orange-100 text-orange-800 border-orange-200",
+  transport: "bg-purple-100 text-purple-800 border-purple-200",
+  carburant: "bg-red-100 text-red-800 border-red-200",
+  divers: "bg-gray-100 text-gray-800 border-gray-200",
+};
 
 const TYPE_ACTIF = [
   { value: "terrain", label: "Terrain", icon: MapPin },
@@ -271,6 +279,159 @@ function ClotureDialog({ chantier, onSuccess }: { chantier: ChantierSummary; onS
   );
 }
 
+function DepenseGroupSection({
+  category, label, items, isCollapsed, onToggle, isCloture, chantierId, onDelete,
+}: {
+  category: string; label: string; items: DepenseItem[]; isCollapsed: boolean;
+  onToggle: () => void; isCloture: boolean; chantierId: number; onDelete: (id: number) => void;
+}) {
+  const total = items.reduce((s, d) => s + d.prixTotal, 0);
+  return (
+    <>
+      <TableRow className="bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors" onClick={onToggle}>
+        <TableCell className="w-10 px-3">
+          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </TableCell>
+        <TableCell colSpan={2} className="font-semibold">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className={categoryColors[category] || categoryColors.divers}>{label}</Badge>
+            <span className="text-muted-foreground text-sm">({items.length} {items.length > 1 ? "lignes" : "ligne"})</span>
+          </div>
+        </TableCell>
+        <TableCell className="text-right font-semibold text-sm text-muted-foreground">Sous-total</TableCell>
+        <TableCell className="text-right font-semibold">{formatFCFA(total)}</TableCell>
+        {!isCloture && <TableCell />}
+      </TableRow>
+      {!isCollapsed && items.map(d => (
+        <TableRow key={d.id} className="hover:bg-muted/10">
+          <TableCell />
+          <TableCell>
+            <div>
+              <span className="font-medium">{d.designation}</span>
+              {d.commentaire && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                  <MessageSquare className="h-3 w-3" />{d.commentaire}
+                </div>
+              )}
+              {d.date && (
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {format(new Date(d.date + "T00:00:00"), "dd/MM/yyyy", { locale: fr })}
+                </div>
+              )}
+            </div>
+          </TableCell>
+          <TableCell className="text-right text-sm">{parseFloat(d.quantite)}</TableCell>
+          <TableCell className="text-right text-sm">{formatFCFA(parseFloat(d.prixUnitaire))}</TableCell>
+          <TableCell className="text-right font-medium">{formatFCFA(d.prixTotal)}</TableCell>
+          {!isCloture && (
+            <TableCell>
+              <div className="flex justify-end gap-1">
+                <DepenseFormDialog chantierId={chantierId} depense={d} onSuccess={() => {}} trigger={
+                  <Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>
+                } />
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500"><Trash2 className="h-3 w-3" /></Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>Supprimer cette dépense ?</AlertDialogTitle><AlertDialogDescription>{d.designation} — {formatFCFA(d.prixTotal)}</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(d.id)} className="bg-red-600 hover:bg-red-700">Supprimer</AlertDialogAction></AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </TableCell>
+          )}
+        </TableRow>
+      ))}
+    </>
+  );
+}
+
+function GroupedDepensesTable({ items, isCloture, chantierId, onDelete }: {
+  items: DepenseItem[]; isCloture: boolean; chantierId: number; onDelete: (id: number) => void;
+}) {
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filtered = searchQuery.trim()
+    ? items.filter(d => d.designation.toLowerCase().includes(searchQuery.toLowerCase()))
+    : items;
+
+  const grouped = CATEGORIES_CONSTRUCTION.reduce((acc, cat) => {
+    const catItems = filtered.filter(d => (d.categorie || "materiaux") === cat.value);
+    if (catItems.length > 0) acc[cat.value] = catItems;
+    return acc;
+  }, {} as Record<string, DepenseItem[]>);
+
+  const grandTotal = filtered.reduce((s, d) => s + d.prixTotal, 0);
+  const toggle = (cat: string) => setCollapsedGroups(prev => ({ ...prev, [cat]: !prev[cat] }));
+
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Rechercher une désignation..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="w-full pl-8 pr-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+      </div>
+      <div className="border rounded-md overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30">
+              <TableHead className="w-10" />
+              <TableHead>Désignation</TableHead>
+              <TableHead className="text-right">Qté</TableHead>
+              <TableHead className="text-right">Prix unit.</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              {!isCloture && <TableHead className="text-right w-24">Actions</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={isCloture ? 5 : 6} className="text-center py-8 text-muted-foreground">
+                  {searchQuery ? "Aucun résultat pour cette recherche" : "Aucune dépense enregistrée"}
+                </TableCell>
+              </TableRow>
+            ) : (
+              CATEGORIES_CONSTRUCTION.map(cat => {
+                const catItems = grouped[cat.value];
+                if (!catItems) return null;
+                return (
+                  <DepenseGroupSection
+                    key={cat.value}
+                    category={cat.value}
+                    label={cat.label}
+                    items={catItems}
+                    isCollapsed={!!collapsedGroups[cat.value]}
+                    onToggle={() => toggle(cat.value)}
+                    isCloture={isCloture}
+                    chantierId={chantierId}
+                    onDelete={onDelete}
+                  />
+                );
+              })
+            )}
+          </TableBody>
+          {filtered.length > 0 && (
+            <TableFooter>
+              <TableRow className="bg-primary/5">
+                <TableCell colSpan={4} className="font-bold">Total</TableCell>
+                <TableCell className="text-right font-bold text-primary">{formatFCFA(grandTotal)}</TableCell>
+                {!isCloture && <TableCell />}
+              </TableRow>
+            </TableFooter>
+          )}
+        </Table>
+      </div>
+    </div>
+  );
+}
+
 function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: () => void }) {
   const { data: chantier, isLoading } = useChantier(chantierId);
   const qc = useQueryClient();
@@ -363,46 +524,12 @@ function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: ()
               {!isCloture && <p className="text-xs mt-1">Ajoutez les dépenses au fur et à mesure du chantier</p>}
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30">
-                  <TableHead>Désignation</TableHead>
-                  <TableHead>Catégorie</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Qté × PU</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  {!isCloture && <TableHead className="w-16"></TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {chantier.depenses.map(d => (
-                  <TableRow key={d.id}>
-                    <TableCell className="font-medium">{d.designation}</TableCell>
-                    <TableCell><Badge variant="outline" className="text-xs">{catLabel(d.categorie || "divers")}</Badge></TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{d.date ? format(new Date(d.date + "T00:00:00"), "dd/MM/yyyy") : "—"}</TableCell>
-                    <TableCell className="text-right text-sm">{parseFloat(d.quantite)} × {formatFCFA(parseFloat(d.prixUnitaire))}</TableCell>
-                    <TableCell className="text-right font-semibold">{formatFCFA(d.prixTotal)}</TableCell>
-                    {!isCloture && (
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <DepenseFormDialog chantierId={chantierId} depense={d} onSuccess={() => {}} trigger={<Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>} />
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-red-500"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader><AlertDialogTitle>Supprimer cette dépense ?</AlertDialogTitle><AlertDialogDescription>{d.designation} — {formatFCFA(d.prixTotal)}</AlertDialogDescription></AlertDialogHeader>
-                              <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={() => deleteDepense.mutate(d.id)} className="bg-red-600 hover:bg-red-700">Supprimer</AlertDialogAction></AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-              <TableFooter>
-                <TableRow><TableCell colSpan={isCloture ? 4 : 4} className="font-bold">Total</TableCell><TableCell className="text-right font-bold">{formatFCFA(totalReel)}</TableCell>{!isCloture && <TableCell />}</TableRow>
-              </TableFooter>
-            </Table>
+            <GroupedDepensesTable
+              items={chantier.depenses}
+              isCloture={isCloture}
+              chantierId={chantierId}
+              onDelete={(id) => deleteDepense.mutate(id)}
+            />
           )}
         </TabsContent>
 
