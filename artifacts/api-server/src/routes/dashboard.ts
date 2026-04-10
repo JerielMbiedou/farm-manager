@@ -236,4 +236,127 @@ router.get("/historique-caisse", async (req, res) => {
   res.json({ entries: result, soldeCourant: Math.round(solde) });
 });
 
+router.get("/finances", async (req, res) => {
+  const tauxDepreciation = await getParam("taux_depreciation_materiel", 10);
+  const tauxImprevus = await getParam("taux_imprevus", 5);
+
+  const financements = await db.select().from(financementTable);
+  const remboursements = await db.select().from(remboursementsTable);
+  const sorties = await db.select().from(sortiesArgentTable);
+  const sortiesCarb = await db.select().from(sortiesCarburantTable);
+  const batimentItems = await db.select().from(depensesBatimentTable);
+  const puitsItems = await db.select().from(depensesPuitsTable);
+  const bandes = await db.select().from(bandesTable).orderBy(bandesTable.numero);
+
+  const totalFinancement = financements.reduce((s, f) => s + parseFloat(f.montant), 0);
+  const totalRembourse = remboursements.reduce((s, r) => s + parseFloat(r.montant), 0);
+  const totalSorties = sorties.reduce((s, r) => s + parseFloat(r.depense), 0);
+  const totalCarburant = sortiesCarb.reduce((s, r) => s + parseFloat(r.montant), 0);
+  const totalBatiment = batimentItems.reduce((s, r) => s + parseFloat(r.quantite) * parseFloat(r.prixUnitaire), 0);
+  const totalPuits = puitsItems.reduce((s, r) => s + parseFloat(r.quantite) * parseFloat(r.prixUnitaire), 0);
+  const totalConstruction = totalSorties + totalCarburant + totalBatiment + totalPuits;
+
+  let totalDepensesBandes = 0;
+  let totalRecettesBandes = 0;
+  let totalDepensesVenteBandes = 0;
+  let totalAmorti = 0;
+  const bandesDetails: any[] = [];
+  const projectionsBandesActives: any[] = [];
+
+  for (const bande of bandes) {
+    const depenses = await db.select().from(bandeDepensesTable).where(eq(bandeDepensesTable.bandeId, bande.id));
+    const ventes = await db.select().from(bandeVentesTable).where(eq(bandeVentesTable.bandeId, bande.id));
+    const chargesRows = await db.select().from(chargesFixesTable).where(eq(chargesFixesTable.bandeId, bande.id));
+    const depVenteRows = await db.select().from(depensesVenteTable).where(eq(depensesVenteTable.bandeId, bande.id));
+    const mortaliteRows = await db.select().from(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.bandeId, bande.id));
+
+    const totalDep = depenses.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
+    const totalRec = ventes.reduce((s, v) => s + v.quantiteVendue * parseFloat(v.prixUnitaire), 0);
+    const totalDepV = depVenteRows.reduce((s, d) => s + parseFloat(d.montant), 0);
+    const loyer = chargesRows.length > 0 ? parseFloat(chargesRows[0].loyer) : 0;
+    const valeurPerdue = parseFloat(bande.valeurMaterielFixe) * (tauxDepreciation / 100);
+    const imprevus = totalDep * (tauxImprevus / 100);
+    const chargesTotal = valeurPerdue + imprevus + loyer;
+    const totalDeces = mortaliteRows.reduce((s, m) => s + m.decesJour, 0);
+    const totalVendus = ventes.reduce((s, v) => s + v.quantiteVendue, 0);
+    const sujetsRestants = bande.sujetsDepart - totalDeces - totalVendus;
+    const coutTotal = totalDep + chargesTotal;
+    const beneficeNet = totalRec - coutTotal - totalDepV;
+    const prixVenteMoyen = totalVendus > 0 ? totalRec / totalVendus : 0;
+    const roiBande = coutTotal > 0 ? ((totalRec - coutTotal - totalDepV) / coutTotal) * 100 : 0;
+
+    totalDepensesBandes += totalDep;
+    totalRecettesBandes += totalRec;
+    totalDepensesVenteBandes += totalDepV;
+    totalAmorti += chargesTotal;
+
+    const detail = {
+      id: bande.id,
+      nom: bande.nom,
+      statut: bande.statut,
+      sujetsDepart: bande.sujetsDepart,
+      sujetsRestants,
+      totalDeces,
+      totalVendus,
+      coutProduction: Math.round(coutTotal),
+      totalRecettes: Math.round(totalRec),
+      beneficeNet: Math.round(beneficeNet),
+      chargesTotal: Math.round(chargesTotal),
+      prixVenteMoyen: Math.round(prixVenteMoyen),
+      roiBande: Math.round(roiBande * 10) / 10,
+    };
+    bandesDetails.push(detail);
+
+    if (bande.statut === "active") {
+      const recettesEstimees = totalRec + sujetsRestants * prixVenteMoyen;
+      const beneficeEstime = recettesEstimees - coutTotal - totalDepV;
+      projectionsBandesActives.push({
+        ...detail,
+        recettesEstimees: Math.round(recettesEstimees),
+        beneficeEstime: Math.round(beneficeEstime),
+        prixVenteMoyenUtilise: Math.round(prixVenteMoyen),
+        hypothese: prixVenteMoyen > 0 ? "prix_historique" : "pas_de_vente_encore",
+      });
+    }
+  }
+
+  // Full cash position: money in - money out (all categories)
+  const soldeCourant = totalFinancement - totalConstruction - totalDepensesBandes - totalDepensesVenteBandes + totalRecettesBandes - totalRembourse;
+
+  // Amortissement
+  const resteAAmortir = Math.max(0, totalConstruction - totalAmorti);
+  const progressionAmortissement = totalConstruction > 0 ? Math.min(100, (totalAmorti / totalConstruction) * 100) : 0;
+  const bandesTerminees = bandesDetails.filter(b => b.statut !== "active");
+  const moyenneAmortissementParBande = bandesTerminees.length > 0
+    ? bandesTerminees.reduce((s, b) => s + b.chargesTotal, 0) / bandesTerminees.length
+    : (bandesDetails.length > 0 ? bandesDetails.reduce((s, b) => s + b.chargesTotal, 0) / bandesDetails.length : 0);
+  const bandesRestantesEstimees = moyenneAmortissementParBande > 0 ? Math.ceil(resteAAmortir / moyenneAmortissementParBande) : null;
+
+  // ROI global
+  const totalDepensesToutes = totalConstruction + totalDepensesBandes + totalDepensesVenteBandes;
+  const roiGlobal = totalFinancement > 0
+    ? ((totalRecettesBandes - totalDepensesToutes) / totalFinancement) * 100
+    : 0;
+  const pertesOuGains = totalRecettesBandes - totalDepensesToutes;
+
+  res.json({
+    soldeCourant: Math.round(soldeCourant),
+    totalFinancement: Math.round(totalFinancement),
+    totalRembourse: Math.round(totalRembourse),
+    totalConstruction: Math.round(totalConstruction),
+    totalDepensesBandes: Math.round(totalDepensesBandes),
+    totalRecettesBandes: Math.round(totalRecettesBandes),
+    totalDepensesVenteBandes: Math.round(totalDepensesVenteBandes),
+    totalAmorti: Math.round(totalAmorti),
+    resteAAmortir: Math.round(resteAAmortir),
+    progressionAmortissement: Math.round(progressionAmortissement * 10) / 10,
+    bandesRestantesEstimees,
+    moyenneAmortissementParBande: Math.round(moyenneAmortissementParBande),
+    roiGlobal: Math.round(roiGlobal * 10) / 10,
+    pertesOuGains: Math.round(pertesOuGains),
+    bandesDetails,
+    projectionsBandesActives,
+  });
+});
+
 export default router;

@@ -75,7 +75,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/comparaison-bandes", label: "Comparaison", icon: BarChart3, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
     { href: "/stocks", label: "Stocks", icon: Package, roles: [UserRole.admin, UserRole.gestionnaire] },
     { href: "/simulation", label: "Simulation", icon: Calculator, roles: allRoles },
-    { href: "/tresorerie", label: "Tresorerie", icon: TrendingUp, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
+    { href: "/tresorerie", label: "Finances", icon: TrendingUp, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
     { href: "/planification", label: "Planification", icon: CalendarDays, roles: [UserRole.admin, UserRole.gestionnaire] },
     { href: "/activity-log", label: "Journal d'activite", icon: ClipboardList, roles: [UserRole.admin] },
     { href: "/utilisateurs", label: "Utilisateurs", icon: Users, roles: [UserRole.admin] },
