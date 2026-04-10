@@ -43,6 +43,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { formatFCFA } from "@/lib/format";
 import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -298,6 +299,159 @@ function DepensesGroupedTable({
             <TableFooter>
               <TableRow className="bg-primary/5">
                 <TableCell colSpan={4} className="font-bold">Total Dépenses</TableCell>
+                <TableCell className="text-right font-bold text-primary">{formatFCFA(filteredTotal)}</TableCell>
+                {!isReadOnly && <TableCell></TableCell>}
+              </TableRow>
+            </TableFooter>
+          )}
+        </Table>
+      </div>
+    </div>
+  );
+}
+
+function VentesGroupedTable({
+  items,
+  isReadOnly,
+  onEdit,
+  onDelete,
+}: {
+  items: Array<{ id: number; date: string; quantiteVendue: number; prixUnitaire: number; montant: number }>;
+  isReadOnly: boolean;
+  onEdit: (item: any) => void;
+  onDelete: (id: number) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  const sorted = useMemo(() =>
+    [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [items]
+  );
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return sorted;
+    const q = search.toLowerCase();
+    return sorted.filter(i =>
+      format(new Date(i.date), "dd/MM/yyyy").includes(q) ||
+      format(new Date(i.date), "EEEE d MMMM yyyy", { locale: fr }).toLowerCase().includes(q)
+    );
+  }, [sorted, search]);
+
+  const grouped = useMemo(() => {
+    const g: Record<string, typeof items> = {};
+    for (const item of filtered) {
+      const key = item.date.slice(0, 10);
+      if (!g[key]) g[key] = [];
+      g[key].push(item);
+    }
+    return g;
+  }, [filtered]);
+
+  const sortedDates = useMemo(() =>
+    Object.keys(grouped).sort((a, b) => b.localeCompare(a)),
+    [grouped]
+  );
+
+  const filteredTotal = filtered.reduce((s, i) => s + (i.montant || 0), 0);
+  const colCount = isReadOnly ? 4 : 5;
+
+  return (
+    <div className="space-y-0">
+      <div className="px-6 pt-4 pb-3 border-b flex items-center gap-3">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            className="w-full pl-9 pr-3 py-1.5 text-sm border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+            placeholder="Rechercher par date..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        {search && (
+          <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setSearch("")}>Effacer</button>
+        )}
+      </div>
+      <div className="overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30">
+              <TableHead className="w-10"></TableHead>
+              <TableHead className="text-right">Quantité</TableHead>
+              <TableHead className="text-right">Prix unitaire</TableHead>
+              <TableHead className="text-right">Montant</TableHead>
+              {!isReadOnly && <TableHead className="text-right w-24">Actions</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={colCount} className="text-center py-10 text-muted-foreground">
+                  {search ? "Aucun résultat pour cette recherche" : "Aucune vente enregistrée"}
+                </TableCell>
+              </TableRow>
+            ) : (
+              sortedDates.map(dateKey => {
+                const dayItems = grouped[dateKey]!;
+                const subtotal = dayItems.reduce((s, i) => s + (i.montant || 0), 0);
+                const totalQty = dayItems.reduce((s, i) => s + (i.quantiteVendue || 0), 0);
+                const isCollapsed = collapsed[dateKey];
+                const dateLabel = format(new Date(dateKey), "EEEE d MMMM yyyy", { locale: fr });
+                const dateCourt = format(new Date(dateKey), "dd/MM/yyyy");
+                return (
+                  <Fragment key={dateKey}>
+                    <TableRow
+                      className="bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors"
+                      onClick={() => setCollapsed(prev => ({ ...prev, [dateKey]: !prev[dateKey] }))}
+                    >
+                      <TableCell className="w-10 px-3">
+                        {isCollapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                      </TableCell>
+                      <TableCell colSpan={2} className="font-semibold">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium bg-emerald-100 text-emerald-800 border-emerald-200 capitalize">{dateLabel}</span>
+                          <span className="text-muted-foreground text-sm font-normal">
+                            ({dayItems.length} {dayItems.length > 1 ? "transactions" : "transaction"} — {totalQty} sujets)
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex flex-col items-end">
+                          <span className="text-xs text-muted-foreground font-medium">Sous-total</span>
+                          <span className="font-semibold">{formatFCFA(subtotal)}</span>
+                        </div>
+                      </TableCell>
+                      {!isReadOnly && <TableCell></TableCell>}
+                    </TableRow>
+                    {!isCollapsed && dayItems.map(item => (
+                      <TableRow key={item.id} className="hover:bg-muted/10">
+                        <TableCell></TableCell>
+                        <TableCell className="text-right text-sm">{item.quantiteVendue} sujets</TableCell>
+                        <TableCell className="text-right text-sm">{formatFCFA(item.prixUnitaire)} / sujet</TableCell>
+                        <TableCell className="text-right font-medium text-sm">{formatFCFA(item.montant)}</TableCell>
+                        {!isReadOnly && (
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); onEdit(item); }}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={e => { e.stopPropagation(); onDelete(item.id); }}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </Fragment>
+                );
+              })
+            )}
+          </TableBody>
+          {filtered.length > 0 && (
+            <TableFooter>
+              <TableRow className="bg-primary/5">
+                <TableCell colSpan={3} className="font-bold">Total Recettes</TableCell>
                 <TableCell className="text-right font-bold text-primary">{formatFCFA(filteredTotal)}</TableCell>
                 {!isReadOnly && <TableCell></TableCell>}
               </TableRow>
@@ -1081,47 +1235,13 @@ export default function BandeDetailView() {
               <CardTitle className="text-xl font-serif">Ventes de Poulets</CardTitle>
               {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => { setDialogType("vente"); setIsDialogOpen(true); }}><Plus className="w-4 h-4" /> Vendre</Button>}
             </CardHeader>
-            <CardContent>
-              <div className="border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      <TableHead>Date</TableHead><TableHead className="text-right">Quantité</TableHead>
-                      <TableHead className="text-right">Prix Unitaire</TableHead><TableHead className="text-right">Montant</TableHead>
-                      {!isReadOnly && <TableHead className="text-right w-24">Actions</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {ventes?.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Aucune vente enregistrée</TableCell></TableRow>
-                    ) : (
-                      [...(ventes || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(item => (
-                        <TableRow key={item.id}>
-                          <TableCell>{format(new Date(item.date), 'dd/MM/yyyy')}</TableCell>
-                          <TableCell className="text-right">{item.quantiteVendue}</TableCell>
-                          <TableCell className="text-right">{formatFCFA(item.prixUnitaire)}</TableCell>
-                          <TableCell className="text-right font-medium">{formatFCFA(item.montant)}</TableCell>
-                          {!isReadOnly && (
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-1">
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setDialogType("vente"); handleEdit(item, 'vente'); }}><Pencil className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(item.id, 'vente')}><Trash2 className="h-4 w-4" /></Button>
-                              </div>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                  <TableFooter>
-                    <TableRow className="bg-primary/5">
-                      <TableCell colSpan={3} className="font-bold">Total Recettes</TableCell>
-                      <TableCell className="text-right font-bold text-primary">{formatFCFA(detail.totalRecettes)}</TableCell>
-                      {!isReadOnly && <TableCell></TableCell>}
-                    </TableRow>
-                  </TableFooter>
-                </Table>
-              </div>
+            <CardContent className="p-0">
+              <VentesGroupedTable
+                items={(ventes || []) as any}
+                isReadOnly={isReadOnly}
+                onEdit={(item) => { setDialogType("vente"); handleEdit(item, 'vente'); }}
+                onDelete={(id) => handleDelete(id, 'vente')}
+              />
             </CardContent>
           </Card>
 
