@@ -1287,10 +1287,12 @@ export default function BandeDetailView() {
           </div>
 
           {(() => {
+            const totalVendus = (detail as any).totalVendus ?? 0;
             const dernierePesee = peseesItems.length > 0 ? peseesItems[peseesItems.length - 1] as any : null;
             const poidsActuelG = dernierePesee?.poidsMoyenG ?? null;
-            const coutRevientKgVif = (poidsActuelG && poidsActuelG > 0 && (detail.sujetsRestants || 0) > 0)
-              ? Math.round((detail.totalDepenses + detail.chargesFixesTotal) / ((detail.sujetsRestants * poidsActuelG) / 1000))
+            const sujetsVivantsTotaux = (detail.sujetsRestants || 0) + (totalVendus || 0);
+            const coutRevientKgVif = (poidsActuelG && poidsActuelG > 0 && sujetsVivantsTotaux > 0)
+              ? Math.round((detail.totalDepenses + detail.chargesFixesTotal) / ((sujetsVivantsTotaux * poidsActuelG) / 1000))
               : null;
 
             const poidsVenteTarget = 2000;
@@ -1312,7 +1314,6 @@ export default function BandeDetailView() {
             }
 
             const tauxMortalite = detail.sujetsDepart > 0 ? ((detail.nombreDeces / detail.sujetsDepart) * 100).toFixed(1) : "0";
-            const totalVendus = (detail as any).totalVendus ?? 0;
 
             return (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
