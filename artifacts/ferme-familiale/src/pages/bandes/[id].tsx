@@ -1334,7 +1334,7 @@ export default function BandeDetailView() {
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Coût de production</CardTitle></CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-foreground">{formatFCFA(detail.totalDepenses + detail.chargesFixesTotal)}</div>
-                    <p className="text-xs text-muted-foreground mt-1">Coût / sujet départ : {formatFCFA(detail.coutParSujet)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Coût / sujet vivant : {formatFCFA(detail.coutParSujet)}</p>
                     {coutRevientKgVif && <p className="text-xs text-muted-foreground">Revient / kg vif : {formatFCFA(coutRevientKgVif)}</p>}
                   </CardContent>
                 </Card>

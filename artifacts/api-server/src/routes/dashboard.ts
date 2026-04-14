@@ -89,7 +89,13 @@ router.get("/summary", async (req, res) => {
   }
   const depensesParCategorie = Object.entries(depensesMap).map(([categorie, montant]) => ({ categorie, montant }));
 
-  const caisseDisponible = totalFinance - totalDepenseConstruction;
+  const allBandeDepRows = await db.select().from(bandeDepensesTable);
+  const totalDepBandesAll = allBandeDepRows.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
+  const allBandeVenteRows = await db.select().from(bandeVentesTable);
+  const totalRecBandesAll = allBandeVenteRows.reduce((s, v) => s + v.quantiteVendue * parseFloat(v.prixUnitaire), 0);
+  const allDepVenteRows = await db.select().from(depensesVenteTable);
+  const totalDepVenteAll = allDepVenteRows.reduce((s, d) => s + parseFloat(d.montant), 0);
+  const caisseDisponible = totalFinance - totalDepenseConstruction - totalDepBandesAll - totalDepVenteAll + totalRecBandesAll - totalRembourse;
   const alerteDepassementBudget = totalDepenseConstruction > totalDevis;
 
   let prochainesVaccinations: Array<{ bandeNom: string; vaccinNom: string; datePrevue: string; enRetard: boolean }> = [];
@@ -176,8 +182,9 @@ router.get("/comparaison-bandes", async (req, res) => {
 
     const coutTotal = totalDepBande + chargesTotal + totalDepVente;
     const seuilNombrePoulets = prixVenteMoyen > 0 ? Math.ceil(coutTotal / prixVenteMoyen) : 0;
-    const sujetsRestants = bande.sujetsDepart - bande.nombreDeces;
-    const seuilPrixMin = sujetsRestants > 0 ? Math.round(coutTotal / sujetsRestants) : 0;
+    const sujetsRestants = bande.sujetsDepart - bande.nombreDeces - totalVendus;
+    const sujetsVivants = bande.sujetsDepart - bande.nombreDeces;
+    const seuilPrixMin = sujetsVivants > 0 ? Math.round(coutTotal / sujetsVivants) : 0;
     const margeSecurite = totalRecettes > 0 ? ((totalRecettes - coutTotal) / totalRecettes) * 100 : 0;
 
     result.push({
@@ -207,6 +214,11 @@ router.get("/historique-caisse", async (req, res) => {
   const sortiesArgent = await db.select().from(sortiesArgentTable).orderBy(sortiesArgentTable.createdAt);
   const sortiesCarburant = await db.select().from(sortiesCarburantTable).orderBy(sortiesCarburantTable.createdAt);
   const rembRows = await db.select().from(remboursementsTable).orderBy(remboursementsTable.createdAt);
+  const batimentItems = await db.select().from(depensesBatimentTable);
+  const puitsItems = await db.select().from(depensesPuitsTable);
+  const allBandeDepenses = await db.select().from(bandeDepensesTable);
+  const allBandeVentes = await db.select().from(bandeVentesTable);
+  const allDepVente = await db.select().from(depensesVenteTable);
 
   type CaisseEntry = { date: string; type: "entree" | "sortie"; categorie: string; designation: string; montant: number; timestamp: Date };
   const entries: CaisseEntry[] = [];
@@ -222,6 +234,36 @@ router.get("/historique-caisse", async (req, res) => {
   }
   for (const r of rembRows) {
     entries.push({ date: r.date, type: "sortie", categorie: "Remboursement", designation: `Remboursement ${r.investisseurNom}`, montant: parseFloat(r.montant), timestamp: r.createdAt });
+  }
+  for (const d of batimentItems) {
+    const montant = parseFloat(d.quantite) * parseFloat(d.prixUnitaire);
+    const dateStr = d.date ?? "2026-01-01";
+    entries.push({ date: dateStr, type: "sortie", categorie: "Construction", designation: `Bâtiment : ${d.designation}`, montant, timestamp: new Date(dateStr + "T00:00:00") });
+  }
+  for (const d of puitsItems) {
+    const montant = parseFloat(d.quantite) * parseFloat(d.prixUnitaire);
+    const dateStr = d.date ?? "2026-01-01";
+    entries.push({ date: dateStr, type: "sortie", categorie: "Construction", designation: `Puits : ${d.designation}`, montant, timestamp: new Date(dateStr + "T00:00:00") });
+  }
+  const bandeMap = new Map<number, { nom: string; dateDeDepart: string }>();
+  const bandeRows = await db.select().from(bandesTable);
+  for (const b of bandeRows) bandeMap.set(b.id, { nom: b.nom, dateDeDepart: b.dateDeDepart });
+  for (const d of allBandeDepenses) {
+    const montant = parseFloat(d.quantite) * parseFloat(d.prixUnitaire);
+    const bInfo = bandeMap.get(d.bandeId);
+    const dateStr = bInfo?.dateDeDepart ?? "2026-01-01";
+    entries.push({ date: dateStr, type: "sortie", categorie: "Production", designation: `[${bInfo?.nom ?? "?"}] ${d.categorie} : ${d.designation}`, montant, timestamp: new Date(dateStr + "T00:00:00") });
+  }
+  for (const v of allBandeVentes) {
+    const montant = v.quantiteVendue * parseFloat(v.prixUnitaire);
+    if (montant > 0) {
+      entries.push({ date: v.date, type: "entree", categorie: "Vente", designation: `Vente ${v.quantiteVendue} poulet(s)`, montant, timestamp: new Date(v.date + "T00:00:00") });
+    }
+  }
+  for (const d of allDepVente) {
+    const bInfo = bandeMap.get(d.bandeId);
+    const dateStr = bInfo?.dateDeDepart ?? "2026-01-01";
+    entries.push({ date: dateStr, type: "sortie", categorie: "Frais de vente", designation: d.designation, montant: parseFloat(d.montant), timestamp: new Date(dateStr + "T00:00:00") });
   }
 
   entries.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());

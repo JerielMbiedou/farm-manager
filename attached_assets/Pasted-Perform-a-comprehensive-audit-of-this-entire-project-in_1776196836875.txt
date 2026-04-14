@@ -1,0 +1,34 @@
+Perform a comprehensive audit of this entire project — including the full codebase, deployment configuration, and live production database.
+Your goal is to independently identify all bugs, logic errors, edge cases, and inconsistencies across every module.
+
+🔍 Priority Focus: Database ↔ UI Data Integrity
+Directly query the production database and cross-reference what's stored against what the interface displays. Verify:
+
+Calculations — Do totals, subtotals, balances, fees, taxes, and aggregates shown in the UI actually match what's computed from raw database values?
+Business logic consistency — Does the data in the DB reflect the intended business/process rules? (e.g. if a status is "completed", are all dependent records in the expected state?)
+Process flow integrity — Are there orphaned records, incomplete transactions, or states that should never coexist but do?
+Displayed vs. stored values — Are any values being transformed, rounded, or formatted in a way that masks underlying data errors?
+Aggregations & reports — Do any dashboard numbers, summaries, or financial reports diverge from what a direct DB query produces?
+
+For every discrepancy found: show the raw DB value, the displayed UI value, and why they differ.
+
+🧩 Full Audit Scope
+Also audit the entire codebase and infrastructure for bugs — with special attention to:
+
+Finance module (calculations, rounding, currency handling, transaction logic, balance integrity)
+Infrastructure (env configs, secrets management, error handling, retry logic, failover)
+Database (schema design, missing constraints, N+1 queries, data integrity, migration gaps)
+API & backend logic (race conditions, missing validation, auth edge cases, incorrect status codes)
+Frontend/UI logic (state mismatches, broken flows, incorrect values rendered)
+
+
+📋 Output Format (per issue)
+
+Severity — Critical / High / Medium / Low
+Location — File, function, line number + relevant DB table/field
+Description — What is wrong
+Evidence — Raw DB data vs. UI output vs. expected result
+Root Cause — Where in the logic the error originates
+Suggested Fix
+
+Do NOT ask me about known issues — find them yourself. Present findings as a structured audit report ordered by severity.

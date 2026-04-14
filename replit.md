@@ -95,7 +95,7 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 
 French-language React + Vite web app for managing a family poultry farm in Cameroon. Uses Tailwind CSS + shadcn/ui components.
 
-**5 Modules**: Financement, Devis Construction, Dépenses, Bandes de Poulets, Tableau de Bord.
+**6 Modules**: Financement, Infrastructure (Chantiers avec lots), Dépenses, Bandes de Poulets, Trésorerie, Tableau de Bord.
 
 **User Roles**: Admin (full access), Investisseur (read-only), Gestionnaire (expenses/sales), Lecteur (read-only, assigned to new self-registered accounts). Auth: cookie-based express-session with bcrypt password hashing. Credentials: admin/admin123, papa/papa123, gestionnaire/gest123.
 
@@ -103,7 +103,8 @@ French-language React + Vite web app for managing a family poultry farm in Camer
 - `/dashboard` — Overview with cards (caisse, investissements, dépenses, bandes), prochaines vaccinations, prévisions
 - `/financement` — Investissements CRUD, remboursements CRUD, soldes investisseurs
 - `/devis` — Devis de construction
-- `/depenses` — Dépenses construction: 2 onglets (Bâtiment, Forage) avec catégories (materiaux/main d'oeuvre/transport/carburant/divers), barres de progression budget vs réel, regroupement par catégorie avec sous-totaux, recherche, date/commentaire optionnels
+- `/depenses` — Dépenses construction (legacy, data migrated to chantiers)
+- `/infrastructure` — Gestion chantiers avec lots: vue globale + onglets par lot, dépenses groupées par catégorie, devis budgétaire, suivi avancement. Chantier 1 "Construction de la ferme Mbiedou" (cloturé, actif créé)
 - `/bandes` — Liste des bandes de poulets
 - `/bandes/:id` — Détail bande avec onglets: Résumé (avec export PDF/Excel, graphique répartition coûts), Dépenses, Ventes, Mortalité (avec courbe mortalité), Pesées & IC (avec courbe de croissance), Vaccins, Charges fixes
 - `/stocks` — Gestion des stocks aliments et médicaments/vaccins avec alertes péremption, entrées/sorties (custom hooks, non OpenAPI)
@@ -126,6 +127,17 @@ French-language React + Vite web app for managing a family poultry farm in Camer
 - Tables: `stock_aliments`, `stock_medicaments`
 - API: GET/POST/DELETE `/api/stocks/aliments` and `/api/stocks/medicaments`
 - Custom hooks in `src/lib/stocks-api.ts`
+
+**Treasury Logic**:
+- `soldeCourant` = totalFinancement - totalConstruction - totalDepensesBandes - totalDepensesVente + totalRecettesBandes - totalRemboursements
+- `caisseDisponible` on dashboard uses the same complete formula
+- `historique-caisse` includes all categories: financement, sorties_argent, carburant, remboursements, construction (batiment+puits), production (bande_depenses), ventes, frais de vente
+- Old tables `depenses_batiment` and `depenses_puits` still used by treasury; same data also in `chantier_depenses`
+
+**Infrastructure (Chantiers)**:
+- Tables: `chantiers`, `chantier_lots`, `chantier_depenses`, `chantier_devis_lignes`
+- Cloture creates an `actifs` entry for depreciation tracking
+- `bande_actifs` links actifs to bandes with `fraction_utilisee`
 
 **Configurable Settings** (parametres table):
 - Charges fixes: taux dépréciation matériel (défaut 10%), taux imprévus (défaut 5%)
