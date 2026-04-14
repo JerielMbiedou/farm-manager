@@ -54,10 +54,10 @@ router.get("/summary", async (req, res) => {
     const totalDepVente = depVenteRows.reduce((s, d) => s + parseFloat(d.montant), 0);
     const coutProduction = totalDepBande + chargesTotal;
     const beneficeEstime = totalRecettesBande - totalDepBande - chargesTotal - totalDepVente;
-    const sujetsVivants = bande.sujetsDepart - bande.nombreDeces;
     const totalDeces = mortaliteRows.reduce((s, m) => s + m.decesJour, 0);
-    const tauxMortalite = bande.sujetsDepart > 0 ? (totalDeces / bande.sujetsDepart) * 100 : 0;
     const totalVendus = ventes.reduce((s, v) => s + v.quantiteVendue, 0);
+    const sujetsVivants = bande.sujetsDepart - totalDeces;
+    const tauxMortalite = bande.sujetsDepart > 0 ? (totalDeces / bande.sujetsDepart) * 100 : 0;
 
     const bandeData = {
       id: bande.id,
@@ -124,11 +124,17 @@ router.get("/summary", async (req, res) => {
   if (bandesTerminees.length > 0) {
     const avgCoutProduction = bandesTerminees.reduce((s, b) => s + b.coutProduction, 0) / bandesTerminees.length;
     const avgBenefice = bandesTerminees.reduce((s, b) => s + b.beneficeEstime, 0) / bandesTerminees.length;
-    const avgDureeMs = bandesTerminees.reduce((s, b) => {
-      const start = new Date(b.dateDeDepart).getTime();
-      return s + (Date.now() - start);
-    }, 0) / bandesTerminees.length;
-    const avgDureeJours = Math.round(avgDureeMs / (1000 * 60 * 60 * 24));
+    const dureesParBande: number[] = [];
+    for (const bt of bandesTerminees) {
+      const startDate = new Date(bt.dateDeDepart);
+      const mortRows = await db.select().from(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.bandeId, bt.id));
+      if (mortRows.length > 0) {
+        dureesParBande.push(Math.max(...mortRows.map(m => m.ageJours)));
+      } else {
+        dureesParBande.push(45);
+      }
+    }
+    const avgDureeJours = Math.round(dureesParBande.reduce((s, d) => s + d, 0) / dureesParBande.length);
 
     previsions = {
       coutProductionEstime: Math.round(avgCoutProduction),
@@ -165,6 +171,7 @@ router.get("/comparaison-bandes", async (req, res) => {
     const ventes = await db.select().from(bandeVentesTable).where(eq(bandeVentesTable.bandeId, bande.id));
     const chargesRows = await db.select().from(chargesFixesTable).where(eq(chargesFixesTable.bandeId, bande.id));
     const depVenteRows = await db.select().from(depensesVenteTable).where(eq(depensesVenteTable.bandeId, bande.id));
+    const mortaliteRows = await db.select().from(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.bandeId, bande.id));
 
     const totalDepBande = depenses.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
     const totalRecettes = ventes.reduce((s, v) => s + v.quantiteVendue * parseFloat(v.prixUnitaire), 0);
@@ -173,19 +180,34 @@ router.get("/comparaison-bandes", async (req, res) => {
     const imprevus = totalDepBande * (tauxImpComp / 100);
     const chargesTotal = valeurPerdue + imprevus + loyer;
     const totalDepVente = depVenteRows.reduce((s, d) => s + parseFloat(d.montant), 0);
-    const beneficeNet = totalRecettes - totalDepBande - chargesTotal - totalDepVente;
     const totalVendus = ventes.reduce((s, v) => s + v.quantiteVendue, 0);
-    const tauxMortalite = bande.sujetsDepart > 0 ? (bande.nombreDeces / bande.sujetsDepart) * 100 : 0;
+    const totalDeces = mortaliteRows.reduce((s, m) => s + m.decesJour, 0);
+    const beneficeNet = totalRecettes - totalDepBande - chargesTotal - totalDepVente;
+    const tauxMortalite = bande.sujetsDepart > 0 ? (totalDeces / bande.sujetsDepart) * 100 : 0;
     const coutParSujet = bande.sujetsDepart > 0 ? (totalDepBande + chargesTotal) / bande.sujetsDepart : 0;
-    const prixVenteMoyen = totalVendus > 0 ? totalRecettes / totalVendus : 0;
+    const ventesNonNulles = ventes.filter(v => parseFloat(v.prixUnitaire) > 0);
+    const totalRecettesNonNulles = ventesNonNulles.reduce((s, v) => s + v.quantiteVendue * parseFloat(v.prixUnitaire), 0);
+    const totalVendusNonNuls = ventesNonNulles.reduce((s, v) => s + v.quantiteVendue, 0);
+    const prixVenteMoyen = totalVendusNonNuls > 0 ? totalRecettesNonNulles / totalVendusNonNuls : 0;
 
     const startDate = new Date(bande.dateDeDepart);
-    const dureeJours = Math.round((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    let dureeJours: number;
+    if (bande.statut === "active") {
+      dureeJours = Math.round((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    } else if (mortaliteRows.length > 0) {
+      const lastMortDay = Math.max(...mortaliteRows.map(m => m.ageJours));
+      dureeJours = lastMortDay;
+    } else if (ventes.length > 0) {
+      const lastVenteDate = new Date(Math.max(...ventes.map(v => new Date(v.date).getTime())));
+      dureeJours = Math.round((lastVenteDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    } else {
+      dureeJours = 45;
+    }
 
     const coutTotal = totalDepBande + chargesTotal + totalDepVente;
     const seuilNombrePoulets = prixVenteMoyen > 0 ? Math.ceil(coutTotal / prixVenteMoyen) : 0;
-    const sujetsRestants = bande.sujetsDepart - bande.nombreDeces - totalVendus;
-    const sujetsVivants = bande.sujetsDepart - bande.nombreDeces;
+    const sujetsRestants = bande.sujetsDepart - totalDeces - totalVendus;
+    const sujetsVivants = bande.sujetsDepart - totalDeces;
     const seuilPrixMin = sujetsVivants > 0 ? Math.round(coutTotal / sujetsVivants) : 0;
     const margeSecurite = totalRecettes > 0 ? ((totalRecettes - coutTotal) / totalRecettes) * 100 : 0;
 
@@ -195,7 +217,8 @@ router.get("/comparaison-bandes", async (req, res) => {
       nom: bande.nom,
       statut: bande.statut,
       sujetsDepart: bande.sujetsDepart,
-      nombreDeces: bande.nombreDeces,
+      nombreDeces: totalDeces,
+      sujetsRestants,
       tauxMortalite: Math.round(tauxMortalite * 100) / 100,
       coutParSujet: Math.round(coutParSujet),
       prixVenteMoyen: Math.round(prixVenteMoyen),
@@ -226,16 +249,16 @@ router.get("/historique-caisse", async (req, res) => {
   const entries: CaisseEntry[] = [];
 
   for (const f of financements) {
-    entries.push({ date: f.date, type: "entree", categorie: "Financement", designation: `Investissement de ${f.nom}`, montant: parseFloat(f.montant), timestamp: f.createdAt });
+    entries.push({ date: f.date, type: "entree", categorie: "Financement", designation: `Investissement de ${f.nom}`, montant: parseFloat(f.montant), timestamp: new Date(f.date + "T00:00:00") });
   }
   for (const s of sortiesArgent) {
-    entries.push({ date: s.date, type: "sortie", categorie: "Sortie argent", designation: `Décaissement`, montant: parseFloat(s.depense), timestamp: s.createdAt });
+    entries.push({ date: s.date, type: "sortie", categorie: "Sortie argent", designation: `Décaissement`, montant: parseFloat(s.depense), timestamp: new Date(s.date + "T00:00:00") });
   }
   for (const c of sortiesCarburant) {
-    entries.push({ date: c.date, type: "sortie", categorie: "Carburant", designation: `Carburant`, montant: parseFloat(c.montant), timestamp: c.createdAt });
+    entries.push({ date: c.date, type: "sortie", categorie: "Carburant", designation: `Carburant`, montant: parseFloat(c.montant), timestamp: new Date(c.date + "T00:00:00") });
   }
   for (const r of rembRows) {
-    entries.push({ date: r.date, type: "sortie", categorie: "Remboursement", designation: `Remboursement ${r.investisseurNom}`, montant: parseFloat(r.montant), timestamp: r.createdAt });
+    entries.push({ date: r.date, type: "sortie", categorie: "Remboursement", designation: `Remboursement ${r.investisseurNom}`, montant: parseFloat(r.montant), timestamp: new Date(r.date + "T00:00:00") });
   }
   for (const d of batimentItems) {
     const montant = parseFloat(d.quantite) * parseFloat(d.prixUnitaire);
@@ -276,7 +299,13 @@ router.get("/historique-caisse", async (req, res) => {
     }
   }
 
-  entries.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  entries.sort((a, b) => {
+    const timeDiff = a.timestamp.getTime() - b.timestamp.getTime();
+    if (timeDiff !== 0) return timeDiff;
+    if (a.type === "entree" && b.type === "sortie") return -1;
+    if (a.type === "sortie" && b.type === "entree") return 1;
+    return 0;
+  });
 
   let solde = 0;
   const result = entries.map(e => {
@@ -334,7 +363,10 @@ router.get("/finances", async (req, res) => {
     const sujetsRestants = bande.sujetsDepart - totalDeces - totalVendus;
     const coutTotal = totalDep + chargesTotal;
     const beneficeNet = totalRec - coutTotal - totalDepV;
-    const prixVenteMoyen = totalVendus > 0 ? totalRec / totalVendus : 0;
+    const ventesNonNulles = ventes.filter(v => parseFloat(v.prixUnitaire) > 0);
+    const totalRecNonNul = ventesNonNulles.reduce((s, v) => s + v.quantiteVendue * parseFloat(v.prixUnitaire), 0);
+    const totalVendusNonNuls = ventesNonNulles.reduce((s, v) => s + v.quantiteVendue, 0);
+    const prixVenteMoyen = totalVendusNonNuls > 0 ? totalRecNonNul / totalVendusNonNuls : 0;
     const roiBande = coutTotal > 0 ? ((totalRec - coutTotal - totalDepV) / coutTotal) * 100 : 0;
 
     totalDepensesBandes += totalDep;
@@ -381,7 +413,8 @@ router.get("/finances", async (req, res) => {
 
   // Amortissement
   const resteAAmortir = Math.max(0, totalConstruction + totalAchatActifs - totalAmorti);
-  const progressionAmortissement = totalConstruction > 0 ? Math.min(100, (totalAmorti / totalConstruction) * 100) : 0;
+  const totalInvestissementsAmortissables = totalConstruction + totalAchatActifs;
+  const progressionAmortissement = totalInvestissementsAmortissables > 0 ? Math.min(100, (totalAmorti / totalInvestissementsAmortissables) * 100) : 0;
   const bandesTerminees = bandesDetails.filter(b => b.statut !== "active");
   const moyenneAmortissementParBande = bandesTerminees.length > 0
     ? bandesTerminees.reduce((s, b) => s + b.chargesTotal, 0) / bandesTerminees.length
