@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
-import { db, financementTable, remboursementsTable, devisConstructionTable, puitsItemsTable, sortiesArgentTable, sortiesCarburantTable, depensesBatimentTable, depensesPuitsTable, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, vaccinationsTable } from "@workspace/db";
+import { eq, isNull } from "drizzle-orm";
+import { db, financementTable, remboursementsTable, devisConstructionTable, puitsItemsTable, sortiesArgentTable, sortiesCarburantTable, depensesBatimentTable, depensesPuitsTable, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, vaccinationsTable, actifsTable } from "@workspace/db";
 import { getParam } from "../lib/parametres";
 
 const router = Router();
@@ -95,7 +95,9 @@ router.get("/summary", async (req, res) => {
   const totalRecBandesAll = allBandeVenteRows.reduce((s, v) => s + v.quantiteVendue * parseFloat(v.prixUnitaire), 0);
   const allDepVenteRows = await db.select().from(depensesVenteTable);
   const totalDepVenteAll = allDepVenteRows.reduce((s, d) => s + parseFloat(d.montant), 0);
-  const caisseDisponible = totalFinance - totalDepenseConstruction - totalDepBandesAll - totalDepVenteAll + totalRecBandesAll - totalRembourse;
+  const actifsStandalone = await db.select().from(actifsTable).where(isNull(actifsTable.chantierId));
+  const totalAchatActifs = actifsStandalone.reduce((s, a) => s + parseFloat(a.valeur), 0);
+  const caisseDisponible = totalFinance - totalDepenseConstruction - totalDepBandesAll - totalDepVenteAll + totalRecBandesAll - totalRembourse - totalAchatActifs;
   const alerteDepassementBudget = totalDepenseConstruction > totalDevis;
 
   let prochainesVaccinations: Array<{ bandeNom: string; vaccinNom: string; datePrevue: string; enRetard: boolean }> = [];
@@ -265,6 +267,14 @@ router.get("/historique-caisse", async (req, res) => {
     const dateStr = bInfo?.dateDeDepart ?? "2026-01-01";
     entries.push({ date: dateStr, type: "sortie", categorie: "Frais de vente", designation: d.designation, montant: parseFloat(d.montant), timestamp: new Date(dateStr + "T00:00:00") });
   }
+  const actifsManuals = await db.select().from(actifsTable).where(isNull(actifsTable.chantierId));
+  for (const a of actifsManuals) {
+    const valeur = parseFloat(a.valeur);
+    if (valeur > 0) {
+      const dateStr = a.dateAcquisition ?? "2026-01-01";
+      entries.push({ date: dateStr, type: "sortie", categorie: "Achat actif", designation: a.nom, montant: valeur, timestamp: new Date(dateStr + "T00:00:00") });
+    }
+  }
 
   entries.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
@@ -362,11 +372,15 @@ router.get("/finances", async (req, res) => {
     }
   }
 
+  // Standalone actifs (terrain, bâtiment racheté, etc.) — not linked to a chantier
+  const actifsStandalone = await db.select().from(actifsTable).where(isNull(actifsTable.chantierId));
+  const totalAchatActifs = actifsStandalone.reduce((s, a) => s + parseFloat(a.valeur), 0);
+
   // Full cash position: money in - money out (all categories)
-  const soldeCourant = totalFinancement - totalConstruction - totalDepensesBandes - totalDepensesVenteBandes + totalRecettesBandes - totalRembourse;
+  const soldeCourant = totalFinancement - totalConstruction - totalDepensesBandes - totalDepensesVenteBandes + totalRecettesBandes - totalRembourse - totalAchatActifs;
 
   // Amortissement
-  const resteAAmortir = Math.max(0, totalConstruction - totalAmorti);
+  const resteAAmortir = Math.max(0, totalConstruction + totalAchatActifs - totalAmorti);
   const progressionAmortissement = totalConstruction > 0 ? Math.min(100, (totalAmorti / totalConstruction) * 100) : 0;
   const bandesTerminees = bandesDetails.filter(b => b.statut !== "active");
   const moyenneAmortissementParBande = bandesTerminees.length > 0
@@ -375,7 +389,7 @@ router.get("/finances", async (req, res) => {
   const bandesRestantesEstimees = moyenneAmortissementParBande > 0 ? Math.ceil(resteAAmortir / moyenneAmortissementParBande) : null;
 
   // ROI global
-  const totalDepensesToutes = totalConstruction + totalDepensesBandes + totalDepensesVenteBandes;
+  const totalDepensesToutes = totalConstruction + totalDepensesBandes + totalDepensesVenteBandes + totalAchatActifs;
   const roiGlobal = totalFinancement > 0
     ? ((totalRecettesBandes - totalDepensesToutes) / totalFinancement) * 100
     : 0;
