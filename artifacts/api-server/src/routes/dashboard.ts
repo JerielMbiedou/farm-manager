@@ -436,6 +436,7 @@ router.get("/finances", async (req, res) => {
     totalDepensesBandes: Math.round(totalDepensesBandes),
     totalRecettesBandes: Math.round(totalRecettesBandes),
     totalDepensesVenteBandes: Math.round(totalDepensesVenteBandes),
+    totalAchatActifs: Math.round(totalAchatActifs),
     totalAmorti: Math.round(totalAmorti),
     resteAAmortir: Math.round(resteAAmortir),
     progressionAmortissement: Math.round(progressionAmortissement * 10) / 10,

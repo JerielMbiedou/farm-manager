@@ -178,11 +178,14 @@ export default function Finances() {
                 <FlowRow label="Dépenses de construction" montant={f.totalConstruction} type="sortie" sub="Bâtiment, matériel, forage, carburant" />
                 <FlowRow label="Dépenses de production" montant={f.totalDepensesBandes} type="sortie" sub="Toutes bandes confondues" />
                 <FlowRow label="Frais de vente" montant={f.totalDepensesVenteBandes} type="sortie" sub="Transport, conditionnement, etc." />
+                {(f.totalAchatActifs ?? 0) > 0 && (
+                  <FlowRow label="Achats d'actifs" montant={f.totalAchatActifs} type="sortie" sub="Terrain, bâtiment racheté, matériel" />
+                )}
                 {f.totalRembourse > 0 && (
                   <FlowRow label="Remboursements investisseurs" montant={f.totalRembourse} type="sortie" />
                 )}
                 <div className="border-t mt-2 pt-2">
-                  <FlowRow label="Total sorties" montant={f.totalConstruction + f.totalDepensesBandes + f.totalDepensesVenteBandes + f.totalRembourse} type="total" />
+                  <FlowRow label="Total sorties" montant={f.totalConstruction + f.totalDepensesBandes + f.totalDepensesVenteBandes + (f.totalAchatActifs ?? 0) + f.totalRembourse} type="total" />
                 </div>
               </CardContent>
             </Card>
