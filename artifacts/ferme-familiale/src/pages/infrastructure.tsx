@@ -632,6 +632,7 @@ function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: ()
   const { data: chantier, isLoading } = useChantier(chantierId);
   const qc = useQueryClient();
   const { toast } = useToast();
+  const [exportScope, setExportScope] = useState<string>("all");
 
   const deleteDepense = useMutation({
     mutationFn: (depId: number) => apiFetch(`/chantiers/${chantierId}/depenses/${depId}`, { method: "DELETE" }),
@@ -669,24 +670,49 @@ function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: ()
           </div>
           {chantier.description && <p className="text-sm text-muted-foreground mt-0.5">{chantier.description}</p>}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          disabled={chantier.depenses.length === 0}
-          onClick={() => exportConstructionPDF(chantier.depenses, chantier.nom)}
-        >
-          <FileDown className="h-4 w-4" />PDF
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          disabled={chantier.depenses.length === 0}
-          onClick={() => exportConstructionExcel(chantier.depenses, chantier.nom)}
-        >
-          <FileSpreadsheet className="h-4 w-4" />Excel
-        </Button>
+        {(() => {
+          const filteredDepenses = exportScope === "all"
+            ? chantier.depenses
+            : chantier.depenses.filter(d => String(d.lotId) === exportScope);
+          const scopedTitle = exportScope === "all"
+            ? chantier.nom
+            : `${chantier.nom} - ${chantier.lots.find(l => String(l.id) === exportScope)?.nom || "Lot"}`;
+          return (
+            <>
+              {hasLots && (
+                <Select value={exportScope} onValueChange={setExportScope}>
+                  <SelectTrigger className="h-8 w-[180px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tout le chantier</SelectItem>
+                    {chantier.lots.map(l => (
+                      <SelectItem key={l.id} value={String(l.id)}>{l.nom}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                disabled={filteredDepenses.length === 0}
+                onClick={() => exportConstructionPDF(filteredDepenses, scopedTitle)}
+              >
+                <FileDown className="h-4 w-4" />PDF
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                disabled={filteredDepenses.length === 0}
+                onClick={() => exportConstructionExcel(filteredDepenses, scopedTitle)}
+              >
+                <FileSpreadsheet className="h-4 w-4" />Excel
+              </Button>
+            </>
+          );
+        })()}
         {!isCloture && <ClotureDialog chantier={chantier} onSuccess={onBack} />}
       </div>
 
