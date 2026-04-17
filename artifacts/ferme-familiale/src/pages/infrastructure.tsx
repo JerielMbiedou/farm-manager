@@ -19,7 +19,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Pencil, ArrowLeft, Construction, Package2, CheckCircle2, Clock, ChevronRight, ChevronDown, Building2, Wrench, MapPin, TrendingDown, Lock, MessageSquare, Search } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowLeft, Construction, Package2, CheckCircle2, Clock, ChevronRight, ChevronDown, Building2, Wrench, MapPin, TrendingDown, Lock, MessageSquare, Search, FileDown, FileSpreadsheet } from "lucide-react";
+import { exportConstructionPDF, exportConstructionExcel } from "@/lib/export";
 
 const API = "/api";
 
@@ -162,6 +163,12 @@ function DepenseFormDialog({ chantierId, depense, lots, defaultLotId, onSuccess,
       ? { designation: depense.designation, quantite: parseFloat(depense.quantite), prixUnitaire: parseFloat(depense.prixUnitaire), categorie: depense.categorie || "materiaux", date: depense.date || "", commentaire: depense.commentaire || "", lotId: depense.lotId || undefined }
       : { designation: "", quantite: 1, prixUnitaire: 0, categorie: "materiaux", date: "", commentaire: "", lotId: defaultLotId },
   });
+  const currentCategorie = form.watch("categorie");
+  const { data: designationsSuggested } = useQuery<string[]>({
+    queryKey: ["/api/chantiers/designations", currentCategorie],
+    queryFn: () => apiFetch(`/chantiers/designations?categorie=${encodeURIComponent(currentCategorie || "materiaux")}`),
+    enabled: open && currentCategorie === "materiaux",
+  });
   const mutation = useMutation({
     mutationFn: (data: z.infer<typeof depenseSchema>) => isEdit
       ? apiFetch(`/chantiers/${chantierId}/depenses/${depense!.id}`, { method: "PUT", body: JSON.stringify(data) })
@@ -177,7 +184,21 @@ function DepenseFormDialog({ chantierId, depense, lots, defaultLotId, onSuccess,
         <Form {...form}>
           <form onSubmit={form.handleSubmit(d => mutation.mutate(d))} className="space-y-4">
             <FormField control={form.control} name="designation" render={({ field }) => (
-              <FormItem><FormLabel>Désignation</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem>
+                <FormLabel>Désignation</FormLabel>
+                <FormControl>
+                  <Input {...field} list={currentCategorie === "materiaux" ? "designations-materiaux" : undefined} autoComplete="off" />
+                </FormControl>
+                {currentCategorie === "materiaux" && designationsSuggested && designationsSuggested.length > 0 && (
+                  <datalist id="designations-materiaux">
+                    {designationsSuggested.map((d) => <option key={d} value={d} />)}
+                  </datalist>
+                )}
+                {currentCategorie === "materiaux" && (
+                  <p className="text-xs text-muted-foreground">Astuce : choisissez dans la liste pour éviter les doublons (ex : "Parpaings" / "parpaing")</p>
+                )}
+                <FormMessage />
+              </FormItem>
             )} />
             <div className="grid grid-cols-2 gap-3">
               <FormField control={form.control} name="quantite" render={({ field }) => (
@@ -648,6 +669,24 @@ function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: ()
           </div>
           {chantier.description && <p className="text-sm text-muted-foreground mt-0.5">{chantier.description}</p>}
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          disabled={chantier.depenses.length === 0}
+          onClick={() => exportConstructionPDF(chantier.depenses, chantier.nom)}
+        >
+          <FileDown className="h-4 w-4" />PDF
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          disabled={chantier.depenses.length === 0}
+          onClick={() => exportConstructionExcel(chantier.depenses, chantier.nom)}
+        >
+          <FileSpreadsheet className="h-4 w-4" />Excel
+        </Button>
         {!isCloture && <ClotureDialog chantier={chantier} onSuccess={onBack} />}
       </div>
 

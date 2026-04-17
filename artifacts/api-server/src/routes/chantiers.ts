@@ -4,6 +4,30 @@ import { eq } from "drizzle-orm";
 
 const router = Router();
 
+// ── Désignations distinctes (autocomplétion) ────────────────────────────────
+router.get("/designations", async (req, res) => {
+  const categorie = (req.query.categorie as string) || "materiaux";
+  const rows = await db
+    .selectDistinct({ designation: chantierDepensesTable.designation })
+    .from(chantierDepensesTable)
+    .where(eq(chantierDepensesTable.categorie, categorie))
+    .orderBy(chantierDepensesTable.designation);
+  const list = rows
+    .map((r) => r.designation?.trim())
+    .filter((d): d is string => !!d);
+  // Dédoublonnage insensible à la casse (garde la première occurrence)
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const d of list) {
+    const k = d.toLowerCase();
+    if (!seen.has(k)) {
+      seen.add(k);
+      unique.push(d);
+    }
+  }
+  res.json(unique);
+});
+
 // ── Liste des chantiers ──────────────────────────────────────────────────────
 router.get("/", async (_req, res) => {
   const chantiers = await db.select().from(chantiersTable).orderBy(chantiersTable.createdAt);
