@@ -1,0 +1,56 @@
+Warning, this migration may permanently remove some data from your production database, learn more:
+You're about to delete devis_construction table with 1 items
+You're about to delete puits_items_devis table with 1 items
+You're about to delete depenses_puits table with 9 items
+You're about to delete depenses_batiment table with 87 items
+ALTER TABLE "devis_construction" DISABLE ROW LEVEL SECURITY;
+ALTER TABLE "puits_items_devis" DISABLE ROW LEVEL SECURITY;
+ALTER TABLE "sorties_argent" DISABLE ROW LEVEL SECURITY;
+ALTER TABLE "depenses_puits" DISABLE ROW LEVEL SECURITY;
+ALTER TABLE "sorties_carburant" DISABLE ROW LEVEL SECURITY;
+ALTER TABLE "depenses_batiment" DISABLE ROW LEVEL SECURITY;
+DROP TABLE "devis_construction" CASCADE;
+DROP TABLE "puits_items_devis" CASCADE;
+DROP TABLE "sorties_argent" CASCADE;
+DROP TABLE "depenses_puits" CASCADE;
+DROP TABLE "sorties_carburant" CASCADE;
+DROP TABLE "depenses_batiment" CASCADE;
+ALTER TABLE "bande_actifs" DROP CONSTRAINT "bande_actifs_actif_id_fkey";
+ALTER TABLE "bande_actifs" DROP CONSTRAINT "bande_actifs_bande_id_fkey";
+ALTER TABLE "chantier_lots" DROP CONSTRAINT "chantier_lots_chantier_id_fkey";
+ALTER TABLE "chantier_depenses" DROP CONSTRAINT "chantier_depenses_chantier_id_fkey";
+ALTER TABLE "chantier_depenses" DROP CONSTRAINT "chantier_depenses_lot_id_fkey";
+ALTER TABLE "activity_log" DROP CONSTRAINT "activity_log_user_id_users_id_fk";
+ALTER TABLE "chantier_devis_lignes" DROP CONSTRAINT "chantier_devis_lignes_chantier_id_fkey";
+ALTER TABLE "chantier_devis_lignes" DROP CONSTRAINT "chantier_devis_lignes_lot_id_fkey";
+DROP INDEX "idx_session_expire";
+ALTER TABLE "bande_depenses" ADD COLUMN "date" date;
+ALTER TABLE "pesees" ADD COLUMN "poids_min_g" numeric(10, 2);
+ALTER TABLE "pesees" ADD COLUMN "poids_max_g" numeric(10, 2);
+ALTER TABLE "financement" ADD COLUMN "type" text DEFAULT 'apport' NOT NULL;
+ALTER TABLE "financement" ADD COLUMN "taux_interet" numeric(5, 2) DEFAULT '0' NOT NULL;
+ALTER TABLE "financement" ADD COLUMN "date_remboursement_prevue" date;
+ALTER TABLE "bandes" ADD COLUMN "date_cloture" date;
+ALTER TABLE "bande_actifs" ADD CONSTRAINT "bande_actifs_actif_id_actifs_id_fk" FOREIGN KEY ("actif_id") REFERENCES "public"."actifs"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "bande_actifs" ADD CONSTRAINT "bande_actifs_bande_id_bandes_id_fk" FOREIGN KEY ("bande_id") REFERENCES "public"."bandes"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "chantier_lots" ADD CONSTRAINT "chantier_lots_chantier_id_chantiers_id_fk" FOREIGN KEY ("chantier_id") REFERENCES "public"."chantiers"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "chantier_depenses" ADD CONSTRAINT "chantier_depenses_chantier_id_chantiers_id_fk" FOREIGN KEY ("chantier_id") REFERENCES "public"."chantiers"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "chantier_depenses" ADD CONSTRAINT "chantier_depenses_lot_id_chantier_lots_id_fk" FOREIGN KEY ("lot_id") REFERENCES "public"."chantier_lots"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "activity_log" ADD CONSTRAINT "activity_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "actifs" ADD CONSTRAINT "actifs_chantier_id_chantiers_id_fk" FOREIGN KEY ("chantier_id") REFERENCES "public"."chantiers"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "chantier_devis_lignes" ADD CONSTRAINT "chantier_devis_lignes_chantier_id_chantiers_id_fk" FOREIGN KEY ("chantier_id") REFERENCES "public"."chantiers"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "chantier_devis_lignes" ADD CONSTRAINT "chantier_devis_lignes_lot_id_chantier_lots_id_fk" FOREIGN KEY ("lot_id") REFERENCES "public"."chantier_lots"("id") ON DELETE set null ON UPDATE no action;
+CREATE INDEX "traitements_bande_id_idx" ON "traitements" USING btree ("bande_id");
+CREATE INDEX "consommation_aliment_bande_id_idx" ON "consommation_aliment" USING btree ("bande_id");
+CREATE INDEX "bande_depenses_bande_id_idx" ON "bande_depenses" USING btree ("bande_id");
+CREATE INDEX "chantier_depenses_chantier_id_idx" ON "chantier_depenses" USING btree ("chantier_id");
+CREATE INDEX "chantier_depenses_lot_id_idx" ON "chantier_depenses" USING btree ("lot_id");
+CREATE INDEX "activity_log_user_id_idx" ON "activity_log" USING btree ("user_id");
+CREATE INDEX "pesees_bande_id_idx" ON "pesees" USING btree ("bande_id");
+CREATE INDEX "mortalite_journaliere_bande_id_idx" ON "mortalite_journaliere" USING btree ("bande_id");
+CREATE INDEX "observations_journal_bande_id_idx" ON "observations_journal" USING btree ("bande_id");
+CREATE INDEX "consommation_eau_bande_id_idx" ON "consommation_eau" USING btree ("bande_id");
+CREATE INDEX "bande_ventes_bande_id_idx" ON "bande_ventes" USING btree ("bande_id");
+CREATE INDEX "depenses_vente_bande_id_idx" ON "depenses_vente" USING btree ("bande_id");
+CREATE INDEX "chantier_devis_lignes_chantier_id_idx" ON "chantier_devis_lignes" USING btree ("chantier_id");
+CREATE INDEX "vaccinations_bande_id_idx" ON "vaccinations" USING btree ("bande_id");
