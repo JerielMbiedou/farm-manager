@@ -1,0 +1,215 @@
+Tu vas effectuer une série de corrections et améliorations sur ce projet. 
+Travaille dans l'ordre exact ci-dessous. Pour chaque étape, confirme ce que 
+tu as fait avant de passer à la suivante. Ne casse rien d'existant.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 1 — CORRECTIONS BASE DE DONNÉES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1.1 — Index dupliqué session.expire
+Dans le schéma Drizzle (lib/db), supprimer l'un des deux index sur 
+session.expire (garder un seul, nommé de façon cohérente).
+Générer et appliquer la migration.
+
+1.2 — FK manquante vaccinations.bande_id
+Dans le schéma Drizzle de la table vaccinations, s'assurer que bande_id 
+déclare bien .references(() => bandes.id, { onDelete: 'cascade' }).
+Générer et appliquer la migration.
+
+1.3 — FK manquante actifs.chantier_id
+Dans le schéma Drizzle de la table actifs, s'assurer que chantier_id 
+déclare bien .references(() => chantiers.id, { onDelete: 'set null' }).
+Générer et appliquer la migration.
+
+1.4 — activity_log.user_id ON DELETE NO ACTION → SET NULL
+Modifier le schéma Drizzle : activity_log.user_id doit utiliser 
+{ onDelete: 'set null' } au lieu de NO ACTION.
+user_nom étant déjà dénormalisé, la trace est préservée même sans user.
+Générer et appliquer la migration.
+
+1.5 — Index secondaires sur FK fréquentes
+Ajouter des index Drizzle sur les colonnes suivantes (dans leur 
+fichier schéma respectif) :
+- bande_depenses.bande_id
+- bande_ventes.bande_id
+- mortalite_journaliere.bande_id
+- pesees.bande_id
+- consommation_aliment.bande_id
+- consommation_eau.bande_id
+- vaccinations.bande_id
+- traitements.bande_id
+- observations_journal.bande_id
+- depenses_vente.bande_id
+- chantier_depenses.chantier_id
+- chantier_depenses.lot_id
+- chantier_devis_lignes.chantier_id
+- activity_log.user_id
+Générer et appliquer la migration.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 2 — CORRECTIONS SÉCURITÉ & LOGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2.1 — Supprimer le fallback SESSION_SECRET hardcodé
+Dans artifacts/api-server/src/app.ts, trouver la ligne où SESSION_SECRET 
+a un fallback string ("ferme-familiale-secret-key" ou similaire).
+La remplacer par :
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) throw new Error('SESSION_SECRET env variable is required');
+Ainsi le serveur refuse de démarrer sans secret défini.
+
+2.2 — Remplacer les 3 console.error par req.log.error (ou logger.error)
+Fichiers à corriger :
+- artifacts/api-server/src/routes/bandes.ts ligne ~941 (erreur parse-fiche)
+- artifacts/api-server/src/routes/ocr-fiche.ts ligne ~132 (erreur OCR)
+- artifacts/api-server/src/routes/import-historical.ts ligne ~294 (erreur import)
+Dans chaque cas, remplacer console.error(...) par 
+req.log.error({ err }, 'message descriptif') 
+conformément à la convention pino définie dans le projet.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 3 — CORRECTION TYPAGE FRONTEND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 — Corriger le cast "lecteur" as UserRole dans layout.tsx
+Dans artifacts/ferme-familiale/src/components/layout.tsx,
+trouver toutes les occurrences de "lecteur" as UserRole (ou cast manuel 
+de chaîne vers UserRole).
+Importer le type UserRole depuis la source de vérité (lib/api-zod ou 
+lib/api-spec) et utiliser la valeur typée correctement, sans cast forcé.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 4 — CONSOLIDATION MODULES LEGACY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.1 — Analyser l'usage actuel des pages legacy /devis et /depenses
+Vérifie si des données existent en base dans les tables :
+devis_construction, puits_items_devis, depenses_batiment, 
+depenses_puits, sorties_argent, sorties_carburant.
+
+4.2 — Afficher une bannière de redirection sur les pages legacy
+Sur les pages artifacts/ferme-familiale/src/pages/devis.tsx 
+et artifacts/ferme-familiale/src/pages/depenses.tsx,
+ajouter en haut de page une bannière d'information (composant Alert 
+shadcn/ui, couleur amber) avec le message :
+"Ce module est remplacé par Infrastructure. Les données existantes 
+restent accessibles ici en lecture. Les nouvelles saisies doivent 
+se faire dans Infrastructure."
+Garder toutes les fonctionnalités existantes intactes.
+
+4.3 — Marquer visuellement les items legacy dans la sidebar
+Dans layout.tsx, ajouter une petite badge "(ancien)" en gris à côté 
+des liens "Devis" et "Dépenses" dans la sidebar, pour distinguer 
+visuellement les anciens modules du nouveau module Infrastructure.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 5 — RAPPORT PDF COMPLET PAR BANDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1 — Créer une fonction generateRapportBande dans export.ts
+Dans artifacts/ferme-familiale/src/lib/export.ts, 
+créer une fonction exportée generateRapportBande(bande, data) qui 
+génère un PDF structuré complet avec jspdf + jspdf-autotable.
+
+Le PDF doit contenir dans l'ordre :
+PAGE 1 — EN-TÊTE
+  - Logo texte "FERME MBIEDOU" en grand
+  - Sous-titre "Rapport de Bande — [Nom de la bande]"
+  - Date du rapport (aujourd'hui), période (date départ → date clôture ou "En cours")
+  - Ligne horizontale de séparation
+
+PAGE 1 (suite) — RÉSUMÉ EXÉCUTIF (4 KPI cards en tableau)
+  - Sujets départ / Décès / Sujets vendus / Sujets restants
+  - Taux de mortalité %
+  - Coût de production total / Coût par sujet
+  - Recettes brutes / Bénéfice net
+  - IC (Indice de Consommation) si données dispo
+
+PAGE 2 — DÉPENSES DE PRODUCTION
+  Tableau avec colonnes : Catégorie | Désignation | Qté | Prix Unit. | Montant
+  Ligne Total en gras en bas
+
+PAGE 2 (suite) — CHARGES FIXES
+  Tableau : Loyer | Dépréciation matériel | Imprévus | Total charges fixes
+
+PAGE 3 — VENTES
+  Tableau : Date | Quantité | Prix unitaire | Montant
+  + Tableau frais de vente en dessous
+  Ligne Total recettes en gras
+
+PAGE 4 — SUIVI MORTALITÉ (si données)
+  Tableau : Date | Âge (j) | Décès jour | Décès cumulés | Taux %
+  Note en rouge si taux > 3% sur une journée
+
+PAGE 4 (suite) — SUIVI VACCINATIONS
+  Tableau : Jour prévu | Vaccin | Statut | Date réelle | Commentaire
+
+PAGE 5 — PIED DE PAGE sur chaque page
+  "Ferme Mbiedou — Rapport confidentiel — Généré le [date] — Page X/Y"
+
+5.2 — Ajouter un bouton "Générer Rapport PDF" sur la page bande
+Dans artifacts/ferme-familiale/src/pages/bandes/[id].tsx,
+ajouter un bouton "📄 Rapport PDF" (variant outline) à côté des 
+boutons existants (Terminer la bande, etc.).
+Au clic, ce bouton appelle generateRapportBande() avec toutes les 
+données déjà chargées sur la page (dépenses, ventes, mortalité, 
+vaccinations, charges fixes).
+Le fichier généré doit s'appeler : rapport-bande-[nom]-[date].pdf
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOC 6 — SAUVEGARDE AUTOMATIQUE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6.1 — Créer un système de backup automatique côté serveur
+Dans artifacts/api-server/src/, créer un fichier lib/backup.ts.
+
+Ce module doit :
+- Utiliser node-cron (à installer si absent) pour déclencher un backup 
+  toutes les 24h à 2h00 du matin
+- Exécuter un export JSON de toutes les tables critiques via Drizzle 
+  (pas pg_dump car non disponible sur Replit) :
+  Tables à sauvegarder : bandes, bande_depenses, bande_ventes, 
+  charges_fixes, depenses_vente, mortalite_journaliere, pesees,
+  consommation_aliment, vaccinations, financement, remboursements,
+  chantiers, chantier_depenses, actifs, sorties_argent, users (sans passwords)
+- Sérialiser en JSON et écrire dans /exports/backups/
+  avec nom de fichier : backup-YYYY-MM-DD-HH.json
+- Garder seulement les 7 derniers fichiers (supprimer les plus anciens)
+- Logger le résultat (succès + taille fichier, ou erreur) via pino
+
+Importer et démarrer le cron dans artifacts/api-server/src/index.ts
+après le seedDefaults(), uniquement si NODE_ENV !== 'test'.
+
+6.2 — Ajouter un endpoint GET /api/backups (admin only)
+Dans les routes API, créer un endpoint GET /api/backups qui :
+- Liste les fichiers dans /exports/backups/
+- Pour chaque fichier retourne : nom, date, taille en Ko
+- Nécessite le rôle admin (middleware requireAdmin)
+
+6.3 — Ajouter une section "Sauvegardes" dans la page Paramètres
+Dans artifacts/ferme-familiale/src/pages/parametres.tsx,
+ajouter une section "Sauvegardes automatiques" qui :
+- Affiche la liste des backups disponibles (appel GET /api/backups)
+- Affiche pour chaque backup : date, heure, taille
+- Bouton "Déclencher une sauvegarde maintenant" (POST /api/backups/trigger)
+- Message de confirmation ou erreur
+
+6.4 — Créer l'endpoint POST /api/backups/trigger (admin only)
+Déclenche le backup immédiatement (même logique que le cron) 
+et retourne { success: true, filename, size }.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VÉRIFICATION FINALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Après avoir tout implémenté :
+
+1. Lancer le build TypeScript complet et corriger toutes les erreurs de type
+2. Vérifier que les migrations Drizzle s'appliquent sans erreur
+3. Vérifier que le serveur démarre correctement
+4. Vérifier que la page bande affiche bien le bouton "Rapport PDF"
+5. Vérifier que la page Paramètres affiche bien la section Sauvegardes
+6. Confirmer que les pages /devis et /depenses affichent bien la bannière amber
+
+Produire un résumé final de tout ce qui a été fait, 
+fichier par fichier, avec les lignes modifiées.

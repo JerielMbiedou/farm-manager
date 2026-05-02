@@ -13,6 +13,7 @@ import importHistoricalRouter from "./import-historical";
 import ocrFicheRouter from "./ocr-fiche";
 import chantiersRouter from "./chantiers";
 import actifsRouter from "./actifs";
+import backupsRouter from "./backups";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use("/import-historical", importHistoricalRouter);
 router.use("/ocr-fiche", ocrFicheRouter);
 router.use("/chantiers", chantiersRouter);
 router.use("/actifs", actifsRouter);
+router.use("/backups", backupsRouter);
 
 export default router;

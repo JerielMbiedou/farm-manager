@@ -58,12 +58,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download, Droplets, Pill, BookOpen, ChevronDown, ChevronRight, Search, CheckCircle2, Lock, RotateCcw } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download, Droplets, Pill, BookOpen, ChevronDown, ChevronRight, Search, CheckCircle2, Lock, RotateCcw, FileText } from "lucide-react";
 import { Link } from "wouter";
 import { BandeDetail } from "@workspace/api-client-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, PieChart, Pie, Cell, ComposedChart, Area } from "recharts";
 import { CreateBandeDepenseBodyCategorie } from "@workspace/api-client-react";
-import { exportBandePDF, exportBandeExcel } from "@/lib/export";
+import { exportBandePDF, exportBandeExcel, generateRapportBande } from "@/lib/export";
 import { useConsommationEau, useCreateConsommationEau, useDeleteConsommationEau, useTraitements, useCreateTraitement, useDeleteTraitement, useObservations, useCreateObservation, useDeleteObservation, useReferencePoids } from "@/lib/bande-extras-api";
 import ScanFiche from "@/components/scan-fiche";
 import DesignationCombobox from "@/components/designation-combobox";
@@ -1379,6 +1379,20 @@ export default function BandeDetailView() {
             />
             <Button variant="outline" size="sm" className="gap-2" onClick={() => exportBandePDF(detail, depenses || [], ventes || [], chargesFixes, mortaliteItems, peseesItems, consResp)}>
               <Download className="h-4 w-4" /> PDF
+            </Button>
+            <Button variant="default" size="sm" className="gap-2" onClick={() => generateRapportBande(
+              detail,
+              depenses || [],
+              ventes || [],
+              chargesFixes,
+              mortaliteItems,
+              peseesItems,
+              consResp,
+              (eauData as any) || [],
+              (traitementsData as any) || [],
+              (vaccinationsData as any) || [],
+            )}>
+              <FileText className="h-4 w-4" /> Rapport PDF
             </Button>
             <Button variant="outline" size="sm" className="gap-2" onClick={() => exportBandeExcel(detail, depenses || [], ventes || [], chargesFixes)}>
               <Download className="h-4 w-4" /> Excel

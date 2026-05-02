@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, numeric, text, date, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, numeric, text, date, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -15,22 +15,30 @@ export const bandesTable = pgTable("bandes", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const bandeDepensesTable = pgTable("bande_depenses", {
-  id: serial("id").primaryKey(),
-  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
-  designation: text("designation").notNull(),
-  categorie: text("categorie").notNull(),
-  quantite: numeric("quantite", { precision: 15, scale: 2 }).notNull(),
-  prixUnitaire: numeric("prix_unitaire", { precision: 15, scale: 2 }).notNull(),
-});
+export const bandeDepensesTable = pgTable(
+  "bande_depenses",
+  {
+    id: serial("id").primaryKey(),
+    bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+    designation: text("designation").notNull(),
+    categorie: text("categorie").notNull(),
+    quantite: numeric("quantite", { precision: 15, scale: 2 }).notNull(),
+    prixUnitaire: numeric("prix_unitaire", { precision: 15, scale: 2 }).notNull(),
+  },
+  (t) => [index("bande_depenses_bande_id_idx").on(t.bandeId)],
+);
 
-export const bandeVentesTable = pgTable("bande_ventes", {
-  id: serial("id").primaryKey(),
-  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
-  date: date("date").notNull(),
-  quantiteVendue: integer("quantite_vendue").notNull(),
-  prixUnitaire: numeric("prix_unitaire", { precision: 15, scale: 2 }).notNull(),
-});
+export const bandeVentesTable = pgTable(
+  "bande_ventes",
+  {
+    id: serial("id").primaryKey(),
+    bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    quantiteVendue: integer("quantite_vendue").notNull(),
+    prixUnitaire: numeric("prix_unitaire", { precision: 15, scale: 2 }).notNull(),
+  },
+  (t) => [index("bande_ventes_bande_id_idx").on(t.bandeId)],
+);
 
 export const chargesFixesTable = pgTable("charges_fixes", {
   id: serial("id").primaryKey(),
@@ -38,12 +46,16 @@ export const chargesFixesTable = pgTable("charges_fixes", {
   loyer: numeric("loyer", { precision: 15, scale: 2 }).notNull().default("0"),
 });
 
-export const depensesVenteTable = pgTable("depenses_vente", {
-  id: serial("id").primaryKey(),
-  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
-  designation: text("designation").notNull(),
-  montant: numeric("montant", { precision: 15, scale: 2 }).notNull(),
-});
+export const depensesVenteTable = pgTable(
+  "depenses_vente",
+  {
+    id: serial("id").primaryKey(),
+    bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+    designation: text("designation").notNull(),
+    montant: numeric("montant", { precision: 15, scale: 2 }).notNull(),
+  },
+  (t) => [index("depenses_vente_bande_id_idx").on(t.bandeId)],
+);
 
 export const insertBandeSchema = createInsertSchema(bandesTable).omit({ id: true, numero: true, createdAt: true });
 export type InsertBande = z.infer<typeof insertBandeSchema>;
@@ -65,40 +77,55 @@ export const insertDepenseVenteSchema = createInsertSchema(depensesVenteTable).o
 export type InsertDepenseVente = z.infer<typeof insertDepenseVenteSchema>;
 export type DepenseVente = typeof depensesVenteTable.$inferSelect;
 
-export const mortaliteJournaliereTable = pgTable("mortalite_journaliere", {
-  id: serial("id").primaryKey(),
-  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
-  date: date("date").notNull(),
-  ageJours: integer("age_jours").notNull(),
-  decesJour: integer("deces_jour").notNull().default(0),
-});
+export const mortaliteJournaliereTable = pgTable(
+  "mortalite_journaliere",
+  {
+    id: serial("id").primaryKey(),
+    bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    ageJours: integer("age_jours").notNull(),
+    decesJour: integer("deces_jour").notNull().default(0),
+  },
+  (t) => [index("mortalite_journaliere_bande_id_idx").on(t.bandeId)],
+);
 
-export const peseesTable = pgTable("pesees", {
-  id: serial("id").primaryKey(),
-  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
-  date: date("date").notNull(),
-  ageJours: integer("age_jours").notNull(),
-  poidsMoyenG: numeric("poids_moyen_g", { precision: 10, scale: 2 }).notNull(),
-  objectifPoidsG: numeric("objectif_poids_g", { precision: 10, scale: 2 }),
-});
+export const peseesTable = pgTable(
+  "pesees",
+  {
+    id: serial("id").primaryKey(),
+    bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    ageJours: integer("age_jours").notNull(),
+    poidsMoyenG: numeric("poids_moyen_g", { precision: 10, scale: 2 }).notNull(),
+  },
+  (t) => [index("pesees_bande_id_idx").on(t.bandeId)],
+);
 
-export const consommationAlimentTable = pgTable("consommation_aliment", {
-  id: serial("id").primaryKey(),
-  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
-  date: date("date").notNull(),
-  quantiteKg: numeric("quantite_kg", { precision: 10, scale: 2 }).notNull(),
-});
+export const consommationAlimentTable = pgTable(
+  "consommation_aliment",
+  {
+    id: serial("id").primaryKey(),
+    bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    quantiteKg: numeric("quantite_kg", { precision: 10, scale: 2 }).notNull(),
+  },
+  (t) => [index("consommation_aliment_bande_id_idx").on(t.bandeId)],
+);
 
-export const vaccinationsTable = pgTable("vaccinations", {
-  id: serial("id").primaryKey(),
-  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
-  jourPrevu: integer("jour_prevu").notNull(),
-  nom: text("nom").notNull(),
-  description: text("description"),
-  fait: text("fait").notNull().default("non"),
-  dateFait: date("date_fait"),
-  commentaire: text("commentaire"),
-});
+export const vaccinationsTable = pgTable(
+  "vaccinations",
+  {
+    id: serial("id").primaryKey(),
+    bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+    jourPrevu: integer("jour_prevu").notNull(),
+    nom: text("nom").notNull(),
+    description: text("description"),
+    fait: text("fait").notNull().default("non"),
+    dateFait: date("date_fait"),
+    commentaire: text("commentaire"),
+  },
+  (t) => [index("vaccinations_bande_id_idx").on(t.bandeId)],
+);
 
 export const insertMortaliteSchema = createInsertSchema(mortaliteJournaliereTable).omit({ id: true });
 export type InsertMortalite = z.infer<typeof insertMortaliteSchema>;
@@ -116,32 +143,44 @@ export const insertVaccinationSchema = createInsertSchema(vaccinationsTable).omi
 export type InsertVaccination = z.infer<typeof insertVaccinationSchema>;
 export type Vaccination = typeof vaccinationsTable.$inferSelect;
 
-export const consommationEauTable = pgTable("consommation_eau", {
-  id: serial("id").primaryKey(),
-  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
-  date: date("date").notNull(),
-  ageJours: integer("age_jours").notNull(),
-  quantiteLitres: numeric("quantite_litres", { precision: 10, scale: 2 }).notNull(),
-});
+export const consommationEauTable = pgTable(
+  "consommation_eau",
+  {
+    id: serial("id").primaryKey(),
+    bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    ageJours: integer("age_jours").notNull(),
+    quantiteLitres: numeric("quantite_litres", { precision: 10, scale: 2 }).notNull(),
+  },
+  (t) => [index("consommation_eau_bande_id_idx").on(t.bandeId)],
+);
 
-export const traitementsTable = pgTable("traitements", {
-  id: serial("id").primaryKey(),
-  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
-  date: date("date").notNull(),
-  ageJours: integer("age_jours").notNull(),
-  produit: text("produit").notNull(),
-  type: text("type").notNull().default("traitement"),
-  dosage: text("dosage"),
-  observations: text("observations"),
-});
+export const traitementsTable = pgTable(
+  "traitements",
+  {
+    id: serial("id").primaryKey(),
+    bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    ageJours: integer("age_jours").notNull(),
+    produit: text("produit").notNull(),
+    type: text("type").notNull().default("traitement"),
+    dosage: text("dosage"),
+    observations: text("observations"),
+  },
+  (t) => [index("traitements_bande_id_idx").on(t.bandeId)],
+);
 
-export const observationsJournalTable = pgTable("observations_journal", {
-  id: serial("id").primaryKey(),
-  bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
-  date: date("date").notNull(),
-  ageJours: integer("age_jours").notNull(),
-  contenu: text("contenu").notNull(),
-});
+export const observationsJournalTable = pgTable(
+  "observations_journal",
+  {
+    id: serial("id").primaryKey(),
+    bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    ageJours: integer("age_jours").notNull(),
+    contenu: text("contenu").notNull(),
+  },
+  (t) => [index("observations_journal_bande_id_idx").on(t.bandeId)],
+);
 
 export const insertConsommationEauSchema = createInsertSchema(consommationEauTable).omit({ id: true });
 export type InsertConsommationEau = z.infer<typeof insertConsommationEauSchema>;

@@ -106,6 +106,9 @@ export default function Devis() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <strong>Module hérité.</strong> Ce devis ancien est conservé en lecture historique. Pour les nouveaux projets, utilisez le module <a href="/infrastructure" className="underline font-medium">Infrastructure</a>.
+      </div>
       <div>
         <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Devis Construction</h1>
         <p className="text-muted-foreground mt-1">Estimations et budgets prévisionnels</p>

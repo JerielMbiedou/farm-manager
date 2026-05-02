@@ -1431,7 +1431,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, investisseur, gestionnaire]
+          enum: [admin, investisseur, gestionnaire, lecteur]
         nom:
           type: string
       required:

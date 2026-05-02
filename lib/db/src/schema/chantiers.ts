@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, numeric, text, date, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, numeric, text, date, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -21,27 +21,38 @@ export const chantierLotsTable = pgTable("chantier_lots", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const chantierDevisLignesTable = pgTable("chantier_devis_lignes", {
-  id: serial("id").primaryKey(),
-  chantierId: integer("chantier_id").notNull().references(() => chantiersTable.id, { onDelete: "cascade" }),
-  lotId: integer("lot_id").references(() => chantierLotsTable.id, { onDelete: "set null" }),
-  poste: text("poste").notNull(),
-  montantPrevu: numeric("montant_prevu", { precision: 15, scale: 2 }).notNull().default("0"),
-  ordre: integer("ordre").notNull().default(0),
-});
+export const chantierDevisLignesTable = pgTable(
+  "chantier_devis_lignes",
+  {
+    id: serial("id").primaryKey(),
+    chantierId: integer("chantier_id").notNull().references(() => chantiersTable.id, { onDelete: "cascade" }),
+    lotId: integer("lot_id").references(() => chantierLotsTable.id, { onDelete: "set null" }),
+    poste: text("poste").notNull(),
+    montantPrevu: numeric("montant_prevu", { precision: 15, scale: 2 }).notNull().default("0"),
+    ordre: integer("ordre").notNull().default(0),
+  },
+  (t) => [index("chantier_devis_lignes_chantier_id_idx").on(t.chantierId)],
+);
 
-export const chantierDepensesTable = pgTable("chantier_depenses", {
-  id: serial("id").primaryKey(),
-  chantierId: integer("chantier_id").notNull().references(() => chantiersTable.id, { onDelete: "cascade" }),
-  lotId: integer("lot_id").references(() => chantierLotsTable.id, { onDelete: "set null" }),
-  designation: text("designation").notNull(),
-  quantite: numeric("quantite", { precision: 15, scale: 2 }).notNull().default("1"),
-  prixUnitaire: numeric("prix_unitaire", { precision: 15, scale: 2 }).notNull().default("0"),
-  categorie: text("categorie").default("materiaux"),
-  date: date("date"),
-  commentaire: text("commentaire"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const chantierDepensesTable = pgTable(
+  "chantier_depenses",
+  {
+    id: serial("id").primaryKey(),
+    chantierId: integer("chantier_id").notNull().references(() => chantiersTable.id, { onDelete: "cascade" }),
+    lotId: integer("lot_id").references(() => chantierLotsTable.id, { onDelete: "set null" }),
+    designation: text("designation").notNull(),
+    quantite: numeric("quantite", { precision: 15, scale: 2 }).notNull().default("1"),
+    prixUnitaire: numeric("prix_unitaire", { precision: 15, scale: 2 }).notNull().default("0"),
+    categorie: text("categorie").default("materiaux"),
+    date: date("date"),
+    commentaire: text("commentaire"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("chantier_depenses_chantier_id_idx").on(t.chantierId),
+    index("chantier_depenses_lot_id_idx").on(t.lotId),
+  ],
+);
 
 export const insertChantierSchema = createInsertSchema(chantiersTable).omit({ id: true, createdAt: true });
 export type InsertChantier = z.infer<typeof insertChantierSchema>;

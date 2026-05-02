@@ -17,6 +17,8 @@ import {
   CalendarDays,
   Construction,
   BookOpen,
+  FileText,
+  Receipt,
 } from "lucide-react";
 import { useGetMe, useLogout, UserRole } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -61,9 +63,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
 
   const role = user.role as UserRole;
-  const allRoles = [UserRole.admin, UserRole.investisseur, UserRole.gestionnaire, "lecteur" as UserRole];
+  const allRoles: UserRole[] = [UserRole.admin, UserRole.investisseur, UserRole.gestionnaire, UserRole.lecteur];
 
-  type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; roles: UserRole[] };
+  type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; roles: UserRole[]; badge?: string };
   type NavGroup = { label: string; items: NavItem[] };
 
   const navGroups: NavGroup[] = [
@@ -71,13 +73,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
       label: "Exploitation",
       items: [
         { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, roles: allRoles },
-        { href: "/bandes", label: "Bandes de poulets", icon: Bird, roles: [UserRole.admin, UserRole.gestionnaire, "lecteur" as UserRole] },
+        { href: "/bandes", label: "Bandes de poulets", icon: Bird, roles: [UserRole.admin, UserRole.gestionnaire, UserRole.lecteur] },
       ],
     },
     {
       label: "Finances",
       items: [
-        { href: "/tresorerie", label: "Finances", icon: TrendingUp, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
+        { href: "/tresorerie", label: "Finances", icon: TrendingUp, roles: [UserRole.admin, UserRole.investisseur, UserRole.lecteur] },
         { href: "/financement", label: "Financement", icon: Wallet, roles: allRoles },
       ],
     },
@@ -91,10 +93,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
     {
       label: "Outils",
       items: [
-        { href: "/comparaison-bandes", label: "Comparaison", icon: BarChart3, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
+        { href: "/comparaison-bandes", label: "Comparaison", icon: BarChart3, roles: [UserRole.admin, UserRole.investisseur, UserRole.lecteur] },
         { href: "/simulation", label: "Simulation", icon: Calculator, roles: allRoles },
         { href: "/planification", label: "Planification", icon: CalendarDays, roles: [UserRole.admin, UserRole.gestionnaire] },
-        { href: "/historique-caisse", label: "Historique caisse", icon: BookOpen, roles: [UserRole.admin, UserRole.investisseur, "lecteur" as UserRole] },
+        { href: "/historique-caisse", label: "Historique caisse", icon: BookOpen, roles: [UserRole.admin, UserRole.investisseur, UserRole.lecteur] },
+      ],
+    },
+    {
+      label: "Anciens modules",
+      items: [
+        { href: "/devis", label: "Devis", icon: FileText, roles: [UserRole.admin, UserRole.gestionnaire], badge: "ancien" },
+        { href: "/depenses", label: "Dépenses", icon: Receipt, roles: [UserRole.admin, UserRole.gestionnaire], badge: "ancien" },
       ],
     },
     {
@@ -112,11 +121,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
     items: g.items.filter(item => item.roles.includes(role)),
   })).filter(g => g.items.length > 0);
 
-  const roleLabel: Record<string, string> = {
+  const roleLabel: Record<UserRole, string> = {
     [UserRole.admin]: "Administrateur",
     [UserRole.investisseur]: "Investisseur",
     [UserRole.gestionnaire]: "Gestionnaire",
-    "lecteur": "Lecteur",
+    [UserRole.lecteur]: "Lecteur",
   };
   const roleName = roleLabel[role] || "Utilisateur";
   const userInitials = user.nom ? user.nom.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) : "U";
@@ -179,7 +188,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                           : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"}
                       `}>
                         <Icon className="h-[18px] w-[18px] shrink-0" />
-                        <span className="text-[13px]">{item.label}</span>
+                        <span className="text-[13px] flex-1">{item.label}</span>
+                        {item.badge && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-sidebar-foreground/10 text-sidebar-foreground/50 uppercase font-medium tracking-wide">
+                            {item.badge}
+                          </span>
+                        )}
                       </div>
                     </Link>
                   );

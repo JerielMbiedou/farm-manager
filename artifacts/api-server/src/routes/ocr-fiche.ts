@@ -129,7 +129,7 @@ router.post("/", upload.single("photo"), async (req, res) => {
 
     res.json(parsed);
   } catch (err: any) {
-    console.error("OCR error:", err);
+    req.log.error({ err }, "OCR error");
     res.status(500).json({ error: "Erreur lors de l'analyse de l'image", details: err.message });
   }
 });

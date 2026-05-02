@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { seedDefaults } from "./lib/seed";
+import { startBackupCron } from "./lib/backup";
 
 const rawPort = process.env["PORT"];
 
@@ -24,6 +25,7 @@ seedDefaults().then(() => {
     }
 
     logger.info({ port }, "Server listening");
+    startBackupCron();
   });
 }).catch((err) => {
   logger.error({ err }, "Failed to seed defaults");

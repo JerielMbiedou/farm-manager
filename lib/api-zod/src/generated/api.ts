@@ -26,7 +26,7 @@ export const LoginResponse = zod.object({
   user: zod.object({
     id: zod.number(),
     username: zod.string(),
-    role: zod.enum(["admin", "investisseur", "gestionnaire"]),
+    role: zod.enum(["admin", "investisseur", "gestionnaire", "lecteur"]),
     nom: zod.string(),
   }),
 });
@@ -44,7 +44,7 @@ export const LogoutResponse = zod.object({
 export const GetMeResponse = zod.object({
   id: zod.number(),
   username: zod.string(),
-  role: zod.enum(["admin", "investisseur", "gestionnaire"]),
+  role: zod.enum(["admin", "investisseur", "gestionnaire", "lecteur"]),
   nom: zod.string(),
 });
 

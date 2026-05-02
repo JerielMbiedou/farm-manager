@@ -938,7 +938,7 @@ Règles:
     const parsed = cleanAndParseJson(rawText) ?? { jours: [] };
     res.json({ jours: parsed.jours || [], bandeId, startDate });
   } catch (e: any) {
-    console.error("parse-fiche error:", e.message);
+    req.log.error({ err: e }, "parse-fiche error");
     const userMsg = (e.message || "").includes("JSON")
       ? "L'IA a retourné une réponse mal formatée. Réessayez avec une photo plus nette ou recadrez la fiche."
       : (e.message || "Erreur lors de l'analyse");

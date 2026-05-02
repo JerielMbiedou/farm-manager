@@ -291,7 +291,7 @@ router.post("/", async (req, res) => {
 
     res.json({ success: true, results });
   } catch (err: any) {
-    console.error("Import error:", err);
+    req.log.error({ err }, "Import historical error");
     res.status(500).json({ error: err.message });
   }
 });

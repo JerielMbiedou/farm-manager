@@ -394,6 +394,9 @@ export default function Depenses() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <strong>Module hérité.</strong> Cet historique de dépenses est conservé en lecture. Pour les nouveaux chantiers, utilisez le module <a href="/infrastructure" className="underline font-medium">Infrastructure</a>.
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Dépenses construction</h1>

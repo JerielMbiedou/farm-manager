@@ -35,6 +35,11 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  throw new Error("SESSION_SECRET env variable is required");
+}
+
 app.use(
   session({
     store: new PgStore({
@@ -42,7 +47,7 @@ app.use(
       createTableIfMissing: false,
       tableName: "session",
     }),
-    secret: process.env.SESSION_SECRET || "ferme-familiale-secret-key",
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {

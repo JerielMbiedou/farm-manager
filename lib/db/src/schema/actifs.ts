@@ -2,6 +2,7 @@ import { pgTable, serial, integer, numeric, text, date, timestamp } from "drizzl
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { bandesTable } from "./bandes";
+import { chantiersTable } from "./chantiers";
 
 export const actifsTable = pgTable("actifs", {
   id: serial("id").primaryKey(),
@@ -11,7 +12,7 @@ export const actifsTable = pgTable("actifs", {
   tauxAmortissementAnnuel: numeric("taux_amortissement_annuel", { precision: 5, scale: 2 }).notNull().default("0"),
   dateAcquisition: date("date_acquisition").notNull(),
   description: text("description"),
-  chantierId: integer("chantier_id"),
+  chantierId: integer("chantier_id").references(() => chantiersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

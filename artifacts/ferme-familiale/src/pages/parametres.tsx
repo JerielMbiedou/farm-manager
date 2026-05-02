@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, Save, RotateCcw } from "lucide-react";
+import { Settings, Save, RotateCcw, Database, Download, PlayCircle } from "lucide-react";
 
 type Parametre = {
   id: number;
@@ -48,6 +48,8 @@ export default function Parametres() {
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [backups, setBackups] = useState<Array<{ name: string; date: string; size: number }>>([]);
+  const [backupRunning, setBackupRunning] = useState(false);
   const baseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.origin}/api`;
 
   const isAdmin = user?.role === "admin";
@@ -55,6 +57,41 @@ export default function Parametres() {
   useEffect(() => {
     loadParametres();
   }, []);
+
+  useEffect(() => {
+    if (isAdmin) loadBackups();
+  }, [isAdmin]);
+
+  async function loadBackups() {
+    try {
+      const res = await fetch(`${baseUrl}/backups`, { credentials: "include" });
+      if (res.ok) setBackups(await res.json());
+    } catch {}
+  }
+
+  async function triggerBackup() {
+    setBackupRunning(true);
+    try {
+      const res = await fetch(`${baseUrl}/backups/run`, { method: "POST", credentials: "include" });
+      if (res.ok) {
+        toast({ title: "Sauvegarde créée" });
+        loadBackups();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: "Erreur", description: err.error || "Échec de la sauvegarde", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erreur de connexion", variant: "destructive" });
+    } finally {
+      setBackupRunning(false);
+    }
+  }
+
+  function formatSize(bytes: number) {
+    if (bytes < 1024) return `${bytes} o`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+    return `${(bytes / 1024 / 1024).toFixed(2)} Mo`;
+  }
 
   async function loadParametres() {
     try {
@@ -223,6 +260,50 @@ export default function Parametres() {
           </CardContent>
         </Card>
       ))}
+
+      {isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Database className="h-5 w-5 text-muted-foreground" />
+              Sauvegardes automatiques
+            </CardTitle>
+            <CardDescription>
+              Une sauvegarde complète de la base est créée chaque nuit à 02:00. Les 7 dernières sont conservées.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-end mb-4">
+              <Button onClick={triggerBackup} disabled={backupRunning} size="sm" className="gap-2">
+                <PlayCircle className="h-4 w-4" />
+                {backupRunning ? "Sauvegarde en cours…" : "Lancer une sauvegarde maintenant"}
+              </Button>
+            </div>
+            {backups.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">Aucune sauvegarde disponible pour l'instant.</p>
+            ) : (
+              <div className="space-y-2">
+                {backups.map(b => (
+                  <div key={b.name} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/30 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-mono text-sm truncate">{b.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {new Date(b.date).toLocaleString("fr-FR")} • {formatSize(b.size)}
+                      </div>
+                    </div>
+                    <a
+                      href={`${baseUrl}/backups/${b.name}/download`}
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                    >
+                      <Download className="h-4 w-4" /> Télécharger
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
