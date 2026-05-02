@@ -273,10 +273,17 @@ export default function Parametres() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex justify-end mb-4">
+            <div className="flex flex-wrap justify-end gap-2 mb-4">
+              <a
+                href={`${baseUrl}/backups/sql-dump`}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md border bg-background hover:bg-accent transition-colors"
+                title="Télécharge un dump SQL natif PostgreSQL (restaurable avec psql)"
+              >
+                <Download className="h-4 w-4" /> Dump SQL natif
+              </a>
               <Button onClick={triggerBackup} disabled={backupRunning} size="sm" className="gap-2">
                 <PlayCircle className="h-4 w-4" />
-                {backupRunning ? "Sauvegarde en cours…" : "Lancer une sauvegarde maintenant"}
+                {backupRunning ? "Sauvegarde en cours…" : "Lancer une sauvegarde JSON"}
               </Button>
             </div>
             {backups.length === 0 ? (
