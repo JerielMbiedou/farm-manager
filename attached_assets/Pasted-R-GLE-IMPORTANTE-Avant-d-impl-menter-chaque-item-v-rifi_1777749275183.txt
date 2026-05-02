@@ -1,0 +1,535 @@
+RÈGLE IMPORTANTE : Avant d'implémenter chaque item, vérifie
+d'abord si c'est déjà en place. Si c'est déjà implémenté,
+marque-le ✅ DÉJÀ PRÉSENT et passe au suivant sans rien toucher.
+Si c'est partiellement fait, marque ⚠️ PARTIEL et complète
+seulement ce qui manque. Si c'est absent, marque ❌ ABSENT
+et implémente complètement.
+
+Ne demande pas de confirmation, exécute directement.
+À la fin, génère un rapport complet de tout ce qui a été fait.
+
+═══════════════════════════════════════════════════
+PRIORITÉ 1 — CRITIQUE : INTÉGRER CHANTIERDEPENSES
+DANS TOUS LES CALCULS FINANCIERS
+═══════════════════════════════════════════════════
+
+C'est le bug le plus grave de l'application. chantierDepensesTable
+n'est jamais consultée dans les calculs de trésorerie. La caisse
+disponible et le ROI sont faux dès qu'on utilise Infrastructure.
+
+VÉRIFICATION D'ABORD :
+- Dans dashboard.ts, les routes /summary, /finances et
+  /historique-caisse interrogent-elles chantierDepensesTable ?
+- totalDepenseConstruction inclut-il les dépenses chantier ?
+- soldeCourant inclut-il les dépenses chantier ?
+- Le journal de caisse liste-t-il les dépenses chantier ?
+- alerteDepassementBudget tient-il compte des chantiers ?
+→ Implémenter seulement ce qui manque.
+
+1.1 — Inclure les dépenses chantier dans /summary
+Dans dashboard.ts route GET /summary, si absent :
+  const chantierDepensesRows = await db.select({
+    quantite: chantierDepensesTable.quantite,
+    prixUnitaire: chantierDepensesTable.prixUnitaire,
+  }).from(chantierDepensesTable);
+  const totalChantiers = chantierDepensesRows.reduce(
+    (s, d) => s + parseFloat(d.quantite ?? "0") *
+              parseFloat(d.prixUnitaire ?? "0"), 0
+  );
+  // Ajouter totalChantiers dans totalDepenseConstruction
+  // Soustraire de soldeCourant
+
+1.2 — Inclure dans /finances
+Dans dashboard.ts route GET /finances, si absent :
+Même calcul que ci-dessus, intégrer dans le total des dépenses
+construction et dans le calcul du solde.
+
+1.3 — Inclure dans /historique-caisse
+Dans dashboard.ts route GET /historique-caisse, si absent :
+Joindre chantierDepensesTable avec chantiersTable pour récupérer
+le nom du chantier. Pour chaque ligne, ajouter une entrée :
+  {
+    date: d.date,
+    type: "sortie",
+    categorie: "Chantier",
+    designation: `${chantier.nom} — ${d.designation}`,
+    montant: parseFloat(d.quantite) * parseFloat(d.prixUnitaire),
+  }
+Trier l'ensemble du journal par date décroissante.
+
+1.4 — Corriger l'alerte de dépassement budget
+Dans dashboard.ts, si alerteDepassementBudget se base uniquement
+sur l'ancien devisConstructionTable, étendre la logique :
+- Calculer aussi totalDevisChantiers depuis chantierDevisLignesTable
+- alerteDepassementBudget = (totalDepenseAncien > totalDevisAncien)
+  || (totalDepenseChantier > totalDevisChantier)
+
+═══════════════════════════════════════════════════
+PRIORITÉ 2 — CASCADE SUPPRESSION CHANTIER
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- Le schéma déclare-t-il ON DELETE CASCADE sur les tables enfants
+  des chantiers (chantierLotsTable, chantierDepensesTable,
+  chantierDevisLignesTable) ?
+- Si oui : ✅ déjà géré par la DB.
+- Si non : la route DELETE supprime-t-elle manuellement les enfants
+  avant le parent ?
+→ Implémenter ce qui manque.
+
+2.1 — Option A : ajouter CASCADE au schéma
+Dans lib/db/src/schema/chantiers.ts, si les FK n'ont pas onDelete :
+- chantierLotsTable.chantierId → onDelete: 'cascade'
+- chantierDepensesTable.chantierId → onDelete: 'cascade'
+- chantierDevisLignesTable.chantierId → onDelete: 'cascade'
+Générer et appliquer la migration Drizzle.
+
+2.2 — Option B (filet de sécurité) : suppression manuelle
+Dans chantiers.ts route DELETE /:id, ajouter avant le delete final :
+  await db.delete(chantierDepensesTable)
+    .where(eq(chantierDepensesTable.chantierId, id));
+  await db.delete(chantierDevisLignesTable)
+    .where(eq(chantierDevisLignesTable.chantierId, id));
+  await db.delete(chantierLotsTable)
+    .where(eq(chantierLotsTable.chantierId, id));
+  await db.delete(chantiersTable).where(eq(chantiersTable.id, id));
+
+Faire les deux (CASCADE au schéma + suppression manuelle ordonnée)
+pour garantir la cohérence quel que soit le chemin.
+
+═══════════════════════════════════════════════════
+PRIORITÉ 3 — CONTRÔLE DE RÔLE UI INFRASTRUCTURE
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- infrastructure.tsx importe-t-il useGetMe() ?
+- Les boutons de création/édition/suppression sont-ils masqués
+  pour les rôles "lecteur" et "investisseur" ?
+- Les routes POST/PUT/DELETE de chantiers.ts et actifs.ts
+  utilisent-elles requireWriteAccess ?
+→ Implémenter seulement ce qui manque.
+
+3.1 — Frontend : isReadOnly dans infrastructure.tsx
+Si absent, importer useGetMe() au début du composant :
+  const { data: me } = useGetMe();
+  const isReadOnly = me?.role === "investisseur"
+                  || me?.role === "lecteur";
+
+Passer isReadOnly comme prop à ChantiersTab et ActifsTab.
+Dans ces sous-composants, masquer (ou disable) les boutons :
+- "Nouveau chantier"
+- "Modifier"
+- "Supprimer"
+- "Clôturer"
+- "Nouvel actif"
+- Tous les boutons d'action sur les lots, dépenses, lignes devis
+
+3.2 — Backend : requireWriteAccess sur chantiers et actifs
+Dans chantiers.ts et actifs.ts, si absent :
+Ajouter requireWriteAccess (ou middleware équivalent utilisé
+dans bandes.ts) sur toutes les routes POST, PUT, DELETE.
+
+═══════════════════════════════════════════════════
+PRIORITÉ 4 — TYPE D'ACTIF AU CHOIX À LA CLÔTURE
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- Le type d'actif est-il toujours hardcodé à "batiment" dans
+  chantiers.ts route POST /:id/cloture ?
+- Le ClotureDialog dans infrastructure.tsx demande-t-il
+  le type d'actif à l'utilisateur ?
+→ Corriger seulement si le bug est confirmé.
+
+4.1 — Backend : accepter typeActif depuis le body
+Dans chantiers.ts route POST /:id/cloture, si absent :
+  const typeActif = req.body.typeActif ?? "batiment";
+  // Valider que typeActif ∈ ["terrain", "batiment", "materiel"]
+  if (!["terrain", "batiment", "materiel"].includes(typeActif)) {
+    return res.status(400).json({ error: "Type d'actif invalide" });
+  }
+  await db.insert(actifsTable).values({
+    nom: chantier.nom,
+    type: typeActif, // au lieu de "batiment" hardcodé
+    ...
+  });
+
+4.2 — Frontend : ajouter le Select dans ClotureDialog
+Dans infrastructure.tsx, dialog de clôture, si absent :
+Ajouter un champ Select obligatoire :
+  Label : "Type d'actif créé"
+  Options : Terrain | Bâtiment | Matériel
+  Default : Bâtiment
+Passer typeActif dans le body POST.
+
+Améliorer aussi le message d'avertissement de clôture :
+"⚠️ Cette action est définitive. Le chantier sera verrouillé
+et un actif sera créé automatiquement avec la valeur totale
+des dépenses. Vous ne pourrez plus modifier les dépenses ni
+les lots de ce chantier."
+
+═══════════════════════════════════════════════════
+PRIORITÉ 5 — VALEUR RÉSIDUELLE DES ACTIFS
+(par nombre de bandes utilisées)
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- La route GET /actifs calcule-t-elle valeurResiduelle ?
+- bandeActifsTable est-elle utilisée dans ce calcul ?
+- La page ActifsTab affiche-t-elle la valeur résiduelle ?
+→ Implémenter seulement ce qui manque.
+
+5.1 — Calcul backend basé sur les bandes clôturées
+Dans actifs.ts route GET /, si absent :
+Pour chaque actif, calculer :
+
+  // Compter les bandes clôturées qui ont utilisé cet actif
+  const allocationsRows = await db
+    .select({
+      fractionUtilisee: bandeActifsTable.fractionUtilisee,
+      bandeStatut: bandesTable.statut,
+    })
+    .from(bandeActifsTable)
+    .innerJoin(bandesTable,
+      eq(bandeActifsTable.bandeId, bandesTable.id))
+    .where(eq(bandeActifsTable.actifId, actif.id));
+
+  const nbBandesUtilisees = allocationsRows
+    .filter(r => r.bandeStatut === "terminee")
+    .reduce((s, r) =>
+      s + parseFloat(r.fractionUtilisee ?? "1"), 0);
+
+  const valeur = parseFloat(actif.valeur);
+  const taux = parseFloat(actif.tauxAmortissementAnnuel ?? "10");
+
+  // Amortissement par bande (et non par an) :
+  const amortissementCumule = Math.min(
+    valeur,
+    valeur * (taux / 100) * nbBandesUtilisees
+  );
+  const valeurResiduelle = Math.max(0, valeur - amortissementCumule);
+
+Retourner dans la réponse :
+  {
+    ...actif,
+    nbBandesUtilisees,
+    amortissementCumule,
+    valeurResiduelle,
+  }
+
+5.2 — Affichage frontend
+Dans infrastructure.tsx ActifsTab, si absent :
+Ajouter dans le tableau des colonnes :
+- "Bandes utilisées" (nbBandesUtilisees)
+- "Amortissement" (amortissementCumule formaté FCFA)
+- "Valeur résiduelle" (valeurResiduelle formaté FCFA)
+  Couleur : vert si > 50% valeur initiale,
+            orange si 20-50%, rouge si < 20%
+
+5.3 — Activer la prise en compte dans charges fixes bande
+Dans bandes.ts getBandeDetail() ou équivalent, si absent :
+Au lieu d'utiliser uniquement bande.valeurMaterielFixe :
+
+  const allocationsBande = await db
+    .select({
+      valeur: actifsTable.valeur,
+      taux: actifsTable.tauxAmortissementAnnuel,
+      fractionUtilisee: bandeActifsTable.fractionUtilisee,
+    })
+    .from(bandeActifsTable)
+    .innerJoin(actifsTable,
+      eq(bandeActifsTable.actifId, actifsTable.id))
+    .where(eq(bandeActifsTable.bandeId, bande.id));
+
+  const depreciationAllocated = allocationsBande.reduce(
+    (s, a) => {
+      const v = parseFloat(a.valeur);
+      const t = parseFloat(a.taux ?? "10");
+      const f = parseFloat(a.fractionUtilisee ?? "1");
+      // Amortissement pour cette bande spécifique
+      return s + (v * (t / 100) * f);
+    }, 0);
+
+  // Si des allocations existent, utiliser ce calcul
+  // Sinon fallback sur l'ancien valeurMaterielFixe × tauxDepreciation
+  const valeurPerdueMateriel = allocationsBande.length > 0
+    ? depreciationAllocated
+    : parseFloat(bande.valeurMaterielFixe ?? "0") *
+      (tauxDepreciation / 100);
+
+═══════════════════════════════════════════════════
+PRIORITÉ 6 — VALIDATION REMBOURSEMENT ≤ SOLDE
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- La route POST /financement/remboursements vérifie-t-elle que
+  le montant ne dépasse pas le solde restant de l'investisseur ?
+→ Ajouter seulement si absent.
+
+Dans financement.ts route POST /remboursements, si absent :
+Avant l'insert :
+  // Total investi par cet investisseur
+  const investissementsRows = await db
+    .select({ montant: financementTable.montant })
+    .from(financementTable)
+    .where(eq(financementTable.nom, body.investisseurNom));
+  const totalInvesti = investissementsRows.reduce(
+    (s, r) => s + parseFloat(r.montant), 0);
+
+  // Total déjà remboursé
+  const remboursementsRows = await db
+    .select({ montant: remboursementsTable.montant })
+    .from(remboursementsTable)
+    .where(eq(remboursementsTable.investisseurNom,
+            body.investisseurNom));
+  const totalRembourse = remboursementsRows.reduce(
+    (s, r) => s + parseFloat(r.montant), 0);
+
+  const soldeRestant = totalInvesti - totalRembourse;
+  const montantDemande = parseFloat(body.montant);
+
+  if (montantDemande > soldeRestant) {
+    return res.status(400).json({
+      error: `Le montant ${montantDemande.toLocaleString()} FCFA `
+           + `dépasse le solde restant de `
+           + `${soldeRestant.toLocaleString()} FCFA pour `
+           + `${body.investisseurNom}`,
+      soldeRestant,
+      totalInvesti,
+      totalRembourse,
+    });
+  }
+
+Côté frontend financement.tsx, si absent :
+Capturer cette erreur 400 et l'afficher dans un toast destructive
+avec le message du serveur.
+
+═══════════════════════════════════════════════════
+PRIORITÉ 7 — CASH-FLOW MENSUEL EN GRAPHIQUE
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- La route GET /historique-caisse retourne-t-elle déjà une
+  agrégation cashflowMensuel ?
+- La page tresorerie.tsx affiche-t-elle un graphique mensuel ?
+→ Implémenter seulement ce qui manque.
+
+7.1 — Backend : agrégation mensuelle
+Dans dashboard.ts route GET /historique-caisse, après la
+construction du journal complet, si absent :
+
+  const cashflowMensuel: Record<string, {
+    mois: string,
+    entrees: number,
+    sorties: number,
+    solde: number
+  }> = {};
+
+  for (const entry of journalEntries) {
+    const mois = entry.date.substring(0, 7); // YYYY-MM
+    if (!cashflowMensuel[mois]) {
+      cashflowMensuel[mois] = {
+        mois, entrees: 0, sorties: 0, solde: 0
+      };
+    }
+    if (entry.type === "entree") {
+      cashflowMensuel[mois].entrees += entry.montant;
+    } else {
+      cashflowMensuel[mois].sorties += entry.montant;
+    }
+    cashflowMensuel[mois].solde =
+      cashflowMensuel[mois].entrees - cashflowMensuel[mois].sorties;
+  }
+
+  const cashflowArray = Object.values(cashflowMensuel)
+    .sort((a, b) => a.mois.localeCompare(b.mois));
+
+  // Ajouter cashflowMensuel à la réponse :
+  res.json({ entries: journalEntries, cashflowMensuel: cashflowArray });
+
+7.2 — Frontend : graphique recharts
+Dans tresorerie.tsx onglet "Historique" (ou page principale),
+si absent :
+Ajouter un BarChart depuis recharts :
+  - Axe X : mois (formaté "Jan 2026", "Fév 2026"...)
+  - 2 barres groupées par mois : entrées (vert) / sorties (rouge)
+  - Ligne au-dessus : solde net mensuel
+  - Tooltip détaillé au survol
+Hauteur 300px, responsive.
+
+═══════════════════════════════════════════════════
+PRIORITÉ 8 — TYPE DE FINANCEMENT (APPORT VS PRÊT)
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- financementTable a-t-elle une colonne type ?
+- A-t-elle une colonne tauxInteret ?
+- L'UI permet-elle de saisir le type lors de l'ajout ?
+→ Implémenter seulement ce qui manque.
+
+8.1 — Schéma
+Dans lib/db/src/schema/financement.ts (ou équivalent), si absent :
+  type: varchar("type", { length: 20 })
+    .notNull().default("apport"),
+  tauxInteret: numeric("taux_interet", { precision: 5, scale: 2 })
+    .default("0"),
+  dateRemboursementPrevue: date("date_remboursement_prevue"),
+Générer et appliquer la migration.
+Backfill : tous les enregistrements existants → type = "apport".
+
+8.2 — Backend
+Dans financement.ts routes POST/PUT, accepter et valider :
+- type ∈ ["apport", "pret"]
+- tauxInteret (number, 0 par défaut, requis si type === "pret")
+- dateRemboursementPrevue (optionnel)
+
+Dans le calcul des soldes investisseurs, distinguer :
+- totalApports : sum(montant) where type = "apport"
+- totalPrets : sum(montant) where type = "pret"
+- interetsDus : pour chaque prêt, calculer
+    montant × (tauxInteret / 100) × (annéesEcoulées)
+- totalDuPourPrets : totalPrets + interetsDus
+
+Retourner ces champs dans GET /financement et GET /remboursements.
+
+8.3 — Frontend
+Dans financement.tsx, si absent :
+Dans le formulaire d'ajout/édition :
+- Select "Type" (Apport | Prêt)
+- Si Prêt : afficher champ "Taux d'intérêt annuel (%)"
+- Si Prêt : afficher champ "Date de remboursement prévue"
+
+Dans le tableau des financements, ajouter colonnes :
+- Type (badge : "Apport" gris, "Prêt" orange)
+- Si prêt : taux + date prévue
+
+Dans l'onglet Soldes, distinguer pour chaque investisseur :
+- Apports : X FCFA
+- Prêts : Y FCFA (intérêts dus : Z FCFA)
+- Total dû : Y + Z FCFA
+
+═══════════════════════════════════════════════════
+PRIORITÉ 9 — SUPPRIMER COMPLÈTEMENT LES MODULES LEGACY
+═══════════════════════════════════════════════════
+
+Les modules /devis et /depenses ne sont plus nécessaires.
+Les supprimer entièrement de l'application.
+
+VÉRIFICATION D'ABORD :
+- Existe-t-il des données dans devisConstructionTable,
+  puitsItemsDevisTable, depensesBatimentTable, depensesPuitsTable,
+  sortiesArgentTable, sortiesCarburantTable ?
+- Si oui : proposer d'abord une migration vers chantierDepensesTable
+  (créer un chantier "Bâtiment initial — historique" et y déplacer
+  toutes les dépenses).
+- Si non : suppression directe.
+
+9.1 — Migration des données existantes (si présentes)
+Si des données existent dans les tables legacy :
+- Créer un chantier "Bâtiment initial — historique" si inexistant
+  (statut: "terminee")
+- Migrer chaque ligne de depensesBatimentTable, depensesPuitsTable,
+  sortiesArgentTable, sortiesCarburantTable vers
+  chantierDepensesTable avec :
+    chantierId: id du chantier "Bâtiment initial"
+    designation: l'ancien designation
+    quantite, prixUnitaire ou montant équivalent
+    date: date originale
+    categorie: "batiment" | "puits" | "sortie" | "carburant"
+    commentaire: "Migré depuis module legacy"
+- Logger le nombre de lignes migrées par table
+
+9.2 — Supprimer les pages frontend
+- Supprimer artifacts/ferme-familiale/src/pages/devis.tsx
+- Supprimer artifacts/ferme-familiale/src/pages/depenses.tsx
+- Retirer les routes /devis et /depenses du router (App.tsx)
+- Retirer toutes les références dans layout.tsx (sidebar)
+
+9.3 — Supprimer les routes backend
+- Supprimer artifacts/api-server/src/routes/devis.ts
+- Supprimer artifacts/api-server/src/routes/depenses.ts
+- Retirer leur enregistrement dans app.ts (router /api)
+
+9.4 — Supprimer les tables et schémas (après migration)
+Une fois la migration confirmée et les routes supprimées :
+- Drop devisConstructionTable, puitsItemsDevisTable,
+  depensesBatimentTable, depensesPuitsTable, sortiesArgentTable,
+  sortiesCarburantTable
+- Supprimer les fichiers de schéma correspondants dans
+  lib/db/src/schema/
+- Générer et appliquer la migration Drizzle
+
+9.5 — Nettoyer les références dans dashboard.ts
+Retirer toutes les requêtes vers les tables supprimées dans
+dashboard.ts (puisque tout passe désormais par chantierDepensesTable
+grâce à la PRIORITÉ 1).
+
+═══════════════════════════════════════════════════
+CORRECTIONS RAPIDES
+═══════════════════════════════════════════════════
+
+C1 — Champ decaisse inutilisé
+ATTENTION : si la PRIORITÉ 9 est appliquée et que
+sortiesArgentTable est supprimée, ce point devient sans objet.
+Sinon, dans la liste des sorties d'argent, afficher si
+decaisse > depense :
+  "Décaissé : X | Dépensé : Y | Rendu : Z"
+
+C2 — Modification financement → traçabilité
+Dans financement.ts route PUT /:id, si absent :
+Avant la modification, créer une entrée dans activity_log :
+  {
+    action: "MODIFICATION_FINANCEMENT",
+    details: {
+      financementId: id,
+      ancienMontant, nouveauMontant,
+      ancienneDate, nouvelleDate,
+      ancienNom, nouveauNom,
+    }
+  }
+La trace devient auditable même après modification.
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL OBLIGATOIRE
+═══════════════════════════════════════════════════
+
+Une fois tout terminé, génère un rapport structuré ainsi :
+
+## RAPPORT D'IMPLÉMENTATION FINANCES & INFRASTRUCTURE
+## [date du jour]
+
+### ✅ DÉJÀ PRÉSENT (non modifié)
+- [liste chaque item déjà implémenté]
+
+### ✅ IMPLÉMENTÉ
+Pour chaque item fait :
+- Fichier(s) modifié(s)
+- Ce qui a été ajouté/corrigé
+- Lignes concernées
+
+### ⚠️ PARTIELLEMENT FAIT
+- Ce qui a été complété
+- Ce qui reste à faire et pourquoi
+
+### ❌ NON FAIT
+- Item non implémenté + raison
+
+### 🔧 MIGRATIONS APPLIQUÉES
+- Liste des migrations Drizzle générées et appliquées
+- Backfills effectués sur les données existantes
+- Nombre de lignes migrées depuis les tables legacy
+
+### 🗑️ SUPPRESSIONS EFFECTUÉES
+- Pages frontend supprimées
+- Routes backend supprimées
+- Tables DB supprimées
+- Fichiers de schéma supprimés
+
+### 💰 IMPACT FINANCIER
+- Estimation de l'écart avant/après correction du Bug #1
+  (chantierDepenses absentes des calculs)
+  → "Avant : X FCFA dans la caisse / Après : Y FCFA"
+
+### ⚠️ POINTS D'ATTENTION
+- Effets de bord potentiels
+- Données existantes potentiellement affectées
+- Tests recommandés avant mise en prod
