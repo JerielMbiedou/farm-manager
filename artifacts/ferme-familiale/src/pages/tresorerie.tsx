@@ -11,13 +11,19 @@ import {
   TrendingUp, TrendingDown, Wallet, Construction, ArrowUpRight, ArrowDownRight,
   Building2, BarChart3, Target, AlertCircle, CheckCircle2, Clock, Bird, BookOpen,
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend } from "recharts";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 async function fetchFinances() {
   const res = await fetch(`${BASE}/api/dashboard/finances`, { credentials: "include" });
   if (!res.ok) throw new Error("Erreur chargement finances");
+  return res.json();
+}
+
+async function fetchCashflow() {
+  const res = await fetch(`${BASE}/api/dashboard/cashflow-mensuel`, { credentials: "include" });
+  if (!res.ok) throw new Error("Erreur chargement cashflow");
   return res.json();
 }
 
@@ -75,6 +81,10 @@ function FlowRow({ label, montant, type, sub }: { label: string; montant: number
 
 export default function Finances() {
   const { data, isLoading, error } = useQuery({ queryKey: ["dashboard-finances"], queryFn: fetchFinances });
+  const { data: cashflowData } = useQuery<Array<{ mois: string; entrees: number; sorties: number; solde: number; soldeFinal: number }>>({
+    queryKey: ["dashboard-cashflow-mensuel"],
+    queryFn: fetchCashflow,
+  });
 
   if (isLoading) return (
     <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
@@ -207,6 +217,31 @@ export default function Finances() {
               </div>
             </CardContent>
           </Card>
+
+          {cashflowData && cashflowData.length > 0 && (
+            <Card>
+              <CardHeader className="border-b">
+                <CardTitle className="text-base font-serif flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-blue-600" />
+                  Évolution mensuelle de la trésorerie
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={cashflowData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
+                    <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(v: number) => formatFCFA(v)} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Line type="monotone" dataKey="entrees" name="Entrées" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="sorties" name="Sorties" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="soldeFinal" name="Solde cumulé" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
 
           {f.bandesDetails?.length > 0 && (
             <Card>

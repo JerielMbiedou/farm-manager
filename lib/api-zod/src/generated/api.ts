@@ -56,6 +56,9 @@ export const ListFinancementsResponseItem = zod.object({
   nom: zod.string(),
   montant: zod.number(),
   date: zod.coerce.date(),
+  type: zod.enum(["apport", "pret"]),
+  tauxInteret: zod.number(),
+  dateRemboursementPrevue: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListFinancementsResponse = zod.array(ListFinancementsResponseItem);
@@ -67,6 +70,9 @@ export const CreateFinancementBody = zod.object({
   nom: zod.string(),
   montant: zod.number(),
   date: zod.coerce.date(),
+  type: zod.enum(["apport", "pret"]).optional(),
+  tauxInteret: zod.number().optional(),
+  dateRemboursementPrevue: zod.coerce.date().nullish(),
 });
 
 /**
@@ -80,6 +86,9 @@ export const UpdateFinancementBody = zod.object({
   nom: zod.string(),
   montant: zod.number(),
   date: zod.coerce.date(),
+  type: zod.enum(["apport", "pret"]).optional(),
+  tauxInteret: zod.number().optional(),
+  dateRemboursementPrevue: zod.coerce.date().nullish(),
 });
 
 export const UpdateFinancementResponse = zod.object({
@@ -87,6 +96,9 @@ export const UpdateFinancementResponse = zod.object({
   nom: zod.string(),
   montant: zod.number(),
   date: zod.coerce.date(),
+  type: zod.enum(["apport", "pret"]),
+  tauxInteret: zod.number(),
+  dateRemboursementPrevue: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -98,361 +110,6 @@ export const DeleteFinancementParams = zod.object({
 });
 
 export const DeleteFinancementResponse = zod.object({
-  success: zod.boolean(),
-});
-
-/**
- * @summary Liste des devis de construction
- */
-export const ListDevisResponse = zod.object({
-  id: zod.number(),
-  batimentEstime: zod.number(),
-  batimentNotes: zod.string().optional(),
-  carburantEstime: zod.number(),
-  puitsItems: zod.array(
-    zod.object({
-      id: zod.number(),
-      designation: zod.string(),
-      quantite: zod.number(),
-      prixUnitaire: zod.number(),
-      prixTotal: zod.number(),
-    }),
-  ),
-  totalPuits: zod.number(),
-  totalGeneral: zod.number(),
-  updatedAt: zod.coerce.date(),
-});
-
-/**
- * @summary Mettre à jour les devis de construction
- */
-export const UpdateDevisBody = zod.object({
-  batimentEstime: zod.number().optional(),
-  batimentNotes: zod.string().optional(),
-  carburantEstime: zod.number().optional(),
-});
-
-export const UpdateDevisResponse = zod.object({
-  id: zod.number(),
-  batimentEstime: zod.number(),
-  batimentNotes: zod.string().optional(),
-  carburantEstime: zod.number(),
-  puitsItems: zod.array(
-    zod.object({
-      id: zod.number(),
-      designation: zod.string(),
-      quantite: zod.number(),
-      prixUnitaire: zod.number(),
-      prixTotal: zod.number(),
-    }),
-  ),
-  totalPuits: zod.number(),
-  totalGeneral: zod.number(),
-  updatedAt: zod.coerce.date(),
-});
-
-/**
- * @summary Liste des items du puits
- */
-export const ListPuitsItemsResponseItem = zod.object({
-  id: zod.number(),
-  designation: zod.string(),
-  quantite: zod.number(),
-  prixUnitaire: zod.number(),
-  prixTotal: zod.number(),
-});
-export const ListPuitsItemsResponse = zod.array(ListPuitsItemsResponseItem);
-
-/**
- * @summary Créer un item du puits
- */
-export const CreatePuitsItemBody = zod.object({
-  designation: zod.string(),
-  quantite: zod.number(),
-  prixUnitaire: zod.number(),
-});
-
-/**
- * @summary Mettre à jour un item du puits
- */
-export const UpdatePuitsItemParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const UpdatePuitsItemBody = zod.object({
-  designation: zod.string(),
-  quantite: zod.number(),
-  prixUnitaire: zod.number(),
-});
-
-export const UpdatePuitsItemResponse = zod.object({
-  id: zod.number(),
-  designation: zod.string(),
-  quantite: zod.number(),
-  prixUnitaire: zod.number(),
-  prixTotal: zod.number(),
-});
-
-/**
- * @summary Supprimer un item du puits
- */
-export const DeletePuitsItemParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const DeletePuitsItemResponse = zod.object({
-  success: zod.boolean(),
-});
-
-/**
- * @summary Liste des sorties d'argent
- */
-export const ListSortiesResponseItem = zod.object({
-  id: zod.number(),
-  date: zod.coerce.date(),
-  decaisse: zod.number(),
-  depense: zod.number(),
-  reste: zod.number(),
-});
-export const ListSortiesResponse = zod.array(ListSortiesResponseItem);
-
-/**
- * @summary Créer une sortie d'argent
- */
-export const CreateSortieBody = zod.object({
-  date: zod.coerce.date(),
-  decaisse: zod.number(),
-  depense: zod.number(),
-});
-
-/**
- * @summary Mettre à jour une sortie
- */
-export const UpdateSortieParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const UpdateSortieBody = zod.object({
-  date: zod.coerce.date(),
-  decaisse: zod.number(),
-  depense: zod.number(),
-});
-
-export const UpdateSortieResponse = zod.object({
-  id: zod.number(),
-  date: zod.coerce.date(),
-  decaisse: zod.number(),
-  depense: zod.number(),
-  reste: zod.number(),
-});
-
-/**
- * @summary Supprimer une sortie
- */
-export const DeleteSortieParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const DeleteSortieResponse = zod.object({
-  success: zod.boolean(),
-});
-
-/**
- * @summary Liste des sorties carburant
- */
-export const ListSortiesCarburantResponseItem = zod.object({
-  id: zod.number(),
-  date: zod.coerce.date(),
-  montant: zod.number(),
-});
-export const ListSortiesCarburantResponse = zod.array(
-  ListSortiesCarburantResponseItem,
-);
-
-/**
- * @summary Créer une sortie carburant
- */
-export const CreateSortieCarburantBody = zod.object({
-  date: zod.coerce.date(),
-  montant: zod.number(),
-});
-
-/**
- * @summary Mettre à jour une sortie carburant
- */
-export const UpdateSortieCarburantParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const UpdateSortieCarburantBody = zod.object({
-  date: zod.coerce.date(),
-  montant: zod.number(),
-});
-
-export const UpdateSortieCarburantResponse = zod.object({
-  id: zod.number(),
-  date: zod.coerce.date(),
-  montant: zod.number(),
-});
-
-/**
- * @summary Supprimer une sortie carburant
- */
-export const DeleteSortieCarburantParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const DeleteSortieCarburantResponse = zod.object({
-  success: zod.boolean(),
-});
-
-/**
- * @summary Liste des dépenses détaillées bâtiment
- */
-export const ListBatimentItemsResponseItem = zod.object({
-  id: zod.number(),
-  designation: zod.string(),
-  quantite: zod.number(),
-  prixUnitaire: zod.number(),
-  prixTotal: zod.number(),
-  categorie: zod
-    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
-    .optional(),
-  date: zod.coerce.date().nullish(),
-  commentaire: zod.string().nullish(),
-});
-export const ListBatimentItemsResponse = zod.array(
-  ListBatimentItemsResponseItem,
-);
-
-/**
- * @summary Créer une dépense bâtiment
- */
-export const CreateBatimentItemBody = zod.object({
-  designation: zod.string(),
-  quantite: zod.number(),
-  prixUnitaire: zod.number(),
-  categorie: zod
-    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
-    .optional(),
-  date: zod.coerce.date().optional(),
-  commentaire: zod.string().optional(),
-});
-
-/**
- * @summary Mettre à jour une dépense bâtiment
- */
-export const UpdateBatimentItemParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const UpdateBatimentItemBody = zod.object({
-  designation: zod.string(),
-  quantite: zod.number(),
-  prixUnitaire: zod.number(),
-  categorie: zod
-    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
-    .optional(),
-  date: zod.coerce.date().optional(),
-  commentaire: zod.string().optional(),
-});
-
-export const UpdateBatimentItemResponse = zod.object({
-  id: zod.number(),
-  designation: zod.string(),
-  quantite: zod.number(),
-  prixUnitaire: zod.number(),
-  prixTotal: zod.number(),
-  categorie: zod
-    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
-    .optional(),
-  date: zod.coerce.date().nullish(),
-  commentaire: zod.string().nullish(),
-});
-
-/**
- * @summary Supprimer une dépense bâtiment
- */
-export const DeleteBatimentItemParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const DeleteBatimentItemResponse = zod.object({
-  success: zod.boolean(),
-});
-
-/**
- * @summary Liste des dépenses détaillées puits
- */
-export const ListDepensesPuitsItemsResponseItem = zod.object({
-  id: zod.number(),
-  designation: zod.string(),
-  quantite: zod.number(),
-  prixUnitaire: zod.number(),
-  prixTotal: zod.number(),
-  categorie: zod
-    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
-    .optional(),
-  date: zod.coerce.date().nullish(),
-  commentaire: zod.string().nullish(),
-});
-export const ListDepensesPuitsItemsResponse = zod.array(
-  ListDepensesPuitsItemsResponseItem,
-);
-
-/**
- * @summary Créer une dépense puits
- */
-export const CreateDepensesPuitsItemBody = zod.object({
-  designation: zod.string(),
-  quantite: zod.number(),
-  prixUnitaire: zod.number(),
-  categorie: zod
-    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
-    .optional(),
-  date: zod.coerce.date().optional(),
-  commentaire: zod.string().optional(),
-});
-
-/**
- * @summary Mettre à jour une dépense puits
- */
-export const UpdateDepensesPuitsItemParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const UpdateDepensesPuitsItemBody = zod.object({
-  designation: zod.string(),
-  quantite: zod.number(),
-  prixUnitaire: zod.number(),
-  categorie: zod
-    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
-    .optional(),
-  date: zod.coerce.date().optional(),
-  commentaire: zod.string().optional(),
-});
-
-export const UpdateDepensesPuitsItemResponse = zod.object({
-  id: zod.number(),
-  designation: zod.string(),
-  quantite: zod.number(),
-  prixUnitaire: zod.number(),
-  prixTotal: zod.number(),
-  categorie: zod
-    .enum(["materiaux", "main_oeuvre", "transport", "carburant", "divers"])
-    .optional(),
-  date: zod.coerce.date().nullish(),
-  commentaire: zod.string().nullish(),
-});
-
-/**
- * @summary Supprimer une dépense puits
- */
-export const DeleteDepensesPuitsItemParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const DeleteDepensesPuitsItemResponse = zod.object({
   success: zod.boolean(),
 });
 
@@ -890,6 +547,20 @@ export const GetHistoriqueCaisseResponse = zod.object({
   ),
   soldeCourant: zod.number(),
 });
+
+/**
+ * @summary Cash-flow mensuel cumulé
+ */
+export const GetCashflowMensuelResponseItem = zod.object({
+  mois: zod.string(),
+  entrees: zod.number(),
+  sorties: zod.number(),
+  solde: zod.number(),
+  soldeFinal: zod.number(),
+});
+export const GetCashflowMensuelResponse = zod.array(
+  GetCashflowMensuelResponseItem,
+);
 
 /**
  * @summary Liste des remboursements

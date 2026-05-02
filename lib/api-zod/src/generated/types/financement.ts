@@ -5,11 +5,15 @@
  * API for Ferme Familiale - Gestion de la ferme avicole
  * OpenAPI spec version: 0.1.0
  */
+import type { FinancementType } from "./financementType";
 
 export interface Financement {
   id: number;
   nom: string;
   montant: number;
   date: Date;
+  type: FinancementType;
+  tauxInteret: number;
+  dateRemboursementPrevue?: Date | null;
   createdAt: Date;
 }

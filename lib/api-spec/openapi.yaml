@@ -13,10 +13,6 @@ tags:
     description: Authentication operations
   - name: financement
     description: Gestion du financement
-  - name: devis
-    description: Devis de construction
-  - name: depenses
-    description: Suivi des dépenses de construction
   - name: bandes
     description: Gestion des bandes de poulets
   - name: dashboard
@@ -164,406 +160,6 @@ paths:
       responses:
         "200":
           description: Financement supprimé
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-
-  /devis:
-    get:
-      operationId: listDevis
-      tags: [devis]
-      summary: Liste des devis de construction
-      responses:
-        "200":
-          description: Devis
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DevisConstruction"
-    put:
-      operationId: updateDevis
-      tags: [devis]
-      summary: Mettre à jour les devis de construction
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UpdateDevisBody"
-      responses:
-        "200":
-          description: Devis mis à jour
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DevisConstruction"
-
-  /devis/puits-items:
-    get:
-      operationId: listPuitsItems
-      tags: [devis]
-      summary: Liste des items du puits
-      responses:
-        "200":
-          description: Items du puits
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/PuitsItem"
-    post:
-      operationId: createPuitsItem
-      tags: [devis]
-      summary: Créer un item du puits
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreatePuitsItemBody"
-      responses:
-        "201":
-          description: Item créé
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PuitsItem"
-
-  /devis/puits-items/{id}:
-    put:
-      operationId: updatePuitsItem
-      tags: [devis]
-      summary: Mettre à jour un item du puits
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreatePuitsItemBody"
-      responses:
-        "200":
-          description: Item mis à jour
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PuitsItem"
-    delete:
-      operationId: deletePuitsItem
-      tags: [devis]
-      summary: Supprimer un item du puits
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Item supprimé
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-
-  /depenses/sorties:
-    get:
-      operationId: listSorties
-      tags: [depenses]
-      summary: Liste des sorties d'argent
-      responses:
-        "200":
-          description: Sorties d'argent
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SortieArgent"
-    post:
-      operationId: createSortie
-      tags: [depenses]
-      summary: Créer une sortie d'argent
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateSortieBody"
-      responses:
-        "201":
-          description: Sortie créée
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SortieArgent"
-
-  /depenses/sorties/{id}:
-    put:
-      operationId: updateSortie
-      tags: [depenses]
-      summary: Mettre à jour une sortie
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateSortieBody"
-      responses:
-        "200":
-          description: Sortie mise à jour
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SortieArgent"
-    delete:
-      operationId: deleteSortie
-      tags: [depenses]
-      summary: Supprimer une sortie
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Sortie supprimée
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-
-  /depenses/carburant:
-    get:
-      operationId: listSortiesCarburant
-      tags: [depenses]
-      summary: Liste des sorties carburant
-      responses:
-        "200":
-          description: Sorties carburant
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SortieCarburant"
-    post:
-      operationId: createSortieCarburant
-      tags: [depenses]
-      summary: Créer une sortie carburant
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateSortieCarburantBody"
-      responses:
-        "201":
-          description: Sortie carburant créée
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SortieCarburant"
-
-  /depenses/carburant/{id}:
-    put:
-      operationId: updateSortieCarburant
-      tags: [depenses]
-      summary: Mettre à jour une sortie carburant
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateSortieCarburantBody"
-      responses:
-        "200":
-          description: Mise à jour réussie
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SortieCarburant"
-    delete:
-      operationId: deleteSortieCarburant
-      tags: [depenses]
-      summary: Supprimer une sortie carburant
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Suppression réussie
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-
-  /depenses/batiment-items:
-    get:
-      operationId: listBatimentItems
-      tags: [depenses]
-      summary: Liste des dépenses détaillées bâtiment
-      responses:
-        "200":
-          description: Dépenses bâtiment
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/DepenseDetaillee"
-    post:
-      operationId: createBatimentItem
-      tags: [depenses]
-      summary: Créer une dépense bâtiment
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateDepenseDetaillee"
-      responses:
-        "201":
-          description: Dépense créée
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DepenseDetaillee"
-
-  /depenses/batiment-items/{id}:
-    put:
-      operationId: updateBatimentItem
-      tags: [depenses]
-      summary: Mettre à jour une dépense bâtiment
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateDepenseDetaillee"
-      responses:
-        "200":
-          description: Mise à jour réussie
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DepenseDetaillee"
-    delete:
-      operationId: deleteBatimentItem
-      tags: [depenses]
-      summary: Supprimer une dépense bâtiment
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Suppression réussie
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessResponse"
-
-  /depenses/puits-items:
-    get:
-      operationId: listDepensesPuitsItems
-      tags: [depenses]
-      summary: Liste des dépenses détaillées puits
-      responses:
-        "200":
-          description: Dépenses puits
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/DepenseDetaillee"
-    post:
-      operationId: createDepensesPuitsItem
-      tags: [depenses]
-      summary: Créer une dépense puits
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateDepenseDetaillee"
-      responses:
-        "201":
-          description: Dépense créée
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DepenseDetaillee"
-
-  /depenses/puits-items/{id}:
-    put:
-      operationId: updateDepensesPuitsItem
-      tags: [depenses]
-      summary: Mettre à jour une dépense puits
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateDepenseDetaillee"
-      responses:
-        "200":
-          description: Mise à jour réussie
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DepenseDetaillee"
-    delete:
-      operationId: deleteDepensesPuitsItem
-      tags: [depenses]
-      summary: Supprimer une dépense puits
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Suppression réussie
           content:
             application/json:
               schema:
@@ -1031,6 +627,21 @@ paths:
               schema:
                 $ref: "#/components/schemas/HistoriqueCaisseResponse"
 
+  /dashboard/cashflow-mensuel:
+    get:
+      operationId: getCashflowMensuel
+      tags: [dashboard]
+      summary: Cash-flow mensuel cumulé
+      responses:
+        "200":
+          description: Évolution mensuelle des entrées/sorties et solde cumulé
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CashflowMensuel"
+
   /financement/remboursements:
     get:
       operationId: getRemboursements
@@ -1452,6 +1063,15 @@ components:
         date:
           type: string
           format: date
+        type:
+          type: string
+          enum: [apport, pret]
+        tauxInteret:
+          type: number
+        dateRemboursementPrevue:
+          type: string
+          format: date
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1460,6 +1080,8 @@ components:
         - nom
         - montant
         - date
+        - type
+        - tauxInteret
         - createdAt
 
     CreateFinancementBody:
@@ -1472,148 +1094,19 @@ components:
         date:
           type: string
           format: date
+        type:
+          type: string
+          enum: [apport, pret]
+        tauxInteret:
+          type: number
+        dateRemboursementPrevue:
+          type: string
+          format: date
+          nullable: true
       required:
         - nom
         - montant
         - date
-
-    DevisConstruction:
-      type: object
-      properties:
-        id:
-          type: integer
-        batimentEstime:
-          type: number
-        batimentNotes:
-          type: string
-        carburantEstime:
-          type: number
-        puitsItems:
-          type: array
-          items:
-            $ref: "#/components/schemas/PuitsItem"
-        totalPuits:
-          type: number
-        totalGeneral:
-          type: number
-        updatedAt:
-          type: string
-          format: date-time
-      required:
-        - id
-        - batimentEstime
-        - carburantEstime
-        - puitsItems
-        - totalPuits
-        - totalGeneral
-        - updatedAt
-
-    UpdateDevisBody:
-      type: object
-      properties:
-        batimentEstime:
-          type: number
-        batimentNotes:
-          type: string
-        carburantEstime:
-          type: number
-
-    PuitsItem:
-      type: object
-      properties:
-        id:
-          type: integer
-        designation:
-          type: string
-        quantite:
-          type: number
-        prixUnitaire:
-          type: number
-        prixTotal:
-          type: number
-      required:
-        - id
-        - designation
-        - quantite
-        - prixUnitaire
-        - prixTotal
-
-    CreatePuitsItemBody:
-      type: object
-      properties:
-        designation:
-          type: string
-        quantite:
-          type: number
-        prixUnitaire:
-          type: number
-      required:
-        - designation
-        - quantite
-        - prixUnitaire
-
-    SortieArgent:
-      type: object
-      properties:
-        id:
-          type: integer
-        date:
-          type: string
-          format: date
-        decaisse:
-          type: number
-        depense:
-          type: number
-        reste:
-          type: number
-      required:
-        - id
-        - date
-        - decaisse
-        - depense
-        - reste
-
-    CreateSortieBody:
-      type: object
-      properties:
-        date:
-          type: string
-          format: date
-        decaisse:
-          type: number
-        depense:
-          type: number
-      required:
-        - date
-        - decaisse
-        - depense
-
-    SortieCarburant:
-      type: object
-      properties:
-        id:
-          type: integer
-        date:
-          type: string
-          format: date
-        montant:
-          type: number
-      required:
-        - id
-        - date
-        - montant
-
-    CreateSortieCarburantBody:
-      type: object
-      properties:
-        date:
-          type: string
-          format: date
-        montant:
-          type: number
-      required:
-        - date
-        - montant
 
     DepenseDetaillee:
       type: object
@@ -2263,6 +1756,21 @@ components:
         soldeCourant:
           type: number
       required: [entries, soldeCourant]
+
+    CashflowMensuel:
+      type: object
+      properties:
+        mois:
+          type: string
+        entrees:
+          type: number
+        sorties:
+          type: number
+        solde:
+          type: number
+        soldeFinal:
+          type: number
+      required: [mois, entrees, sorties, solde, soldeFinal]
 
     ActivityLogEntry:
       type: object

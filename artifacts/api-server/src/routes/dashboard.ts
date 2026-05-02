@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { eq, isNull } from "drizzle-orm";
-import { db, financementTable, remboursementsTable, devisConstructionTable, puitsItemsTable, sortiesArgentTable, sortiesCarburantTable, depensesBatimentTable, depensesPuitsTable, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, vaccinationsTable, actifsTable, peseesTable, consommationAlimentTable } from "@workspace/db";
+import { eq, isNull, sql } from "drizzle-orm";
+import { db, financementTable, remboursementsTable, chantiersTable, chantierDepensesTable, chantierDevisLignesTable, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, vaccinationsTable, actifsTable, peseesTable, consommationAlimentTable } from "@workspace/db";
 import { getParam } from "../lib/parametres";
 
 const router = Router();
@@ -12,24 +12,13 @@ router.get("/summary", async (req, res) => {
   const remboursements = await db.select().from(remboursementsTable);
   const totalRembourse = remboursements.reduce((s, r) => s + parseFloat(r.montant), 0);
 
-  const devisRows = await db.select().from(devisConstructionTable).limit(1);
-  const puitsItemsDevis = await db.select().from(puitsItemsTable);
-  const totalPuitsDevis = puitsItemsDevis.reduce((s, p) => s + parseFloat(p.quantite) * parseFloat(p.prixUnitaire), 0);
-  const devis = devisRows[0];
-  const budgetBatDefaut = await getParam("budget_batiment_defaut", 3525000);
-  const budgetCarbDefaut = await getParam("budget_carburant_defaut", 150000);
-  const totalDevis = devis ? parseFloat(devis.batimentEstime) + parseFloat(devis.carburantEstime) + totalPuitsDevis : (budgetBatDefaut + budgetCarbDefaut);
+  // P9 : Devis = somme des lignes de devis sur tous les chantiers
+  const allDevisLignes = await db.select().from(chantierDevisLignesTable);
+  const totalDevis = allDevisLignes.reduce((s, l) => s + parseFloat(l.montantPrevu), 0);
 
-  const sorties = await db.select().from(sortiesArgentTable);
-  const sortiesCarb = await db.select().from(sortiesCarburantTable);
-  const batimentItems = await db.select().from(depensesBatimentTable);
-  const puitsItemsReal = await db.select().from(depensesPuitsTable);
-
-  const totalSorties = sorties.reduce((s, r) => s + parseFloat(r.depense), 0);
-  const totalCarburant = sortiesCarb.reduce((s, r) => s + parseFloat(r.montant), 0);
-  const totalBatiment = batimentItems.reduce((s, r) => s + parseFloat(r.quantite) * parseFloat(r.prixUnitaire), 0);
-  const totalPuitsReal = puitsItemsReal.reduce((s, r) => s + parseFloat(r.quantite) * parseFloat(r.prixUnitaire), 0);
-  const totalDepenseConstruction = totalSorties + totalCarburant + totalBatiment + totalPuitsReal;
+  // P1 + P9 : Dépenses de construction = somme des chantier_depenses (toutes catégories : matériaux, main-d'œuvre, transport, carburant, divers)
+  const allChantierDepenses = await db.select().from(chantierDepensesTable);
+  const totalDepenseConstruction = allChantierDepenses.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
 
   const tauxDepreciation = await getParam("taux_depreciation_materiel", 10);
   const tauxImprevus = await getParam("taux_imprevus", 5);
@@ -66,7 +55,6 @@ router.get("/summary", async (req, res) => {
     const sujetsVivants = bande.sujetsDepart - totalDeces;
     const tauxMortalite = bande.sujetsDepart > 0 ? (totalDeces / bande.sujetsDepart) * 100 : 0;
 
-    // P7.1 Enrichissement bandes actives
     let ageActuelJours: number | null = null;
     let joursAvantAbattage: number | null = null;
     let dernierPoidsMoyen: number | null = null;
@@ -89,7 +77,7 @@ router.get("/summary", async (req, res) => {
         const last = peseesRows[peseesRows.length - 1];
         dernierPoidsMoyen = parseFloat(last.poidsMoyenG);
         dateDernierePesee = last.date;
-        const poidsInitial = peseesRows.length > 1 ? parseFloat(peseesRows[0].poidsMoyenG) : 40; // poids initial poussin standard 40g
+        const poidsInitial = peseesRows.length > 1 ? parseFloat(peseesRows[0].poidsMoyenG) : 40;
         const ageInitial = peseesRows.length > 1 ? peseesRows[0].ageJours : 1;
         const deltaJours = Math.max(1, last.ageJours - ageInitial);
         gmqGrams = Math.round((dernierPoidsMoyen - poidsInitial) / deltaJours);
@@ -98,8 +86,6 @@ router.get("/summary", async (req, res) => {
       const alimRows = await db.select().from(consommationAlimentTable).where(eq(consommationAlimentTable.bandeId, bande.id));
       const totalAlimKg = alimRows.reduce((s, r) => s + parseFloat(r.quantiteKg), 0);
       if (dernierPoidsMoyen != null && sujetsVivants > 0) {
-        // IC = aliment consommé (kg) / gain de poids vivant (kg)
-        // gain = (poids actuel - poids initial poussin 40g) sur les sujets encore vivants
         const poidsInitialPoussinG = 40;
         const gainParSujetKg = Math.max(0, (dernierPoidsMoyen - poidsInitialPoussinG) / 1000);
         const gainTotalKg = gainParSujetKg * sujetsVivants;
@@ -118,7 +104,6 @@ router.get("/summary", async (req, res) => {
         .filter(m => m.date === todayStr || m.date === yStr)
         .reduce((s, m) => s + m.decesJour, 0);
 
-      // Dernière alerte mortalité (utile pour la bannière dashboard P9.3)
       let cumul = 0;
       for (const m of mortaliteRows.sort((a, b) => a.ageJours - b.ageJours)) {
         const vivantsDebut = bande.sujetsDepart - cumul;
@@ -147,7 +132,6 @@ router.get("/summary", async (req, res) => {
       totalVendus,
       createdAt: bande.createdAt,
       dateDeDepart: bande.dateDeDepart,
-      // Champs enrichis (null pour bandes terminées)
       ageActuelJours,
       joursAvantAbattage,
       dernierPoidsMoyen,
@@ -166,11 +150,16 @@ router.get("/summary", async (req, res) => {
     }
   }
 
-  const allDepenses = await db.select().from(bandeDepensesTable);
+  // P1 : depensesParCategorie — agrège bandes ET chantiers (vue globale exploitation)
   const depensesMap: Record<string, number> = {};
-  for (const d of allDepenses) {
+  const allBandeDepensesForCat = await db.select().from(bandeDepensesTable);
+  for (const d of allBandeDepensesForCat) {
     const montant = parseFloat(d.quantite) * parseFloat(d.prixUnitaire);
     depensesMap[d.categorie] = (depensesMap[d.categorie] ?? 0) + montant;
+  }
+  // P1 : on inclut les dépenses chantier sous une clé "construction" pour la vue dashboard
+  if (totalDepenseConstruction > 0) {
+    depensesMap["construction"] = (depensesMap["construction"] ?? 0) + totalDepenseConstruction;
   }
   const depensesParCategorie = Object.entries(depensesMap).map(([categorie, montant]) => ({ categorie, montant }));
 
@@ -288,7 +277,6 @@ router.get("/comparaison-bandes", async (req, res) => {
     if (bande.statut === "active") {
       dureeJours = Math.round((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     } else if (bande.dateCloture) {
-      // Bande clôturée → durée = dateCloture - dateDeDepart (référence métier)
       const cloture = new Date(bande.dateCloture);
       dureeJours = Math.max(1, Math.round((cloture.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
     } else if (ventes.length > 0) {
@@ -333,11 +321,12 @@ router.get("/comparaison-bandes", async (req, res) => {
 
 router.get("/historique-caisse", async (req, res) => {
   const financements = await db.select().from(financementTable).orderBy(financementTable.createdAt);
-  const sortiesArgent = await db.select().from(sortiesArgentTable).orderBy(sortiesArgentTable.createdAt);
-  const sortiesCarburant = await db.select().from(sortiesCarburantTable).orderBy(sortiesCarburantTable.createdAt);
   const rembRows = await db.select().from(remboursementsTable).orderBy(remboursementsTable.createdAt);
-  const batimentItems = await db.select().from(depensesBatimentTable);
-  const puitsItems = await db.select().from(depensesPuitsTable);
+  // P9 : remplace sortiesArgent + sortiesCarburant + depensesBatiment + depensesPuits par chantier_depenses
+  const allChantierDep = await db.select().from(chantierDepensesTable);
+  const chantierMap = new Map<number, string>();
+  const chantiers = await db.select().from(chantiersTable);
+  for (const c of chantiers) chantierMap.set(c.id, c.nom);
   const allBandeDepenses = await db.select().from(bandeDepensesTable);
   const allBandeVentes = await db.select().from(bandeVentesTable);
   const allDepVente = await db.select().from(depensesVenteTable);
@@ -348,24 +337,14 @@ router.get("/historique-caisse", async (req, res) => {
   for (const f of financements) {
     entries.push({ date: f.date, type: "entree", categorie: "Financement", designation: `Investissement de ${f.nom}`, montant: parseFloat(f.montant), timestamp: new Date(f.date + "T00:00:00") });
   }
-  for (const s of sortiesArgent) {
-    entries.push({ date: s.date, type: "sortie", categorie: "Sortie argent", designation: `Décaissement`, montant: parseFloat(s.depense), timestamp: new Date(s.date + "T00:00:00") });
-  }
-  for (const c of sortiesCarburant) {
-    entries.push({ date: c.date, type: "sortie", categorie: "Carburant", designation: `Carburant`, montant: parseFloat(c.montant), timestamp: new Date(c.date + "T00:00:00") });
-  }
   for (const r of rembRows) {
     entries.push({ date: r.date, type: "sortie", categorie: "Remboursement", designation: `Remboursement ${r.investisseurNom}`, montant: parseFloat(r.montant), timestamp: new Date(r.date + "T00:00:00") });
   }
-  for (const d of batimentItems) {
+  for (const d of allChantierDep) {
     const montant = parseFloat(d.quantite) * parseFloat(d.prixUnitaire);
     const dateStr = d.date ?? "2026-01-01";
-    entries.push({ date: dateStr, type: "sortie", categorie: "Construction", designation: `Bâtiment : ${d.designation}`, montant, timestamp: new Date(dateStr + "T00:00:00") });
-  }
-  for (const d of puitsItems) {
-    const montant = parseFloat(d.quantite) * parseFloat(d.prixUnitaire);
-    const dateStr = d.date ?? "2026-01-01";
-    entries.push({ date: dateStr, type: "sortie", categorie: "Construction", designation: `Puits : ${d.designation}`, montant, timestamp: new Date(dateStr + "T00:00:00") });
+    const chantierNom = chantierMap.get(d.chantierId) ?? `Chantier #${d.chantierId}`;
+    entries.push({ date: dateStr, type: "sortie", categorie: "Construction", designation: `[${chantierNom}] ${d.designation}`, montant, timestamp: new Date(dateStr + "T00:00:00") });
   }
   const bandeMap = new Map<number, { nom: string; dateDeDepart: string }>();
   const bandeRows = await db.select().from(bandesTable);
@@ -373,7 +352,6 @@ router.get("/historique-caisse", async (req, res) => {
   for (const d of allBandeDepenses) {
     const montant = parseFloat(d.quantite) * parseFloat(d.prixUnitaire);
     const bInfo = bandeMap.get(d.bandeId);
-    // Utilise la date propre à la dépense si disponible, sinon repli sur date de départ de la bande
     const dateStr = d.date ?? bInfo?.dateDeDepart ?? "2026-01-01";
     entries.push({ date: dateStr, type: "sortie", categorie: "Production", designation: `[${bInfo?.nom ?? "?"}] ${d.categorie} : ${d.designation}`, montant, timestamp: new Date(dateStr + "T00:00:00") });
   }
@@ -421,19 +399,13 @@ router.get("/finances", async (req, res) => {
 
   const financements = await db.select().from(financementTable);
   const remboursements = await db.select().from(remboursementsTable);
-  const sorties = await db.select().from(sortiesArgentTable);
-  const sortiesCarb = await db.select().from(sortiesCarburantTable);
-  const batimentItems = await db.select().from(depensesBatimentTable);
-  const puitsItems = await db.select().from(depensesPuitsTable);
+  // P9 : Construction = somme chantier_depenses
+  const allChantierDep = await db.select().from(chantierDepensesTable);
+  const totalConstruction = allChantierDep.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
   const bandes = await db.select().from(bandesTable).orderBy(bandesTable.numero);
 
   const totalFinancement = financements.reduce((s, f) => s + parseFloat(f.montant), 0);
   const totalRembourse = remboursements.reduce((s, r) => s + parseFloat(r.montant), 0);
-  const totalSorties = sorties.reduce((s, r) => s + parseFloat(r.depense), 0);
-  const totalCarburant = sortiesCarb.reduce((s, r) => s + parseFloat(r.montant), 0);
-  const totalBatiment = batimentItems.reduce((s, r) => s + parseFloat(r.quantite) * parseFloat(r.prixUnitaire), 0);
-  const totalPuits = puitsItems.reduce((s, r) => s + parseFloat(r.quantite) * parseFloat(r.prixUnitaire), 0);
-  const totalConstruction = totalSorties + totalCarburant + totalBatiment + totalPuits;
 
   let totalDepensesBandes = 0;
   let totalRecettesBandes = 0;
@@ -502,14 +474,11 @@ router.get("/finances", async (req, res) => {
     }
   }
 
-  // Standalone actifs (terrain, bâtiment racheté, etc.) — not linked to a chantier
   const actifsStandalone = await db.select().from(actifsTable).where(isNull(actifsTable.chantierId));
   const totalAchatActifs = actifsStandalone.reduce((s, a) => s + parseFloat(a.valeur), 0);
 
-  // Full cash position: money in - money out (all categories)
   const soldeCourant = totalFinancement - totalConstruction - totalDepensesBandes - totalDepensesVenteBandes + totalRecettesBandes - totalRembourse - totalAchatActifs;
 
-  // Amortissement
   const resteAAmortir = Math.max(0, totalConstruction + totalAchatActifs - totalAmorti);
   const totalInvestissementsAmortissables = totalConstruction + totalAchatActifs;
   const progressionAmortissement = totalInvestissementsAmortissables > 0 ? Math.min(100, (totalAmorti / totalInvestissementsAmortissables) * 100) : 0;
@@ -519,7 +488,6 @@ router.get("/finances", async (req, res) => {
     : (bandesDetails.length > 0 ? bandesDetails.reduce((s, b) => s + b.chargesTotal, 0) / bandesDetails.length : 0);
   const bandesRestantesEstimees = moyenneAmortissementParBande > 0 ? Math.ceil(resteAAmortir / moyenneAmortissementParBande) : null;
 
-  // ROI global
   const totalDepensesToutes = totalConstruction + totalDepensesBandes + totalDepensesVenteBandes + totalAchatActifs;
   const roiGlobal = totalFinancement > 0
     ? ((totalRecettesBandes - totalDepensesToutes) / totalFinancement) * 100
@@ -545,6 +513,86 @@ router.get("/finances", async (req, res) => {
     bandesDetails,
     projectionsBandesActives,
   });
+});
+
+// P7 : flux de trésorerie mensuel — agrège entrées (financements + ventes) et sorties (chantiers + bandes + frais vente + remboursements + actifs) par mois
+router.get("/cashflow-mensuel", async (req, res) => {
+  type MonthAgg = { mois: string; entrees: number; sorties: number };
+  const map = new Map<string, MonthAgg>();
+  const ensure = (mois: string): MonthAgg => {
+    let m = map.get(mois);
+    if (!m) { m = { mois, entrees: 0, sorties: 0 }; map.set(mois, m); }
+    return m;
+  };
+  const monthOf = (dateStr: string | null | undefined): string | null => {
+    if (!dateStr) return null;
+    return dateStr.slice(0, 7);
+  };
+
+  // Entrées : financements
+  const financements = await db.select().from(financementTable);
+  for (const f of financements) {
+    const mois = monthOf(f.date); if (!mois) continue;
+    ensure(mois).entrees += parseFloat(f.montant);
+  }
+  // Entrées : ventes bandes
+  const ventes = await db.select().from(bandeVentesTable);
+  for (const v of ventes) {
+    const mois = monthOf(v.date); if (!mois) continue;
+    const montant = v.quantiteVendue * parseFloat(v.prixUnitaire);
+    if (montant > 0) ensure(mois).entrees += montant;
+  }
+  // Sorties : remboursements
+  const remb = await db.select().from(remboursementsTable);
+  for (const r of remb) {
+    const mois = monthOf(r.date); if (!mois) continue;
+    ensure(mois).sorties += parseFloat(r.montant);
+  }
+  // Sorties : chantier_depenses (date ou fallback createdAt)
+  const chDep = await db.select().from(chantierDepensesTable);
+  for (const d of chDep) {
+    const mois = monthOf(d.date) ?? monthOf(d.createdAt?.toISOString().slice(0, 10));
+    if (!mois) continue;
+    ensure(mois).sorties += parseFloat(d.quantite) * parseFloat(d.prixUnitaire);
+  }
+  // Sorties : bande_depenses (date ou fallback dateDeDepart de la bande)
+  const bandes = await db.select().from(bandesTable);
+  const bandeDateMap = new Map<number, string>();
+  for (const b of bandes) bandeDateMap.set(b.id, b.dateDeDepart);
+  const bdep = await db.select().from(bandeDepensesTable);
+  for (const d of bdep) {
+    const mois = monthOf(d.date) ?? monthOf(bandeDateMap.get(d.bandeId));
+    if (!mois) continue;
+    ensure(mois).sorties += parseFloat(d.quantite) * parseFloat(d.prixUnitaire);
+  }
+  // Sorties : depenses_vente (rattachées à dateDeDepart de la bande)
+  const depVente = await db.select().from(depensesVenteTable);
+  for (const d of depVente) {
+    const mois = monthOf(bandeDateMap.get(d.bandeId));
+    if (!mois) continue;
+    ensure(mois).sorties += parseFloat(d.montant);
+  }
+  // Sorties : actifs autonomes (achetés en propre, pas via chantier)
+  const actifsManuals = await db.select().from(actifsTable).where(isNull(actifsTable.chantierId));
+  for (const a of actifsManuals) {
+    const mois = monthOf(a.dateAcquisition);
+    if (!mois) continue;
+    ensure(mois).sorties += parseFloat(a.valeur);
+  }
+
+  const monthsSorted = [...map.values()].sort((a, b) => a.mois.localeCompare(b.mois));
+  let solde = 0;
+  const result = monthsSorted.map(m => {
+    solde += m.entrees - m.sorties;
+    return {
+      mois: m.mois,
+      entrees: Math.round(m.entrees),
+      sorties: Math.round(m.sorties),
+      solde: Math.round(m.entrees - m.sorties),
+      soldeFinal: Math.round(solde),
+    };
+  });
+  res.json(result);
 });
 
 export default router;

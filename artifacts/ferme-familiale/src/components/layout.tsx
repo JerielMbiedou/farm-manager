@@ -17,8 +17,6 @@ import {
   CalendarDays,
   Construction,
   BookOpen,
-  FileText,
-  Receipt,
 } from "lucide-react";
 import { useGetMe, useLogout, UserRole } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -97,13 +95,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         { href: "/simulation", label: "Simulation", icon: Calculator, roles: allRoles },
         { href: "/planification", label: "Planification", icon: CalendarDays, roles: [UserRole.admin, UserRole.gestionnaire] },
         { href: "/historique-caisse", label: "Historique caisse", icon: BookOpen, roles: [UserRole.admin, UserRole.investisseur, UserRole.lecteur] },
-      ],
-    },
-    {
-      label: "Anciens modules",
-      items: [
-        { href: "/devis", label: "Devis", icon: FileText, roles: [UserRole.admin, UserRole.gestionnaire], badge: "ancien" },
-        { href: "/depenses", label: "Dépenses", icon: Receipt, roles: [UserRole.admin, UserRole.gestionnaire], badge: "ancien" },
       ],
     },
     {

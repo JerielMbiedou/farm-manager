@@ -1,4 +1,4 @@
-import { db, usersTable, financementTable, devisConstructionTable, puitsItemsTable, depensesBatimentTable, depensesPuitsTable, bandesTable, bandeDepensesTable, chargesFixesTable, vaccinationsTable, parametresTable, activityLogTable } from "@workspace/db";
+import { db, usersTable, financementTable, chantiersTable, chantierLotsTable, chantierDepensesTable, chantierDevisLignesTable, bandesTable, bandeDepensesTable, chargesFixesTable, vaccinationsTable, parametresTable, activityLogTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
@@ -153,15 +153,22 @@ export async function seedDefaults() {
   ]);
   console.log("Financement seeded");
 
-  await db.insert(devisConstructionTable).values([
-    { batimentEstime: "3525000", carburantEstime: "150000" },
+  // P9 : seed via chantiers (modèle unifié) — création du chantier "Construction de la ferme Mbiedou" + 2 lots + lignes de devis
+  const [chantierMbiedou] = await db.insert(chantiersTable).values([
+    { nom: "Construction de la ferme Mbiedou", description: "Bâtiment principal + forage du puits", statut: "cloture", dateDebut: "2024-01-01", dateCloture: "2024-12-01" },
+  ]).returning();
+  const [lotBatiment] = await db.insert(chantierLotsTable).values([
+    { chantierId: chantierMbiedou.id, nom: "Bâtiment principal", ordre: 0 },
+  ]).returning();
+  const [lotPuits] = await db.insert(chantierLotsTable).values([
+    { chantierId: chantierMbiedou.id, nom: "Forage et puits", ordre: 1 },
+  ]).returning();
+  await db.insert(chantierDevisLignesTable).values([
+    { chantierId: chantierMbiedou.id, lotId: lotBatiment.id, poste: "Bâtiment estimé (devis initial)", montantPrevu: "3525000", ordre: 0 },
+    { chantierId: chantierMbiedou.id, lotId: lotBatiment.id, poste: "Carburant estimé (devis initial)", montantPrevu: "150000", ordre: 1 },
+    { chantierId: chantierMbiedou.id, lotId: lotPuits.id, poste: "Puits — forage et équipement", montantPrevu: "1370000", ordre: 0 },
   ]);
-  console.log("Devis construction seeded");
-
-  await db.insert(puitsItemsTable).values([
-    { designation: "Puits (forage et équipement)", quantite: "1", prixUnitaire: "1370000" },
-  ]);
-  console.log("Puits items seeded");
+  console.log("Chantier Mbiedou + lots + devis seeded");
 
   const batimentRows = [
     { designation: "Achats de planches", quantite: "1", prixUnitaire: "400000", categorie: "materiaux" },
@@ -242,10 +249,12 @@ export async function seedDefaults() {
     { designation: "Main-d'œuvre", quantite: "1", prixUnitaire: "10000", categorie: "main_oeuvre" },
     { designation: "Garage (réparation véhicule)", quantite: "1", prixUnitaire: "8500", categorie: "transport" },
   ];
-  await db.insert(depensesBatimentTable).values(batimentRows as any);
-  console.log("Dépenses bâtiment seeded:", batimentRows.length, "rows");
+  await db.insert(chantierDepensesTable).values(
+    batimentRows.map(r => ({ ...r, chantierId: chantierMbiedou.id, lotId: lotBatiment.id })) as any
+  );
+  console.log("Chantier dépenses bâtiment seeded:", batimentRows.length, "rows");
 
-  await db.insert(depensesPuitsTable).values([
+  const puitsRows = [
     { designation: "Avance main-d'œuvre", quantite: "1", prixUnitaire: "50000", categorie: "main_oeuvre" },
     { designation: "Flash Band de 10 (détail)", quantite: "2", prixUnitaire: "1000", categorie: "materiaux" },
     { designation: "Avance main-d'œuvre", quantite: "1", prixUnitaire: "50000", categorie: "main_oeuvre" },
@@ -253,8 +262,11 @@ export async function seedDefaults() {
     { designation: "Corde", quantite: "1", prixUnitaire: "19000", categorie: "materiaux" },
     { designation: "Buse", quantite: "18", prixUnitaire: "13000", categorie: "materiaux" },
     { designation: "Avance main-d'œuvre", quantite: "1", prixUnitaire: "100000", categorie: "main_oeuvre" },
-  ] as any);
-  console.log("Dépenses puits seeded");
+  ];
+  await db.insert(chantierDepensesTable).values(
+    puitsRows.map(r => ({ ...r, chantierId: chantierMbiedou.id, lotId: lotPuits.id })) as any
+  );
+  console.log("Chantier dépenses puits seeded:", puitsRows.length, "rows");
 
   const [bande] = await db.insert(bandesTable).values([
     { numero: 1, nom: "Bande 1", sujetsDepart: 3750, nombreDeces: 0, valeurMaterielFixe: "600000", statut: "active", dateDeDepart: "2026-04-07" },

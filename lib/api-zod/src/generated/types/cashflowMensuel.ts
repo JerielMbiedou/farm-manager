@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UpdateDevisBody {
-  batimentEstime?: number;
-  batimentNotes?: string;
-  carburantEstime?: number;
+export interface CashflowMensuel {
+  mois: string;
+  entrees: number;
+  sorties: number;
+  solde: number;
+  soldeFinal: number;
 }

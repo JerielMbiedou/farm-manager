@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,6 +23,9 @@ const financementSchema = z.object({
   nom: z.string().min(2, "Le nom est requis"),
   montant: z.coerce.number().min(1, "Le montant doit être supérieur à 0"),
   date: z.string().min(1, "La date est requise"),
+  type: z.enum(["apport", "pret"]).default("apport"),
+  tauxInteret: z.coerce.number().min(0).max(100).default(0),
+  dateRemboursementPrevue: z.string().optional(),
 });
 
 const remboursementSchema = z.object({
@@ -30,6 +34,18 @@ const remboursementSchema = z.object({
   date: z.string().min(1, "La date est requise"),
   commentaire: z.string().optional(),
 });
+
+function extractErrorMsg(err: unknown): string {
+  if (err && typeof err === "object") {
+    const e = err as { data?: { error?: string; message?: string }; body?: { error?: string; message?: string }; message?: string };
+    if (e.data?.error) return e.data.error;
+    if (e.data?.message) return e.data.message;
+    if (e.body?.error) return e.body.error;
+    if (e.body?.message) return e.body.message;
+    if (e.message) return e.message;
+  }
+  return "Une erreur est survenue";
+}
 
 export default function Financement() {
   const { data: financements, isLoading } = useListFinancements();
@@ -48,12 +64,14 @@ export default function Financement() {
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const isAdmin = user?.role === "admin";
-  const isReadOnly = user?.role === "investisseur" || user?.role === "gestionnaire" || user?.role === "lecteur";
+  const isReadOnly = user?.role === "investisseur" || user?.role === "lecteur";
 
   const form = useForm<z.infer<typeof financementSchema>>({
     resolver: zodResolver(financementSchema),
-    defaultValues: { nom: "", montant: 0, date: new Date().toISOString().split("T")[0] },
+    defaultValues: { nom: "", montant: 0, date: new Date().toISOString().split("T")[0], type: "apport", tauxInteret: 0, dateRemboursementPrevue: "" },
   });
+
+  const watchedType = form.watch("type");
 
   const rembForm = useForm<z.infer<typeof remboursementSchema>>({
     resolver: zodResolver(remboursementSchema),
@@ -62,11 +80,19 @@ export default function Financement() {
 
   const onSubmit = async (values: z.infer<typeof financementSchema>) => {
     try {
+      const payload = {
+        nom: values.nom,
+        montant: values.montant,
+        date: values.date,
+        type: values.type,
+        tauxInteret: values.tauxInteret,
+        dateRemboursementPrevue: values.dateRemboursementPrevue || null,
+      };
       if (editingId) {
-        await updateFinancement.mutateAsync({ id: editingId, data: values });
+        await updateFinancement.mutateAsync({ id: editingId, data: payload });
         toast({ title: "Financement mis à jour" });
       } else {
-        await createFinancement.mutateAsync({ data: values });
+        await createFinancement.mutateAsync({ data: payload });
         toast({ title: "Financement ajouté" });
       }
       queryClient.invalidateQueries({ queryKey: getListFinancementsQueryKey() });
@@ -75,8 +101,8 @@ export default function Financement() {
       setIsDialogOpen(false);
       form.reset();
       setEditingId(null);
-    } catch {
-      toast({ title: "Erreur", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Erreur", description: extractErrorMsg(err), variant: "destructive" });
     }
   };
 
@@ -88,14 +114,21 @@ export default function Financement() {
       queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       setIsRembDialogOpen(false);
       rembForm.reset();
-    } catch {
-      toast({ title: "Erreur", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Erreur", description: extractErrorMsg(err), variant: "destructive" });
     }
   };
 
-  const handleEdit = (item: { id: number; nom: string; montant: number; date: string }) => {
+  const handleEdit = (item: { id: number; nom: string; montant: number; date: string; type?: string; tauxInteret?: number; dateRemboursementPrevue?: string | null }) => {
     setEditingId(item.id);
-    form.reset({ nom: item.nom, montant: item.montant, date: new Date(item.date).toISOString().split("T")[0] });
+    form.reset({
+      nom: item.nom,
+      montant: item.montant,
+      date: new Date(item.date).toISOString().split("T")[0],
+      type: (item.type === "pret" ? "pret" : "apport"),
+      tauxInteret: item.tauxInteret ?? 0,
+      dateRemboursementPrevue: item.dateRemboursementPrevue ? new Date(item.dateRemboursementPrevue).toISOString().split("T")[0] : "",
+    });
     setIsDialogOpen(true);
   };
 
@@ -106,8 +139,8 @@ export default function Financement() {
         toast({ title: "Financement supprimé" });
         queryClient.invalidateQueries({ queryKey: getListFinancementsQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-      } catch {
-        toast({ title: "Erreur", variant: "destructive" });
+      } catch (err) {
+        toast({ title: "Erreur", description: extractErrorMsg(err), variant: "destructive" });
       }
     }
   };
@@ -119,8 +152,8 @@ export default function Financement() {
         toast({ title: "Remboursement supprimé" });
         queryClient.invalidateQueries({ queryKey: getGetRemboursementsQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-      } catch {
-        toast({ title: "Erreur", variant: "destructive" });
+      } catch (err) {
+        toast({ title: "Erreur", description: extractErrorMsg(err), variant: "destructive" });
       }
     }
   };
@@ -134,7 +167,7 @@ export default function Financement() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Financement</h1>
-        <p className="text-muted-foreground mt-1">Suivi des apports et remboursements</p>
+        <p className="text-muted-foreground mt-1">Suivi des apports, prêts et remboursements</p>
       </div>
 
       <Tabs defaultValue="investissements">
@@ -160,12 +193,35 @@ export default function Financement() {
                       <FormField control={form.control} name="nom" render={({ field }) => (
                         <FormItem><FormLabel>Nom du membre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                       )} />
+                      <FormField control={form.control} name="type" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Type</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              <SelectItem value="apport">Apport (capital)</SelectItem>
+                              <SelectItem value="pret">Prêt (avec intérêts)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
                       <FormField control={form.control} name="montant" render={({ field }) => (
                         <FormItem><FormLabel>Montant (FCFA)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={form.control} name="date" render={({ field }) => (
                         <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                       )} />
+                      {watchedType === "pret" && (
+                        <>
+                          <FormField control={form.control} name="tauxInteret" render={({ field }) => (
+                            <FormItem><FormLabel>Taux d'intérêt annuel (%)</FormLabel><FormControl><Input type="number" step="0.1" min={0} max={100} {...field} /></FormControl><FormMessage /></FormItem>
+                          )} />
+                          <FormField control={form.control} name="dateRemboursementPrevue" render={({ field }) => (
+                            <FormItem><FormLabel>Date de remboursement prévue</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                          )} />
+                        </>
+                      )}
                       <Button type="submit" className="w-full" disabled={createFinancement.isPending || updateFinancement.isPending}>
                         {editingId ? "Mettre à jour" : "Enregistrer"}
                       </Button>
@@ -182,34 +238,49 @@ export default function Financement() {
                 <TableRow className="bg-muted/50">
                   <TableHead>Date</TableHead>
                   <TableHead>Membre</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Taux</TableHead>
+                  <TableHead>Échéance</TableHead>
                   <TableHead className="text-right">Montant</TableHead>
                   {!isReadOnly && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {financements?.length === 0 ? (
-                  <TableRow><TableCell colSpan={isReadOnly ? 3 : 4} className="text-center py-8 text-muted-foreground">Aucun financement enregistré.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={isReadOnly ? 6 : 7} className="text-center py-8 text-muted-foreground">Aucun financement enregistré.</TableCell></TableRow>
                 ) : (
-                  financements?.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{format(new Date(item.date), 'dd/MM/yyyy')}</TableCell>
-                      <TableCell className="font-medium">{item.nom}</TableCell>
-                      <TableCell className="text-right font-medium">{formatFCFA(item.montant)}</TableCell>
-                      {!isReadOnly && (
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
-                          </div>
+                  financements?.map((item) => {
+                    const isPret = item.type === "pret";
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell>{format(new Date(item.date), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="font-medium">{item.nom}</TableCell>
+                        <TableCell>
+                          <Badge variant={isPret ? "default" : "secondary"} className={isPret ? "bg-blue-100 text-blue-800 border-blue-200" : ""}>
+                            {isPret ? "Prêt" : "Apport"}
+                          </Badge>
                         </TableCell>
-                      )}
-                    </TableRow>
-                  ))
+                        <TableCell className="text-right text-sm">{isPret ? `${item.tauxInteret}%` : "—"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {item.dateRemboursementPrevue ? format(new Date(item.dateRemboursementPrevue), 'dd/MM/yyyy') : "—"}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">{formatFCFA(item.montant)}</TableCell>
+                        {!isReadOnly && (
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
               <TableFooter>
                 <TableRow className="bg-primary/5 hover:bg-primary/5">
-                  <TableCell colSpan={2} className="font-bold text-lg">Total investi</TableCell>
+                  <TableCell colSpan={5} className="font-bold text-lg">Total investi</TableCell>
                   <TableCell className="text-right font-bold text-lg text-primary">{formatFCFA(totalInvesti)}</TableCell>
                   {!isReadOnly && <TableCell></TableCell>}
                 </TableRow>

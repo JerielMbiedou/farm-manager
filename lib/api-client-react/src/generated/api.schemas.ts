@@ -42,74 +42,40 @@ export interface LoginResponse {
   user: User;
 }
 
+export type FinancementType =
+  (typeof FinancementType)[keyof typeof FinancementType];
+
+export const FinancementType = {
+  apport: "apport",
+  pret: "pret",
+} as const;
+
 export interface Financement {
   id: number;
   nom: string;
   montant: number;
   date: string;
+  type: FinancementType;
+  tauxInteret: number;
+  dateRemboursementPrevue?: string | null;
   createdAt: string;
 }
+
+export type CreateFinancementBodyType =
+  (typeof CreateFinancementBodyType)[keyof typeof CreateFinancementBodyType];
+
+export const CreateFinancementBodyType = {
+  apport: "apport",
+  pret: "pret",
+} as const;
 
 export interface CreateFinancementBody {
   nom: string;
   montant: number;
   date: string;
-}
-
-export interface PuitsItem {
-  id: number;
-  designation: string;
-  quantite: number;
-  prixUnitaire: number;
-  prixTotal: number;
-}
-
-export interface DevisConstruction {
-  id: number;
-  batimentEstime: number;
-  batimentNotes?: string;
-  carburantEstime: number;
-  puitsItems: PuitsItem[];
-  totalPuits: number;
-  totalGeneral: number;
-  updatedAt: string;
-}
-
-export interface UpdateDevisBody {
-  batimentEstime?: number;
-  batimentNotes?: string;
-  carburantEstime?: number;
-}
-
-export interface CreatePuitsItemBody {
-  designation: string;
-  quantite: number;
-  prixUnitaire: number;
-}
-
-export interface SortieArgent {
-  id: number;
-  date: string;
-  decaisse: number;
-  depense: number;
-  reste: number;
-}
-
-export interface CreateSortieBody {
-  date: string;
-  decaisse: number;
-  depense: number;
-}
-
-export interface SortieCarburant {
-  id: number;
-  date: string;
-  montant: number;
-}
-
-export interface CreateSortieCarburantBody {
-  date: string;
-  montant: number;
+  type?: CreateFinancementBodyType;
+  tauxInteret?: number;
+  dateRemboursementPrevue?: string | null;
 }
 
 export type DepenseDetailleeCategorie =
@@ -474,6 +440,14 @@ export interface CaisseEntry {
 export interface HistoriqueCaisseResponse {
   entries: CaisseEntry[];
   soldeCourant: number;
+}
+
+export interface CashflowMensuel {
+  mois: string;
+  entrees: number;
+  sorties: number;
+  solde: number;
+  soldeFinal: number;
 }
 
 export interface ActivityLogEntry {

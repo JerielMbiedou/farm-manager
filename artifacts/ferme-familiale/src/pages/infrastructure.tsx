@@ -99,14 +99,24 @@ const actifSchema = z.object({
 const clotureSchema = z.object({
   tauxAmortissement: z.coerce.number().min(0).max(100),
   dateAcquisition: z.string().min(1, "La date est requise"),
+  typeActif: z.string().min(1, "Le type d'actif est requis"),
 });
+
+const TYPES_ACTIF = [
+  { value: "batiment", label: "Bâtiment" },
+  { value: "puits", label: "Puits / Forage" },
+  { value: "materiel", label: "Matériel" },
+  { value: "vehicule", label: "Véhicule" },
+  { value: "terrain", label: "Terrain" },
+  { value: "autre", label: "Autre" },
+];
 
 type ChantierSummary = { id: number; nom: string; description?: string; statut: string; dateDebut?: string; dateCloture?: string; totalReel: number; totalPrevu: number; nbDepenses: number; createdAt: string };
 type DepenseItem = { id: number; chantierId: number; lotId?: number | null; designation: string; quantite: string; prixUnitaire: string; prixTotal: number; categorie?: string; date?: string; commentaire?: string };
 type DevisLigne = { id: number; chantierId: number; lotId?: number | null; poste: string; montantPrevu: string; ordre: number };
 type LotDetail = { id: number; chantierId: number; nom: string; description?: string; ordre: number; depenses: DepenseItem[]; devisLignes: DevisLigne[]; totalReel: number; totalPrevu: number };
 type ChantierDetail = ChantierSummary & { depenses: DepenseItem[]; devisLignes: DevisLigne[]; lots: LotDetail[] };
-type Actif = { id: number; nom: string; type: string; valeur: number; tauxAmortissementAnnuel: number; dateAcquisition: string; description?: string; chantierId?: number; createdAt: string };
+type Actif = { id: number; nom: string; type: string; valeur: number; tauxAmortissementAnnuel: number; dateAcquisition: string; description?: string; chantierId?: number; createdAt: string; amortissementCumule?: number; valeurResiduelle?: number };
 
 function useChantiers() {
   return useQuery<ChantierSummary[]>({ queryKey: ["/api/chantiers"], queryFn: () => apiFetch("/chantiers") });
@@ -324,7 +334,7 @@ function ClotureDialog({ chantier, onSuccess }: { chantier: ChantierSummary; onS
   const qc = useQueryClient();
   const form = useForm<z.infer<typeof clotureSchema>>({
     resolver: zodResolver(clotureSchema),
-    defaultValues: { tauxAmortissement: 5, dateAcquisition: new Date().toISOString().split("T")[0] },
+    defaultValues: { tauxAmortissement: 5, dateAcquisition: new Date().toISOString().split("T")[0], typeActif: "batiment" },
   });
   const mutation = useMutation({
     mutationFn: (data: z.infer<typeof clotureSchema>) => apiFetch(`/chantiers/${chantier.id}/cloture`, { method: "POST", body: JSON.stringify(data) }),
@@ -344,6 +354,18 @@ function ClotureDialog({ chantier, onSuccess }: { chantier: ChantierSummary; onS
         </div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(d => mutation.mutate(d))} className="space-y-4">
+            <FormField control={form.control} name="typeActif" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Type d'actif</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl><SelectTrigger><SelectValue placeholder="Choisir le type..." /></SelectTrigger></FormControl>
+                  <SelectContent>
+                    {TYPES_ACTIF.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
             <FormField control={form.control} name="dateAcquisition" render={({ field }) => (
               <FormItem><FormLabel>Date de clôture</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
@@ -1142,7 +1164,9 @@ function ActifsTab() {
                   <TableRow className="bg-muted/20">
                     <TableHead>Nom</TableHead>
                     <TableHead>Date acquisition</TableHead>
-                    <TableHead className="text-right">Valeur</TableHead>
+                    <TableHead className="text-right">Valeur d'origine</TableHead>
+                    <TableHead className="text-right">Amortissement cumulé</TableHead>
+                    <TableHead className="text-right">Valeur résiduelle</TableHead>
                     <TableHead className="text-right">Taux annuel</TableHead>
                     <TableHead className="w-20"></TableHead>
                   </TableRow>
@@ -1157,6 +1181,8 @@ function ActifsTab() {
                       </TableCell>
                       <TableCell className="text-sm">{format(new Date(a.dateAcquisition + "T00:00:00"), "dd/MM/yyyy")}</TableCell>
                       <TableCell className="text-right font-semibold">{formatFCFA(a.valeur)}</TableCell>
+                      <TableCell className="text-right text-sm text-orange-600">{a.type === "terrain" ? "—" : formatFCFA(a.amortissementCumule ?? 0)}</TableCell>
+                      <TableCell className="text-right font-semibold text-green-700">{a.type === "terrain" ? formatFCFA(a.valeur) : formatFCFA(a.valeurResiduelle ?? a.valeur)}</TableCell>
                       <TableCell className="text-right text-sm">{a.type === "terrain" ? "—" : `${a.tauxAmortissementAnnuel}%`}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">

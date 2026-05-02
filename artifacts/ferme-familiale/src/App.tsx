@@ -8,8 +8,6 @@ import { Layout } from "@/components/layout";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Financement from "@/pages/financement";
-import Devis from "@/pages/devis";
-import Depenses from "@/pages/depenses";
 import Infrastructure from "@/pages/infrastructure";
 import Bandes from "@/pages/bandes/index";
 import BandeDetailView from "@/pages/bandes/[id]";
@@ -47,12 +45,6 @@ function Router() {
       </Route>
       <Route path="/financement">
         <Layout><Financement /></Layout>
-      </Route>
-      <Route path="/devis">
-        <Layout><Devis /></Layout>
-      </Route>
-      <Route path="/depenses">
-        <Layout><Depenses /></Layout>
       </Route>
       <Route path="/infrastructure">
         <Layout><Infrastructure /></Layout>

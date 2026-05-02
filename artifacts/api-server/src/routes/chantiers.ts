@@ -1,8 +1,12 @@
 import { Router } from "express";
 import { db, chantiersTable, chantierDevisLignesTable, chantierDepensesTable, chantierLotsTable, actifsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { requireWriteAccess } from "../lib/middleware";
+import { logFromRequest } from "./activity-log";
 
 const router = Router();
+
+const VALID_TYPE_ACTIF = new Set(["batiment", "puits", "materiel", "vehicule", "terrain", "autre"]);
 
 // ── Désignations distinctes (autocomplétion) ────────────────────────────────
 router.get("/designations", async (req, res) => {
@@ -42,9 +46,11 @@ router.get("/", async (_req, res) => {
 });
 
 router.post("/", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const { nom, description, dateDebut } = req.body;
   if (!nom) return res.status(400).json({ message: "Le nom est requis" });
   const rows = await db.insert(chantiersTable).values({ nom, description, dateDebut, statut: "en_cours" }).returning();
+  await logFromRequest(req, "Création chantier", `${nom}`);
   res.status(201).json(rows[0]);
 });
 
@@ -81,41 +87,54 @@ router.get("/:id", async (req, res) => {
 });
 
 router.put("/:id", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const id = parseInt(req.params.id);
   const { nom, description, dateDebut, statut } = req.body;
   const rows = await db.update(chantiersTable).set({ nom, description, dateDebut, statut }).where(eq(chantiersTable.id, id)).returning();
   if (rows.length === 0) return res.status(404).json({ message: "Chantier introuvable" });
+  await logFromRequest(req, "Modification chantier", `[ID ${id}] ${nom}`);
   res.json(rows[0]);
 });
 
 router.delete("/:id", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const id = parseInt(req.params.id);
+  const before = (await db.select().from(chantiersTable).where(eq(chantiersTable.id, id)))[0];
   await db.delete(chantiersTable).where(eq(chantiersTable.id, id));
+  await logFromRequest(req, "Suppression chantier", before ? `${before.nom}` : `ID: ${id}`);
   res.json({ success: true });
 });
 
 // ── Clôture ──────────────────────────────────────────────────────────────────
 router.post("/:id/cloture", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const id = parseInt(req.params.id);
   const rows = await db.select().from(chantiersTable).where(eq(chantiersTable.id, id));
   if (rows.length === 0) return res.status(404).json({ message: "Chantier introuvable" });
   const chantier = rows[0];
   const depenses = await db.select().from(chantierDepensesTable).where(eq(chantierDepensesTable.chantierId, id));
   const totalReel = depenses.reduce((s, d) => s + parseFloat(d.quantite) * parseFloat(d.prixUnitaire), 0);
-  const { tauxAmortissement, dateAcquisition } = req.body;
+  // P4: accept typeActif from body, validate against allowed values, reject invalid
+  const { tauxAmortissement, dateAcquisition, typeActif } = req.body;
+  const finalType = typeActif ?? "batiment";
+  if (!VALID_TYPE_ACTIF.has(finalType)) {
+    return res.status(400).json({ error: `Type d'actif invalide. Valeurs acceptées: ${[...VALID_TYPE_ACTIF].join(", ")}` });
+  }
   const taux = tauxAmortissement ?? 5;
   const dateAcq = dateAcquisition ?? new Date().toISOString().split("T")[0];
   const actifRows = await db.insert(actifsTable).values({
-    nom: chantier.nom, type: "batiment", valeur: String(totalReel),
+    nom: chantier.nom, type: finalType, valeur: String(totalReel),
     tauxAmortissementAnnuel: String(taux), dateAcquisition: dateAcq,
     description: chantier.description, chantierId: id,
   }).returning();
   await db.update(chantiersTable).set({ statut: "cloture", dateCloture: dateAcq }).where(eq(chantiersTable.id, id));
+  await logFromRequest(req, "Clôture chantier", `${chantier.nom} → actif ${finalType} (${totalReel} FCFA, taux ${taux}%)`);
   res.json({ chantier: { ...chantier, statut: "cloture" }, actif: actifRows[0] });
 });
 
 // ── Lots ─────────────────────────────────────────────────────────────────────
 router.post("/:id/lots", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const chantierId = parseInt(req.params.id);
   const { nom, description } = req.body;
   if (!nom) return res.status(400).json({ message: "Le nom est requis" });
@@ -125,6 +144,7 @@ router.post("/:id/lots", async (req, res) => {
 });
 
 router.put("/:id/lots/:lotId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const lotId = parseInt(req.params.lotId);
   const { nom, description } = req.body;
   const rows = await db.update(chantierLotsTable).set({ nom, description }).where(eq(chantierLotsTable.id, lotId)).returning();
@@ -133,6 +153,7 @@ router.put("/:id/lots/:lotId", async (req, res) => {
 });
 
 router.delete("/:id/lots/:lotId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const lotId = parseInt(req.params.lotId);
   await db.delete(chantierLotsTable).where(eq(chantierLotsTable.id, lotId));
   res.json({ success: true });
@@ -146,6 +167,7 @@ router.get("/:id/depenses", async (req, res) => {
 });
 
 router.post("/:id/depenses", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const chantierId = parseInt(req.params.id);
   const { designation, quantite, prixUnitaire, categorie, date, commentaire, lotId } = req.body;
   if (!designation) return res.status(400).json({ message: "La désignation est requise" });
@@ -159,6 +181,7 @@ router.post("/:id/depenses", async (req, res) => {
 });
 
 router.put("/:id/depenses/:depId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const depId = parseInt(req.params.depId);
   const { designation, quantite, prixUnitaire, categorie, date, commentaire, lotId } = req.body;
   const rows = await db.update(chantierDepensesTable).set({
@@ -171,6 +194,7 @@ router.put("/:id/depenses/:depId", async (req, res) => {
 });
 
 router.delete("/:id/depenses/:depId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const depId = parseInt(req.params.depId);
   await db.delete(chantierDepensesTable).where(eq(chantierDepensesTable.id, depId));
   res.json({ success: true });
@@ -184,6 +208,7 @@ router.get("/:id/devis", async (req, res) => {
 });
 
 router.post("/:id/devis", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const chantierId = parseInt(req.params.id);
   const { poste, montantPrevu, ordre, lotId } = req.body;
   if (!poste) return res.status(400).json({ message: "Le poste est requis" });
@@ -196,6 +221,7 @@ router.post("/:id/devis", async (req, res) => {
 });
 
 router.put("/:id/devis/:ligneId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const ligneId = parseInt(req.params.ligneId);
   const { poste, montantPrevu } = req.body;
   const rows = await db.update(chantierDevisLignesTable).set({ poste, montantPrevu: String(montantPrevu) }).where(eq(chantierDevisLignesTable.id, ligneId)).returning();
@@ -204,6 +230,7 @@ router.put("/:id/devis/:ligneId", async (req, res) => {
 });
 
 router.delete("/:id/devis/:ligneId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const ligneId = parseInt(req.params.ligneId);
   await db.delete(chantierDevisLignesTable).where(eq(chantierDevisLignesTable.id, ligneId));
   res.json({ success: true });

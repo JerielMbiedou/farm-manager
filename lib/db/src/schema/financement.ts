@@ -7,6 +7,9 @@ export const financementTable = pgTable("financement", {
   nom: text("nom").notNull(),
   montant: numeric("montant", { precision: 15, scale: 2 }).notNull(),
   date: date("date").notNull(),
+  type: text("type").notNull().default("apport"),
+  tauxInteret: numeric("taux_interet", { precision: 5, scale: 2 }).notNull().default("0"),
+  dateRemboursementPrevue: date("date_remboursement_prevue"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
