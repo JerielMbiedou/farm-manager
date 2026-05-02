@@ -1,11 +1,31 @@
 import { Router } from "express";
-import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, peseesTable, consommationAlimentTable, vaccinationsTable, consommationEauTable, traitementsTable, observationsJournalTable, bandeActifsTable, actifsTable } from "@workspace/db";
+import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, peseesTable, consommationAlimentTable, vaccinationsTable, consommationEauTable, traitementsTable, observationsJournalTable, bandeActifsTable, actifsTable, usersTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { logFromRequest } from "./activity-log";
 import { getParam, getVaccinationSchedule, REFERENCE_WEIGHT_CURVE } from "../lib/parametres";
 import { ai } from "@workspace/integrations-gemini-ai";
 
 const router = Router();
+
+const READ_ONLY_ROLES = new Set(["lecteur", "investisseur"]);
+
+async function requireWriteAccess(req: any, res: any): Promise<boolean> {
+  const userId = (req.session as any)?.userId;
+  if (!userId) { res.status(401).json({ message: "Non authentifié" }); return false; }
+  const users = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  const role = users[0]?.role;
+  if (!role || READ_ONLY_ROLES.has(role)) { res.status(403).json({ message: "Accès en lecture seule" }); return false; }
+  return true;
+}
+
+async function assertBandeWritable(bandeId: number, res: any): Promise<boolean> {
+  const rows = await db.select({ statut: bandesTable.statut }).from(bandesTable).where(eq(bandesTable.id, bandeId));
+  if (rows.length === 0) { res.status(404).json({ message: "Bande introuvable" }); return false; }
+  if (rows[0].statut === "terminee") { res.status(409).json({ message: "Bande clôturée — rouvrez-la pour la modifier" }); return false; }
+  return true;
+}
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 async function getBandeDetail(id: number) {
   const bandeRows = await db.select().from(bandesTable).where(eq(bandesTable.id, id));
@@ -58,6 +78,7 @@ async function getBandeDetail(id: number) {
     sujetsRestants,
     valeurMaterielFixe: valeurMateriel,
     statut: bande.statut,
+    dateCloture: bande.dateCloture,
     totalDepenses,
     totalRecettes,
     chargesFixesTotal,
@@ -68,6 +89,44 @@ async function getBandeDetail(id: number) {
     createdAt: bande.createdAt,
   };
 }
+
+router.post("/:id/cloture", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
+  const id = parseInt(req.params.id);
+  const dateCloture = (req.body?.dateCloture as string) || new Date().toISOString().split("T")[0];
+  if (!ISO_DATE_RE.test(dateCloture) || isNaN(new Date(dateCloture).getTime())) {
+    return res.status(400).json({ message: "Date de clôture invalide (format AAAA-MM-JJ attendu)" });
+  }
+  const updated = await db.update(bandesTable)
+    .set({ statut: "terminee", dateCloture })
+    .where(and(eq(bandesTable.id, id), eq(bandesTable.statut, "active")))
+    .returning({ nom: bandesTable.nom });
+  if (updated.length === 0) {
+    const exists = await db.select({ id: bandesTable.id }).from(bandesTable).where(eq(bandesTable.id, id));
+    if (exists.length === 0) return res.status(404).json({ message: "Bande introuvable" });
+    return res.status(409).json({ message: "Bande déjà terminée" });
+  }
+  await logFromRequest(req, "Clôture bande", `${updated[0].nom} clôturée au ${dateCloture}`);
+  const detail = await getBandeDetail(id);
+  res.json(detail);
+});
+
+router.post("/:id/reouvrir", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
+  const id = parseInt(req.params.id);
+  const updated = await db.update(bandesTable)
+    .set({ statut: "active", dateCloture: null })
+    .where(and(eq(bandesTable.id, id), eq(bandesTable.statut, "terminee")))
+    .returning({ nom: bandesTable.nom });
+  if (updated.length === 0) {
+    const exists = await db.select({ id: bandesTable.id }).from(bandesTable).where(eq(bandesTable.id, id));
+    if (exists.length === 0) return res.status(404).json({ message: "Bande introuvable" });
+    return res.status(409).json({ message: "Bande déjà active" });
+  }
+  await logFromRequest(req, "Réouverture bande", updated[0].nom);
+  const detail = await getBandeDetail(id);
+  res.json(detail);
+});
 
 router.get("/designations-suggestions", async (_req, res) => {
   const rows = await db.selectDistinct({ designation: bandeDepensesTable.designation }).from(bandeDepensesTable);
@@ -302,6 +361,7 @@ router.get("/:id/depenses", async (req, res) => {
 
 router.post("/:id/depenses", async (req, res) => {
   const bandeId = parseInt(req.params.id);
+  if (!(await assertBandeWritable(bandeId, res))) return;
   const { designation, categorie, quantite, prixUnitaire } = req.body;
   const rows = await db.insert(bandeDepensesTable).values({
     bandeId,
@@ -324,6 +384,7 @@ router.post("/:id/depenses", async (req, res) => {
 });
 
 router.put("/:id/depenses/:depenseId", async (req, res) => {
+  if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const depenseId = parseInt(req.params.depenseId);
   const { designation, categorie, quantite, prixUnitaire } = req.body;
   const rows = await db.update(bandeDepensesTable).set({
@@ -345,6 +406,7 @@ router.put("/:id/depenses/:depenseId", async (req, res) => {
 });
 
 router.delete("/:id/depenses/:depenseId", async (req, res) => {
+  if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const depenseId = parseInt(req.params.depenseId);
   await db.delete(bandeDepensesTable).where(eq(bandeDepensesTable.id, depenseId));
   await logFromRequest(req, "Suppression dépense bande", `ID: ${depenseId}`);
@@ -366,6 +428,7 @@ router.get("/:id/ventes", async (req, res) => {
 
 router.post("/:id/ventes", async (req, res) => {
   const bandeId = parseInt(req.params.id);
+  if (!(await assertBandeWritable(bandeId, res))) return;
   const { date, quantiteVendue, prixUnitaire } = req.body;
   const rows = await db.insert(bandeVentesTable).values({
     bandeId,
@@ -386,6 +449,7 @@ router.post("/:id/ventes", async (req, res) => {
 });
 
 router.put("/:id/ventes/:venteId", async (req, res) => {
+  if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const venteId = parseInt(req.params.venteId);
   const { date, quantiteVendue, prixUnitaire } = req.body;
   const rows = await db.update(bandeVentesTable).set({
@@ -405,6 +469,7 @@ router.put("/:id/ventes/:venteId", async (req, res) => {
 });
 
 router.delete("/:id/ventes/:venteId", async (req, res) => {
+  if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const venteId = parseInt(req.params.venteId);
   await db.delete(bandeVentesTable).where(eq(bandeVentesTable.id, venteId));
   await logFromRequest(req, "Suppression vente bande", `ID: ${venteId}`);
@@ -447,6 +512,7 @@ router.get("/:id/charges-fixes", async (req, res) => {
 });
 
 router.put("/:id/charges-fixes", async (req, res) => {
+  if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const bandeId = parseInt(req.params.id);
   const { loyer } = req.body;
 
@@ -491,6 +557,7 @@ router.get("/:id/depenses-vente", async (req, res) => {
 });
 
 router.post("/:id/depenses-vente", async (req, res) => {
+  if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const bandeId = parseInt(req.params.id);
   const { designation, montant } = req.body;
   const rows = await db.insert(depensesVenteTable).values({ bandeId, designation, montant: String(montant) }).returning();
@@ -499,6 +566,7 @@ router.post("/:id/depenses-vente", async (req, res) => {
 });
 
 router.put("/:id/depenses-vente/:depenseId", async (req, res) => {
+  if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const depenseId = parseInt(req.params.depenseId);
   const { designation, montant } = req.body;
   const rows = await db.update(depensesVenteTable).set({ designation, montant: String(montant) }).where(eq(depensesVenteTable.id, depenseId)).returning();
@@ -507,6 +575,7 @@ router.put("/:id/depenses-vente/:depenseId", async (req, res) => {
 });
 
 router.delete("/:id/depenses-vente/:depenseId", async (req, res) => {
+  if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const depenseId = parseInt(req.params.depenseId);
   await db.delete(depensesVenteTable).where(eq(depensesVenteTable.id, depenseId));
   res.json({ success: true });
@@ -541,6 +610,7 @@ router.get("/:id/mortalite", async (req, res) => {
 
 router.post("/:id/mortalite", async (req, res) => {
   const bandeId = parseInt(req.params.id);
+  if (!(await assertBandeWritable(bandeId, res))) return;
   const { date, ageJours, decesJour } = req.body;
   const rows = await db.insert(mortaliteJournaliereTable).values({ bandeId, date, ageJours, decesJour: decesJour ?? 0 }).returning();
   // Recompute from source of truth to avoid drift
@@ -552,6 +622,7 @@ router.post("/:id/mortalite", async (req, res) => {
 });
 
 router.delete("/:id/mortalite/:mortaliteId", async (req, res) => {
+  if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const mortaliteId = parseInt(req.params.mortaliteId);
   const existing = await db.select().from(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.id, mortaliteId));
   if (existing.length > 0) {
@@ -584,6 +655,7 @@ router.get("/:id/pesees", async (req, res) => {
 
 router.post("/:id/pesees", async (req, res) => {
   const bandeId = parseInt(req.params.id);
+  if (!(await assertBandeWritable(bandeId, res))) return;
   const { date, ageJours, poidsMoyenG, objectifPoidsG } = req.body;
   const rows = await db.insert(peseesTable).values({
     bandeId, date, ageJours,
@@ -599,6 +671,7 @@ router.post("/:id/pesees", async (req, res) => {
 });
 
 router.delete("/:id/pesees/:peseeId", async (req, res) => {
+  if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   await db.delete(peseesTable).where(eq(peseesTable.id, parseInt(req.params.peseeId)));
   res.json({ success: true });
 });
@@ -638,6 +711,7 @@ router.get("/:id/consommation", async (req, res) => {
 
 router.post("/:id/consommation", async (req, res) => {
   const bandeId = parseInt(req.params.id);
+  if (!(await assertBandeWritable(bandeId, res))) return;
   const { date, quantiteKg } = req.body;
   const rows = await db.insert(consommationAlimentTable).values({ bandeId, date, quantiteKg: String(quantiteKg) }).returning();
   const r = rows[0];
@@ -645,6 +719,7 @@ router.post("/:id/consommation", async (req, res) => {
 });
 
 router.delete("/:id/consommation/:consId", async (req, res) => {
+  if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   await db.delete(consommationAlimentTable).where(eq(consommationAlimentTable.id, parseInt(req.params.consId)));
   res.json({ success: true });
 });

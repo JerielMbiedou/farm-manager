@@ -11,6 +11,7 @@ export const bandesTable = pgTable("bandes", {
   nombreDeces: integer("nombre_deces").notNull().default(0),
   valeurMaterielFixe: numeric("valeur_materiel_fixe", { precision: 15, scale: 2 }).notNull().default("0"),
   statut: text("statut").notNull().default("active"),
+  dateCloture: date("date_cloture"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

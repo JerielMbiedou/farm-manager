@@ -58,7 +58,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download, Droplets, Pill, BookOpen, ChevronDown, ChevronRight, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download, Droplets, Pill, BookOpen, ChevronDown, ChevronRight, Search, CheckCircle2, Lock, RotateCcw } from "lucide-react";
 import { Link } from "wouter";
 import { BandeDetail } from "@workspace/api-client-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, PieChart, Pie, Cell, ComposedChart, Area } from "recharts";
@@ -662,6 +662,105 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ClotureBandeDialog({ detail, isReopen }: { detail: any; isReopen?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [dateCloture, setDateCloture] = useState(new Date().toISOString().split("T")[0]);
+  const [submitting, setSubmitting] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const totalVendus = (detail as any).totalVendus ?? 0;
+  const tauxMortalite = detail.sujetsDepart > 0 ? ((detail.nombreDeces / detail.sujetsDepart) * 100).toFixed(1) : "0";
+  const coutTotal = detail.totalDepenses + detail.chargesFixesTotal;
+  const margeNette = detail.totalRecettes - coutTotal;
+  const margeParSujetVendu = totalVendus > 0 ? margeNette / totalVendus : 0;
+
+  async function submit() {
+    setSubmitting(true);
+    try {
+      const base = import.meta.env.BASE_URL || "/";
+      const path = isReopen ? "reouvrir" : "cloture";
+      const res = await fetch(`${base}api/bandes/${detail.id}/${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(isReopen ? {} : { dateCloture }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message || "Erreur");
+      queryClient.invalidateQueries({ queryKey: getGetBandeQueryKey(detail.id) });
+      queryClient.invalidateQueries({ queryKey: ["/api/bandes"] });
+      toast({ title: isReopen ? "Bande rouverte" : "Bande clôturée" });
+      setOpen(false);
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (isReopen) {
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-2"><RotateCcw className="h-4 w-4" />Rouvrir</Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Rouvrir la bande</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">La bande {detail.nom} sera de nouveau active. Vous pourrez ajouter des dépenses, ventes et données techniques.</p>
+          <Button onClick={submit} disabled={submitting} className="w-full">Confirmer la réouverture</Button>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="default" size="sm" className="gap-2"><CheckCircle2 className="h-4 w-4" />Terminer la bande</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Clôturer la bande {detail.nom}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          {detail.sujetsRestants > 0 && (
+            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-900">
+              <Lock className="h-4 w-4 inline mr-1" />
+              Attention : il reste <strong>{detail.sujetsRestants} sujets vivants</strong> non encore vendus. Êtes-vous sûr de clôturer ?
+            </div>
+          )}
+          <div className="rounded-lg border p-4 space-y-2 bg-muted/30">
+            <div className="text-sm font-semibold mb-2">Mini-bilan</div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="text-muted-foreground">Sujets vendus :</div>
+              <div className="text-right font-medium">{totalVendus}</div>
+              <div className="text-muted-foreground">Mortalité :</div>
+              <div className="text-right font-medium">{detail.nombreDeces} ({tauxMortalite}%)</div>
+              <div className="text-muted-foreground">Sujets restants :</div>
+              <div className="text-right font-medium">{detail.sujetsRestants}</div>
+              <div className="text-muted-foreground">Total dépenses :</div>
+              <div className="text-right font-medium">{formatFCFA(coutTotal)}</div>
+              <div className="text-muted-foreground">Total recettes :</div>
+              <div className="text-right font-medium text-green-700">{formatFCFA(detail.totalRecettes)}</div>
+              <div className="text-muted-foreground border-t pt-2">Marge nette :</div>
+              <div className={`text-right font-bold border-t pt-2 ${margeNette >= 0 ? 'text-green-700' : 'text-red-700'}`}>{formatFCFA(margeNette)}</div>
+              {totalVendus > 0 && (
+                <>
+                  <div className="text-muted-foreground">Marge / sujet vendu :</div>
+                  <div className="text-right text-xs text-muted-foreground">{formatFCFA(Math.round(margeParSujetVendu))}</div>
+                </>
+              )}
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Date de clôture</label>
+            <Input type="date" value={dateCloture} onChange={e => setDateCloture(e.target.value)} className="mt-1" />
+          </div>
+          <p className="text-xs text-muted-foreground">Une fois clôturée, la bande sera intégrée aux moyennes historiques utilisées par le simulateur.</p>
+          <Button onClick={submit} disabled={submitting} className="w-full">Confirmer la clôture</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1284,6 +1383,8 @@ export default function BandeDetailView() {
             <Button variant="outline" size="sm" className="gap-2" onClick={() => exportBandeExcel(detail, depenses || [], ventes || [], chargesFixes)}>
               <Download className="h-4 w-4" /> Excel
             </Button>
+            {!isReadOnly && detail.statut === "active" && <ClotureBandeDialog detail={detail} />}
+            {!isReadOnly && detail.statut === "terminee" && <ClotureBandeDialog detail={detail} isReopen />}
           </div>
 
           {(() => {
