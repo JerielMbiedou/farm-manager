@@ -42,6 +42,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { formatFCFA } from "@/lib/format";
+import { getAgeJours } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -80,6 +81,7 @@ function getPhase(ageJours: number) {
 }
 
 const depenseSchema = z.object({
+  date: z.string().min(1, "La date est requise"),
   designation: z.string().min(1, "La désignation est requise"),
   categorie: z.nativeEnum(CreateBandeDepenseBodyCategorie),
   quantite: z.coerce.number().min(0, "La quantité doit être positive"),
@@ -111,6 +113,8 @@ const peseeSchema = z.object({
   date: z.string().min(1, "La date est requise"),
   ageJours: z.coerce.number().min(1, "L'âge est requis"),
   poidsMoyenG: z.coerce.number().min(0, "Le poids est requis"),
+  poidsMinG: z.coerce.number().optional(),
+  poidsMaxG: z.coerce.number().optional(),
   objectifPoidsG: z.coerce.number().optional(),
 });
 
@@ -831,13 +835,14 @@ export default function BandeDetailView() {
 
   const isReadOnly = user?.role === "investisseur" || user?.role === "lecteur";
 
+  const today = new Date().toISOString().split("T")[0];
   const depenseForm = useForm<z.infer<typeof depenseSchema>>({
     resolver: zodResolver(depenseSchema),
-    defaultValues: { designation: "", categorie: CreateBandeDepenseBodyCategorie.aliments, quantite: 1, prixUnitaire: 0 },
+    defaultValues: { date: today, designation: "", categorie: CreateBandeDepenseBodyCategorie.aliments, quantite: 1, prixUnitaire: 0 },
   });
   const venteForm = useForm<z.infer<typeof venteSchema>>({
     resolver: zodResolver(venteSchema),
-    defaultValues: { date: new Date().toISOString().split("T")[0], quantiteVendue: 1, prixUnitaire: 0 },
+    defaultValues: { date: today, quantiteVendue: 1, prixUnitaire: 0 },
   });
   const depenseVenteForm = useForm<z.infer<typeof depenseVenteSchema>>({
     resolver: zodResolver(depenseVenteSchema),
@@ -849,15 +854,15 @@ export default function BandeDetailView() {
   });
   const mortaliteForm = useForm<z.infer<typeof mortaliteSchema>>({
     resolver: zodResolver(mortaliteSchema),
-    defaultValues: { date: new Date().toISOString().split("T")[0], ageJours: 1, decesJour: 0 },
+    defaultValues: { date: today, ageJours: 1, decesJour: 0 },
   });
   const peseeForm = useForm<z.infer<typeof peseeSchema>>({
     resolver: zodResolver(peseeSchema),
-    defaultValues: { date: new Date().toISOString().split("T")[0], ageJours: 1, poidsMoyenG: 0 },
+    defaultValues: { date: today, ageJours: 1, poidsMoyenG: 0 },
   });
   const consommationForm = useForm<z.infer<typeof consommationSchema>>({
     resolver: zodResolver(consommationSchema),
-    defaultValues: { date: new Date().toISOString().split("T")[0], quantiteKg: 0 },
+    defaultValues: { date: today, quantiteKg: 0 },
   });
   const vaccinForm = useForm<z.infer<typeof vaccinSchema>>({
     resolver: zodResolver(vaccinSchema),
@@ -865,15 +870,15 @@ export default function BandeDetailView() {
   });
   const eauForm = useForm<z.infer<typeof eauSchema>>({
     resolver: zodResolver(eauSchema),
-    defaultValues: { date: new Date().toISOString().split("T")[0], ageJours: 1, quantiteLitres: 0 },
+    defaultValues: { date: today, ageJours: 1, quantiteLitres: 0 },
   });
   const traitementForm = useForm<z.infer<typeof traitementSchema>>({
     resolver: zodResolver(traitementSchema),
-    defaultValues: { date: new Date().toISOString().split("T")[0], ageJours: 1, produit: "", type: "traitement", dosage: "", observations: "" },
+    defaultValues: { date: today, ageJours: 1, produit: "", type: "traitement", dosage: "", observations: "" },
   });
   const observationForm = useForm<z.infer<typeof observationSchema>>({
     resolver: zodResolver(observationSchema),
-    defaultValues: { date: new Date().toISOString().split("T")[0], ageJours: 1, contenu: "" },
+    defaultValues: { date: today, ageJours: 1, contenu: "" },
   });
 
   const [loyerInitialized, setLoyerInitialized] = useState(false);
@@ -883,16 +888,19 @@ export default function BandeDetailView() {
   }
 
   const resetForms = () => {
-    depenseForm.reset({ designation: "", categorie: CreateBandeDepenseBodyCategorie.aliments, quantite: 1, prixUnitaire: 0 });
-    venteForm.reset({ date: new Date().toISOString().split("T")[0], quantiteVendue: 1, prixUnitaire: 0 });
+    const td = new Date().toISOString().split("T")[0];
+    // P5.2 : pré-remplit l'âge avec l'âge réel de la bande au lieu de 1
+    const age = getAgeJours(detail?.dateDeDepart);
+    depenseForm.reset({ date: td, designation: "", categorie: CreateBandeDepenseBodyCategorie.aliments, quantite: 1, prixUnitaire: 0 });
+    venteForm.reset({ date: td, quantiteVendue: 1, prixUnitaire: 0 });
     depenseVenteForm.reset({ designation: "", montant: 0 });
-    mortaliteForm.reset({ date: new Date().toISOString().split("T")[0], ageJours: 1, decesJour: 0 });
-    peseeForm.reset({ date: new Date().toISOString().split("T")[0], ageJours: 1, poidsMoyenG: 0 });
-    consommationForm.reset({ date: new Date().toISOString().split("T")[0], quantiteKg: 0 });
+    mortaliteForm.reset({ date: td, ageJours: age, decesJour: 0 });
+    peseeForm.reset({ date: td, ageJours: age, poidsMoyenG: 0 });
+    consommationForm.reset({ date: td, quantiteKg: 0 });
     vaccinForm.reset({ jourPrevu: 1, nom: "", description: "" });
-    eauForm.reset({ date: new Date().toISOString().split("T")[0], ageJours: 1, quantiteLitres: 0 });
-    traitementForm.reset({ date: new Date().toISOString().split("T")[0], ageJours: 1, produit: "", type: "traitement", dosage: "", observations: "" });
-    observationForm.reset({ date: new Date().toISOString().split("T")[0], ageJours: 1, contenu: "" });
+    eauForm.reset({ date: td, ageJours: age, quantiteLitres: 0 });
+    traitementForm.reset({ date: td, ageJours: age, produit: "", type: "traitement", dosage: "", observations: "" });
+    observationForm.reset({ date: td, ageJours: age, contenu: "" });
     setEditingId(null);
     setDialogType("");
   };
@@ -1026,7 +1034,10 @@ export default function BandeDetailView() {
   const handleEdit = (item: any, type: 'depense' | 'vente' | 'depenseVente') => {
     setEditingId(item.id);
     if (type === 'depense') {
-      depenseForm.reset({ designation: item.designation, categorie: item.categorie as CreateBandeDepenseBodyCategorie, quantite: item.quantite, prixUnitaire: item.prixUnitaire });
+      const itemDate = item.date
+        ? new Date(item.date).toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0];
+      depenseForm.reset({ date: itemDate, designation: item.designation, categorie: item.categorie as CreateBandeDepenseBodyCategorie, quantite: item.quantite, prixUnitaire: item.prixUnitaire });
     } else if (type === 'vente') {
       venteForm.reset({ date: new Date(item.date).toISOString().split("T")[0], quantiteVendue: item.quantiteVendue, prixUnitaire: item.prixUnitaire });
     } else if (type === 'depenseVente') {
@@ -1099,6 +1110,7 @@ export default function BandeDetailView() {
   })();
 
   const openDialog = (type: string) => {
+    resetForms();
     setDialogType(type);
     setIsDialogOpen(true);
   };
@@ -1168,8 +1180,17 @@ export default function BandeDetailView() {
                 <FormField control={peseeForm.control} name="poidsMoyenG" render={({ field }) => (
                   <FormItem><FormLabel>Poids moyen (g)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={peseeForm.control} name="poidsMinG" render={({ field }) => (
+                    <FormItem><FormLabel>Poids min (g) — optionnel</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={peseeForm.control} name="poidsMaxG" render={({ field }) => (
+                    <FormItem><FormLabel>Poids max (g) — optionnel</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <p className="text-xs text-muted-foreground">Le coefficient de variation (CV) sera calculé automatiquement si min et max sont renseignés. Cible : CV &lt; 10 %.</p>
                 <FormField control={peseeForm.control} name="objectifPoidsG" render={({ field }) => (
-                  <FormItem><FormLabel>Objectif poids (g) - optionnel</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Objectif poids (g) - optionnel</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <Button type="submit" className="w-full">Enregistrer</Button>
               </form>
@@ -1282,6 +1303,9 @@ export default function BandeDetailView() {
           {dialogType === "depense" && (
             <Form {...depenseForm}>
               <form onSubmit={depenseForm.handleSubmit(onDepenseSubmit)} className="space-y-4">
+                <FormField control={depenseForm.control} name="date" render={({ field }) => (
+                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
                 <FormField control={depenseForm.control} name="categorie" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Catégorie</FormLabel>
@@ -1449,7 +1473,10 @@ export default function BandeDetailView() {
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Coût de production</CardTitle></CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-foreground">{formatFCFA(detail.totalDepenses + detail.chargesFixesTotal)}</div>
-                    <p className="text-xs text-muted-foreground mt-1">Coût / sujet vivant : {formatFCFA(detail.coutParSujet)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Coût / sujet départ : {formatFCFA((detail as any).coutParSujetDepart ?? detail.coutParSujet)}</p>
+                    {(detail as any).coutParSujetVivant != null && (
+                      <p className="text-xs text-muted-foreground">Coût / sujet vivant : {formatFCFA((detail as any).coutParSujetVivant)}</p>
+                    )}
                     {coutRevientKgVif && <p className="text-xs text-muted-foreground">Revient / kg vif : {formatFCFA(coutRevientKgVif)}</p>}
                   </CardContent>
                 </Card>
@@ -1533,7 +1560,7 @@ export default function BandeDetailView() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xl font-serif">Dépenses de Production</CardTitle>
-              {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => { setDialogType("depense"); setIsDialogOpen(true); }}><Plus className="w-4 h-4" /> Ajouter</Button>}
+              {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => { resetForms(); setDialogType("depense"); setIsDialogOpen(true); }}><Plus className="w-4 h-4" /> Ajouter</Button>}
             </CardHeader>
             <CardContent className="p-0">
               <DepensesGroupedTable
@@ -1550,7 +1577,7 @@ export default function BandeDetailView() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xl font-serif">Ventes de Poulets</CardTitle>
-              {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => { setDialogType("vente"); setIsDialogOpen(true); }}><Plus className="w-4 h-4" /> Vendre</Button>}
+              {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => { resetForms(); setDialogType("vente"); setIsDialogOpen(true); }}><Plus className="w-4 h-4" /> Vendre</Button>}
             </CardHeader>
             <CardContent className="p-0">
               <VentesGroupedTable
@@ -1565,7 +1592,7 @@ export default function BandeDetailView() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xl font-serif">Frais de Vente</CardTitle>
-              {!isReadOnly && <Button size="sm" variant="outline" className="gap-2" onClick={() => { setDialogType("depenseVente"); setIsDialogOpen(true); }}><Plus className="w-4 h-4" /> Ajouter frais</Button>}
+              {!isReadOnly && <Button size="sm" variant="outline" className="gap-2" onClick={() => { resetForms(); setDialogType("depenseVente"); setIsDialogOpen(true); }}><Plus className="w-4 h-4" /> Ajouter frais</Button>}
             </CardHeader>
             <CardContent>
               <div className="border rounded-md overflow-hidden">
@@ -1740,20 +1767,32 @@ export default function BandeDetailView() {
                     <TableHeader>
                       <TableRow className="bg-muted/30">
                         <TableHead>Date</TableHead><TableHead className="text-right">Jour</TableHead>
-                        <TableHead className="text-right">Poids (g)</TableHead><TableHead className="text-right">Objectif</TableHead>
+                        <TableHead className="text-right">Poids (g)</TableHead>
+                        <TableHead className="text-right">Min / Max</TableHead>
+                        <TableHead className="text-right">CV</TableHead>
+                        <TableHead className="text-right">Objectif</TableHead>
                         <TableHead className="text-right">Écart</TableHead>
                         {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {peseesItems.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Aucune pesée enregistrée</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={isReadOnly ? 7 : 8} className="text-center py-8 text-muted-foreground">Aucune pesée enregistrée</TableCell></TableRow>
                       ) : (
-                        peseesItems.map((p) => (
+                        peseesItems.map((p) => {
+                          const cv = p.cv as number | null;
+                          const cvAlerte = cv != null && cv > 10;
+                          return (
                           <TableRow key={p.id as number} className={p.alertePoids ? "bg-orange-50" : ""}>
                             <TableCell>{p.date as string}</TableCell>
                             <TableCell className="text-right">J{p.ageJours as number}</TableCell>
                             <TableCell className="text-right font-medium">{p.poidsMoyenG as number}g</TableCell>
+                            <TableCell className="text-right text-xs text-muted-foreground">
+                              {p.poidsMinG != null && p.poidsMaxG != null ? `${p.poidsMinG} / ${p.poidsMaxG}` : "-"}
+                            </TableCell>
+                            <TableCell className={`text-right font-medium text-xs ${cvAlerte ? "text-orange-600" : cv != null ? "text-green-600" : "text-muted-foreground"}`}>
+                              {cv != null ? `${cv} %` : "-"}
+                            </TableCell>
                             <TableCell className="text-right text-muted-foreground">{p.objectifPoidsG ? `${p.objectifPoidsG}g` : "-"}</TableCell>
                             <TableCell className={`text-right font-medium ${p.ecart && (p.ecart as number) < 0 ? "text-orange-600" : "text-green-600"}`}>
                               {p.ecart != null ? `${(p.ecart as number) > 0 ? "+" : ""}${p.ecart}g` : "-"}
@@ -1771,7 +1810,8 @@ export default function BandeDetailView() {
                               </TableCell>
                             )}
                           </TableRow>
-                        ))
+                          );
+                        })
                       )}
                     </TableBody>
                   </Table>

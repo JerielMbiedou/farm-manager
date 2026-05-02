@@ -182,3 +182,16 @@ French-language React + Vite web app for managing a family poultry farm in Camer
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+
+## Ferme Mbiedou — Priorités P1-P9 (terminées)
+
+- **P1** : champ `date` (YYYY-MM-DD) sur `bande_depenses` (schéma + GET/POST/PUT + formulaire frontend + historique caisse). Date pré-remplie au jour, modifiable.
+- **P2** : pesées avec `poidsMinG` / `poidsMaxG` optionnels, CV calculé `(max-min)/moyenne*100` (proxy de dispersion, pas l'écart-type) ; affiché dans la table.
+- **P3** : `dureeJours` pour bandes clôturées = `dateCloture − dateDeDepart`.
+- **P4** : KPI coût par sujet — `coutParSujetDepart` (primaire, sur effectif initial) + `coutParSujetVivant` (secondaire, sur effectif vivant).
+- **P5** : utilitaire `getAgeJours(dateDeDepart)` — pré-remplit `ageJours` dans tous les formulaires (mortalité, pesée, eau, traitement, observation) via `resetForms()` au lieu de la valeur figée 1.
+- **P7** : `/api/dashboard/summary` enrichi par bande active : `ageActuelJours`, `joursAvantAbattage`, `dernierPoidsMoyen`, `icActuel` + `icStatus` (formule corrigée : aliment / gain de poids vivant), `gmqGrams`, `mortDernieres24h`, `derniereAlerte`. Cartes dashboard refondues + bouton "Fait aujourd'hui" sur les vaccinations à venir.
+- **P9** : seuils mortalité dépendants de l'âge (param `seuil_mortalite_alerte_jour_demarrage` ≤J21, `_finition` >J21) + `seuil_alerte_solde_caisse`. Bannière dashboard pour mortalité active + solde bas + dépassement budget.
+
+### Sécurité écritures
+Toutes les routes d'écriture sur `/api/bandes/:id/*` passent par `assertBandeWritable()` (vérifie l'existence + le rôle). Les UPDATE/DELETE sont scopés par `(resourceId AND bandeId)` pour éviter l'IDOR cross-bande, y compris `PUT /:id/vaccinations/:vaccId`.

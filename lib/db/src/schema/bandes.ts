@@ -20,6 +20,7 @@ export const bandeDepensesTable = pgTable(
   {
     id: serial("id").primaryKey(),
     bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
+    date: date("date"),
     designation: text("designation").notNull(),
     categorie: text("categorie").notNull(),
     quantite: numeric("quantite", { precision: 15, scale: 2 }).notNull(),
@@ -97,6 +98,9 @@ export const peseesTable = pgTable(
     date: date("date").notNull(),
     ageJours: integer("age_jours").notNull(),
     poidsMoyenG: numeric("poids_moyen_g", { precision: 10, scale: 2 }).notNull(),
+    poidsMinG: numeric("poids_min_g", { precision: 10, scale: 2 }),
+    poidsMaxG: numeric("poids_max_g", { precision: 10, scale: 2 }),
+    objectifPoidsG: numeric("objectif_poids_g", { precision: 10, scale: 2 }),
   },
   (t) => [index("pesees_bande_id_idx").on(t.bandeId)],
 );

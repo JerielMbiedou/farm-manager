@@ -1,0 +1,379 @@
+RÈGLE IMPORTANTE : Avant d'implémenter chaque item, vérifie
+d'abord si c'est déjà en place. Si c'est déjà implémenté,
+marque-le ✅ DÉJÀ PRÉSENT et passe au suivant sans rien toucher.
+Si c'est partiellement fait, marque ⚠️ PARTIEL et complète
+seulement ce qui manque. Si c'est absent, marque ❌ ABSENT
+et implémente complètement.
+
+Ne demande pas de confirmation, exécute directement.
+À la fin, génère un rapport complet de tout ce qui a été fait.
+
+═══════════════════════════════════════════════════
+PRIORITÉ 1 — BUG CRITIQUE : DATE SUR BANDE_DEPENSES
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- bandeDepensesTable a-t-elle un champ date ?
+- La route POST bande_depenses accepte-t-elle un champ date ?
+- Le formulaire de dépense a-t-il un champ date ?
+- dashboard.ts utilise-t-il d.date ou dateDeDepart pour
+  le journal de caisse ?
+→ Implémenter seulement ce qui manque.
+
+1.1 — Migration Drizzle
+Dans lib/db/src/schema/bandes.ts, si absent, ajouter
+dans bandeDepensesTable :
+  date: date("date").notNull().default(sql`CURRENT_DATE`)
+Générer et appliquer la migration.
+Backfiller les données existantes :
+  UPDATE bande_depenses SET date = b.date_de_depart
+  FROM bandes b WHERE bande_depenses.bande_id = b.id
+  AND bande_depenses.date IS NULL
+
+1.2 — Backend
+Dans les routes GET/POST/PUT de bande_depenses (bandes.ts) :
+- Ajouter date dans les selects si absent
+- Ajouter date dans les inserts/updates si absent
+- Valider date avec Zod si absent
+
+1.3 — Frontend
+Dans bandes/[id].tsx, formulaire dépense :
+- Ajouter champ date si absent
+- defaultValue = new Date().toISOString().split('T')[0]
+
+1.4 — Corriger historique-caisse
+Dans dashboard.ts ligne ~279, si la ligne est encore :
+  const dateStr = bInfo?.dateDeDepart ?? "2026-01-01";
+Remplacer par :
+  const dateStr = d.date ?? bInfo?.dateDeDepart ?? "2026-01-01";
+
+═══════════════════════════════════════════════════
+PRIORITÉ 2 — BUG OCR : EAU ET POIDS NON PERSISTÉS
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- La route import-fiche insère-t-elle dans consommationEauTable ?
+- peseesTable a-t-elle les colonnes poidsMinG et poidsMaxG ?
+- La route import-fiche persiste-t-elle poidsMinG/poidsMaxG ?
+- L'UI pesées affiche-t-elle ces colonnes ?
+→ Implémenter seulement ce qui manque.
+
+2.1 — Corriger import OCR eau
+Dans bandes.ts route POST /:id/import-fiche, si absent :
+Après le bloc d'insert consommationAlimentTable, ajouter :
+  Pour chaque jour parsé avec eauLitres > 0 :
+  insérer dans consommationEauTable :
+  { bandeId, date, ageJours, quantiteLitres: j.eauLitres }
+  Ignorer les doublons sur (bandeId, date).
+
+2.2 — Ajouter poidsMinG/poidsMaxG dans peseesTable
+Si ces colonnes sont absentes de peseesTable dans le schema :
+  poidsMinG: integer("poids_min_g"),
+  poidsMaxG: integer("poids_max_g")
+Générer et appliquer la migration.
+
+2.3 — Persister poidsMin/Max depuis l'OCR
+Dans import-fiche, dans le bloc insert peseesTable, si absent :
+  poidsMinG: j.poidsMinG ?? null,
+  poidsMaxG: j.poidsMaxG ?? null
+
+2.4 — Afficher poidsMin/Max + CV dans l'UI
+Dans bandes/[id].tsx, tableau pesées, si absent :
+- Colonnes "Poids min (g)" et "Poids max (g)"
+- Formulaire : deux champs optionnels poidsMinG / poidsMaxG
+- Calculer et afficher CV% = ((poidsMax-poidsMin)/poidsMoyen)*100
+  Couleur : vert < 10% | orange 10-15% | rouge > 15%
+
+═══════════════════════════════════════════════════
+PRIORITÉ 3 — BUG DURÉE BANDE INCORRECTE
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- Dans dashboard.ts, comment dureeJours est-il calculé ?
+- Utilise-t-il dateCloture - dateDeDepart ou ageJours mortalité ?
+- Même vérification dans comparaison-bandes.
+→ Corriger seulement si le bug est confirmé.
+
+Si le bug est présent, remplacer le calcul par :
+  if (bande.dateCloture && bande.dateDeDepart) {
+    dureeJours = Math.floor(
+      (new Date(bande.dateCloture).getTime() -
+       new Date(bande.dateDeDepart).getTime()) / 86400000
+    );
+  } else if (bande.dateDeDepart) {
+    dureeJours = Math.floor(
+      (Date.now() -
+       new Date(bande.dateDeDepart).getTime()) / 86400000
+    );
+  }
+Appliquer la même correction dans comparaison-bandes si nécessaire.
+
+═══════════════════════════════════════════════════
+PRIORITÉ 4 — BUG COÛT PAR SUJET TROMPEUR
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- Comment coutParSujet est-il calculé dans getBandeDetail() ?
+- Utilise-t-il sujetsVivants ou sujetsDepart comme dénominateur ?
+- beneficeNetSansCharges est-il affiché dans l'UI ?
+→ Corriger seulement ce qui est faux.
+
+4.1 — Corriger le calcul
+Si coutParSujet utilise sujetsVivants, remplacer par :
+  // Coût de revient réel (stable, sur effectif de départ)
+  const coutParSujetDepart = bande.sujetsDepart > 0
+    ? (totalDepenses + chargesFixesTotal) / bande.sujetsDepart
+    : 0;
+  // Coût sur vivants (informatif, peut monter en fin de bande)
+  const coutParSujetVivant = sujetsVivants > 0
+    ? (totalDepenses + chargesFixesTotal) / sujetsVivants
+    : 0;
+Retourner les deux dans la réponse API.
+
+4.2 — Mettre à jour l'affichage
+Dans bandes/[id].tsx :
+- Afficher "Coût / sujet départ : X FCFA" comme valeur principale
+- Afficher "Coût / sujet vivant : X FCFA" en secondaire avec
+  tooltip : "Cette valeur augmente quand des sujets sont vendus"
+- Si beneficeNetSansCharges est retourné par l'API mais pas
+  affiché, l'ajouter dans la section Résumé sous beneficeNet :
+  "Bénéfice sans charges fixes : X FCFA" (en italique, plus petit)
+
+═══════════════════════════════════════════════════
+PRIORITÉ 5 — ÂGEJOURS AUTOMATIQUE PARTOUT
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- La fonction getAgeJours() existe-t-elle dans lib/utils.ts ?
+- Les formulaires (mortalité, pesées, aliment, eau, traitements,
+  observations) ont-ils ageJours pré-rempli automatiquement ?
+- Les champs date ont-ils aujourd'hui comme valeur par défaut ?
+→ Implémenter seulement ce qui manque.
+
+5.1 — Créer l'utilitaire si absent
+Dans artifacts/ferme-familiale/src/lib/utils.ts, si absent :
+  export function getAgeJours(dateDeDepart: string): number {
+    const start = new Date(dateDeDepart + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.max(
+      1,
+      Math.floor(
+        (today.getTime() - start.getTime()) / 86400000
+      ) + 1
+    );
+  }
+
+5.2 — Pré-remplir ageJours dans tous les formulaires
+Dans bandes/[id].tsx, pour chaque formulaire avec ageJours
+(mortalité, pesées, aliment, eau, traitements, observations) :
+- Si ageJours n'est pas pré-rempli automatiquement :
+  defaultValues: { ageJours: getAgeJours(bande.dateDeDepart) }
+
+5.3 — Date à aujourd'hui par défaut
+Dans les mêmes formulaires, si date n'est pas pré-remplie :
+  date: new Date().toISOString().split('T')[0]
+
+═══════════════════════════════════════════════════
+PRIORITÉ 7 — DASHBOARD ENRICHI
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- dashboard.ts GET /summary retourne-t-il ageActuelJours ?
+- Retourne-t-il icActuel, gmq, joursAvantAbattage,
+  mortDernieres24h, dernierPoidsMoyen ?
+- Les cards bande du dashboard affichent-elles ces infos ?
+- Y a-t-il une barre de progression J0→J45 ?
+- Y a-t-il un bouton vaccination "✓ Fait aujourd'hui" ?
+→ Ajouter seulement ce qui manque.
+
+7.1 — Enrichir l'API si champs manquants
+Dans dashboard.ts, pour chaque bande active, calculer et
+retourner les champs absents parmi :
+
+  ageActuelJours = Math.floor(
+    (Date.now() - new Date(bande.dateDeDepart).getTime())
+    / 86400000) + 1
+
+  dernierPoidsMoyen = dernière pesée de la bande (poidsMoyenG)
+
+  icActuel :
+    totalAlimentKg = somme consommationAlimentTable pour cette bande
+    poidsGagneKg = (dernierPoidsMoyen - 40) * sujetsVivants / 1000
+    icActuel = poidsGagneKg > 0 ? totalAlimentKg/poidsGagneKg : null
+
+  gmqGramsParJour : différence poids entre les 2 dernières pesées
+    divisée par la différence d'ageJours
+
+  joursAvantAbattage = Math.max(0, 45 - ageActuelJours)
+
+  mortDernieres24h = décès du jour d'hier dans mortaliteJournaliere
+
+7.2 — Enrichir les cards bande dans le dashboard
+Dans dashboard.tsx, pour chaque bande active, si absent :
+- Barre de progression : ageActuelJours / 45 jours
+  Label : "J{age} / J45"
+- IC avec couleur : vert<1.8 | orange 1.8-2.2 | rouge>2.2
+- GMQ en g/jour
+- Mortalité 24h avec ⚠️ si > seuil
+- Dernier poids moyen
+- Jours avant abattage estimé
+
+7.3 — Bouton vaccination en 1 clic
+Sur la card vaccination "à faire aujourd'hui" dans le dashboard,
+si absent, ajouter bouton "✓ Fait aujourd'hui" qui appelle :
+  PUT /api/bandes/:id/vaccinations/:vaccId
+  body: { fait: "oui", dateFait: today }
+Toast de confirmation après succès.
+
+═══════════════════════════════════════════════════
+PRIORITÉ 9 — ALERTES MORTALITÉ ANORMALE
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- La route POST mortalité calcule-t-elle le taux journalier ?
+- Y a-t-il une logique d'alerte si taux > seuil ?
+- Ces paramètres existent-ils dans parametresTable :
+  seuil_alerte_mortalite_demarrage, seuil_alerte_mortalite_finition,
+  seuil_alerte_solde_caisse ?
+- Le dashboard affiche-t-il une bannière rouge si alerte ?
+- La page bande signale-t-elle visuellement les jours critiques ?
+→ Implémenter seulement ce qui manque.
+
+9.1 — Logique d'alerte dans POST mortalité
+Si absent dans bandes.ts route POST /:id/mortalite :
+  const effectifRestant = bande.sujetsDepart - bande.nombreDeces;
+  const tauxJour = effectifRestant > 0
+    ? (decesJour / effectifRestant) * 100 : 0;
+  const ageJours = body.ageJours ?? 0;
+  const seuilCle = ageJours <= 21
+    ? "seuil_alerte_mortalite_demarrage"
+    : "seuil_alerte_mortalite_finition";
+  const seuil = parseFloat(
+    await getParam(seuilCle) ?? (ageJours <= 21 ? "1" : "0.5")
+  );
+  const alerteActive = tauxJour > seuil;
+  if (alerteActive) {
+    req.log.warn({ bandeId, tauxJour, seuil },
+      "Alerte mortalité anormale");
+  }
+  return res.json({ ...insertedRow,
+    alerte: alerteActive
+      ? { niveau: tauxJour > seuil*2 ? "critical":"warning",
+          message: `Taux ${tauxJour.toFixed(1)}% > seuil ${seuil}%`,
+          tauxJour }
+      : null
+  });
+
+9.2 — Paramètres dans seedDefaults si absents
+  { cle: "seuil_alerte_mortalite_demarrage", valeur: "1",
+    description: "Seuil alerte mortalité démarrage J0-J21 (%)",
+    categorie: "alertes" }
+  { cle: "seuil_alerte_mortalite_finition", valeur: "0.5",
+    description: "Seuil alerte mortalité finition J22+ (%)",
+    categorie: "alertes" }
+  { cle: "seuil_alerte_solde_caisse", valeur: "100000",
+    description: "Seuil alerte solde caisse minimum (FCFA)",
+    categorie: "alertes" }
+
+9.3 — Bannière dashboard
+Dans dashboard.tsx, si absent :
+Récupérer les bandes ayant mortDernieres24h au-dessus du seuil.
+Afficher en haut du dashboard un Alert destructive :
+  "⚠️ Alerte mortalité — Bande [nom] : X décès (taux Y% > seuil Z%)"
+Dismissable avec bouton ×, réapparaît au prochain chargement.
+
+9.4 — Ligne rouge dans onglet Mortalité
+Dans bandes/[id].tsx onglet Mortalité, si absent :
+Ligne avec taux > seuil = fond rouge clair + icône ⚠️.
+
+═══════════════════════════════════════════════════
+PRIORITÉ 10 — SYNC STOCK ↔ CONSOMMATION
+═══════════════════════════════════════════════════
+
+VÉRIFICATION D'ABORD :
+- Le paramètre sync_stock_consommation existe-t-il ?
+- La route POST consommation décrémente-t-elle le stock ?
+- Les sorties auto sont-elles marquées visuellement dans stocks.tsx?
+→ Implémenter seulement ce qui manque.
+
+10.1 — Paramètre dans seedDefaults si absent
+  { cle: "sync_stock_consommation", valeur: "true",
+    description: "Décrémenter stock aliment automatiquement
+    à chaque saisie de consommation bande",
+    categorie: "stock" }
+
+10.2 — Logique sync dans POST consommation
+Dans bandes.ts POST /:id/consommation, si absent :
+Après l'insert dans consommationAlimentTable :
+  const syncEnabled = await getParam("sync_stock_consommation");
+  if (syncEnabled === "true") {
+    try {
+      await db.insert(stockAlimentsTable).values({
+        designation: body.designation ?? "Aliment bande",
+        type: "sortie",
+        quantiteKg: body.quantiteKg,
+        date: body.date,
+        commentaire: `Auto — Bande ${bande.nom} J${body.ageJours}`,
+      });
+    } catch (err) {
+      req.log.warn({ err }, "Sync stock échouée — non bloquant");
+    }
+  }
+
+10.3 — Indicateur visuel
+Dans stocks.tsx, si absent :
+- Sorties auto : icône 🔄 + mention "Auto — Bande X"
+Dans bandes/[id].tsx onglet consommation, si absent :
+- Note : "✓ Sync stock activée — chaque saisie met à jour
+  votre stock automatiquement"
+
+═══════════════════════════════════════════════════
+CORRECTIONS RAPIDES
+═══════════════════════════════════════════════════
+
+B1 — Condition redondante (bandes.ts)
+Chercher : if (j.decesJour > 0 || j.decesJour === 0)
+Si trouvé, remplacer par : if (j.decesJour >= 0)
+
+B2 — beneficeNetSansCharges non affiché
+Si l'API retourne beneficeNetSansCharges mais que l'UI ne
+l'affiche pas, ajouter dans la section Résumé de bandes/[id].tsx :
+  "Bénéfice sans charges fixes : X FCFA" (italique, taille réduite)
+
+B3 — Stock aliment absent de l'historique caisse
+Dans dashboard.ts GET /historique-caisse, vérifier si les sorties
+de stockAlimentsTable sont incluses.
+Si absent, les ajouter comme sorties avec catégorie "Stock aliment".
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL OBLIGATOIRE
+═══════════════════════════════════════════════════
+
+Une fois tout terminé, génère un rapport structuré ainsi :
+
+## RAPPORT D'IMPLÉMENTATION — [date du jour]
+
+### ✅ DÉJÀ PRÉSENT (non modifié)
+- [liste chaque item déjà implémenté]
+
+### ✅ IMPLÉMENTÉ
+Pour chaque item fait :
+- Fichier(s) modifié(s)
+- Ce qui a été ajouté/corrigé
+- Lignes concernées
+
+### ⚠️ PARTIELLEMENT FAIT
+- Ce qui a été complété
+- Ce qui reste à faire et pourquoi
+
+### ❌ NON FAIT
+- Item non implémenté + raison
+
+### 🔧 MIGRATIONS APPLIQUÉES
+- Liste des migrations Drizzle générées et appliquées
+
+### ⚠️ POINTS D'ATTENTION
+- Tout ce que le développeur doit savoir
+- Effets de bord potentiels
+- Tests recommandés

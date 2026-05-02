@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, isNull } from "drizzle-orm";
-import { db, financementTable, remboursementsTable, devisConstructionTable, puitsItemsTable, sortiesArgentTable, sortiesCarburantTable, depensesBatimentTable, depensesPuitsTable, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, vaccinationsTable, actifsTable } from "@workspace/db";
+import { db, financementTable, remboursementsTable, devisConstructionTable, puitsItemsTable, sortiesArgentTable, sortiesCarburantTable, depensesBatimentTable, depensesPuitsTable, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, vaccinationsTable, actifsTable, peseesTable, consommationAlimentTable } from "@workspace/db";
 import { getParam } from "../lib/parametres";
 
 const router = Router();
@@ -38,6 +38,13 @@ router.get("/summary", async (req, res) => {
   const bandesActives = [];
   const bandesTerminees = [];
 
+  const icBon = await getParam("ic_bon", 1.8);
+  const icMoyen = await getParam("ic_moyen", 2.2);
+  const dureeAbattageStandard = 45;
+  const seuilDemarrage = await getParam("seuil_mortalite_alerte_jour_demarrage", 1);
+  const seuilFinition = await getParam("seuil_mortalite_alerte_jour_finition", 0.5);
+  let alerteMortaliteActive: { bandeNom: string; tauxJour: number; seuilApplicable: number; date: string; ageJours: number } | null = null;
+
   for (const bande of bandes) {
     const depenses = await db.select().from(bandeDepensesTable).where(eq(bandeDepensesTable.bandeId, bande.id));
     const ventes = await db.select().from(bandeVentesTable).where(eq(bandeVentesTable.bandeId, bande.id));
@@ -59,6 +66,74 @@ router.get("/summary", async (req, res) => {
     const sujetsVivants = bande.sujetsDepart - totalDeces;
     const tauxMortalite = bande.sujetsDepart > 0 ? (totalDeces / bande.sujetsDepart) * 100 : 0;
 
+    // P7.1 Enrichissement bandes actives
+    let ageActuelJours: number | null = null;
+    let joursAvantAbattage: number | null = null;
+    let dernierPoidsMoyen: number | null = null;
+    let dateDernierePesee: string | null = null;
+    let icActuel: number | null = null;
+    let icStatus: string | null = null;
+    let gmqGrams: number | null = null;
+    let mortDernieres24h = 0;
+    let derniereAlerte: { tauxJour: number; seuilApplicable: number; date: string; ageJours: number } | null = null;
+
+    if (bande.statut === "active") {
+      const startDate = new Date(bande.dateDeDepart + "T00:00:00");
+      const now = new Date();
+      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      ageActuelJours = Math.max(1, Math.floor((todayMidnight.getTime() - startDate.getTime()) / 86400000) + 1);
+      joursAvantAbattage = Math.max(0, dureeAbattageStandard - ageActuelJours);
+
+      const peseesRows = await db.select().from(peseesTable).where(eq(peseesTable.bandeId, bande.id)).orderBy(peseesTable.ageJours);
+      if (peseesRows.length > 0) {
+        const last = peseesRows[peseesRows.length - 1];
+        dernierPoidsMoyen = parseFloat(last.poidsMoyenG);
+        dateDernierePesee = last.date;
+        const poidsInitial = peseesRows.length > 1 ? parseFloat(peseesRows[0].poidsMoyenG) : 40; // poids initial poussin standard 40g
+        const ageInitial = peseesRows.length > 1 ? peseesRows[0].ageJours : 1;
+        const deltaJours = Math.max(1, last.ageJours - ageInitial);
+        gmqGrams = Math.round((dernierPoidsMoyen - poidsInitial) / deltaJours);
+      }
+
+      const alimRows = await db.select().from(consommationAlimentTable).where(eq(consommationAlimentTable.bandeId, bande.id));
+      const totalAlimKg = alimRows.reduce((s, r) => s + parseFloat(r.quantiteKg), 0);
+      if (dernierPoidsMoyen != null && sujetsVivants > 0) {
+        // IC = aliment consommé (kg) / gain de poids vivant (kg)
+        // gain = (poids actuel - poids initial poussin 40g) sur les sujets encore vivants
+        const poidsInitialPoussinG = 40;
+        const gainParSujetKg = Math.max(0, (dernierPoidsMoyen - poidsInitialPoussinG) / 1000);
+        const gainTotalKg = gainParSujetKg * sujetsVivants;
+        if (gainTotalKg > 0) {
+          icActuel = Math.round((totalAlimKg / gainTotalKg) * 100) / 100;
+          if (icActuel < icBon) icStatus = "bon";
+          else if (icActuel <= icMoyen) icStatus = "moyen";
+          else icStatus = "mauvais";
+        }
+      }
+
+      const todayStr = todayMidnight.toISOString().split("T")[0];
+      const yMid = new Date(todayMidnight); yMid.setDate(yMid.getDate() - 1);
+      const yStr = yMid.toISOString().split("T")[0];
+      mortDernieres24h = mortaliteRows
+        .filter(m => m.date === todayStr || m.date === yStr)
+        .reduce((s, m) => s + m.decesJour, 0);
+
+      // Dernière alerte mortalité (utile pour la bannière dashboard P9.3)
+      let cumul = 0;
+      for (const m of mortaliteRows.sort((a, b) => a.ageJours - b.ageJours)) {
+        const vivantsDebut = bande.sujetsDepart - cumul;
+        const tauxJ = vivantsDebut > 0 ? (m.decesJour / vivantsDebut) * 100 : 0;
+        const seuil = m.ageJours <= 21 ? seuilDemarrage : seuilFinition;
+        if (tauxJ > seuil) {
+          derniereAlerte = { tauxJour: Math.round(tauxJ * 100) / 100, seuilApplicable: seuil, date: m.date, ageJours: m.ageJours };
+        }
+        cumul += m.decesJour;
+      }
+      if (derniereAlerte && (!alerteMortaliteActive || derniereAlerte.date > alerteMortaliteActive.date)) {
+        alerteMortaliteActive = { bandeNom: bande.nom, ...derniereAlerte };
+      }
+    }
+
     const bandeData = {
       id: bande.id,
       nom: bande.nom,
@@ -72,6 +147,16 @@ router.get("/summary", async (req, res) => {
       totalVendus,
       createdAt: bande.createdAt,
       dateDeDepart: bande.dateDeDepart,
+      // Champs enrichis (null pour bandes terminées)
+      ageActuelJours,
+      joursAvantAbattage,
+      dernierPoidsMoyen,
+      dateDernierePesee,
+      icActuel,
+      icStatus,
+      gmqGrams,
+      mortDernieres24h,
+      derniereAlerte,
     };
 
     if (bande.statut === "active") {
@@ -100,7 +185,7 @@ router.get("/summary", async (req, res) => {
   const caisseDisponible = totalFinance - totalDepenseConstruction - totalDepBandesAll - totalDepVenteAll + totalRecBandesAll - totalRembourse - totalAchatActifs;
   const alerteDepassementBudget = totalDepenseConstruction > totalDevis;
 
-  let prochainesVaccinations: Array<{ bandeNom: string; vaccinNom: string; datePrevue: string; enRetard: boolean }> = [];
+  let prochainesVaccinations: Array<{ bandeId: number; bandeNom: string; vaccinId: number; vaccinNom: string; datePrevue: string; enRetard: boolean }> = [];
   for (const bande of bandes) {
     if (bande.statut !== "active") continue;
     const vaccins = await db.select().from(vaccinationsTable).where(eq(vaccinationsTable.bandeId, bande.id));
@@ -110,7 +195,9 @@ router.get("/summary", async (req, res) => {
       const datePrevue = new Date(startDate);
       datePrevue.setDate(datePrevue.getDate() + v.jourPrevu - 1);
       prochainesVaccinations.push({
+        bandeId: bande.id,
         bandeNom: bande.nom,
+        vaccinId: v.id,
         vaccinNom: v.nom,
         datePrevue: datePrevue.toISOString().split("T")[0],
         enRetard: datePrevue < new Date(),
@@ -143,6 +230,9 @@ router.get("/summary", async (req, res) => {
     };
   }
 
+  const seuilSoldeCaisse = await getParam("seuil_alerte_solde_caisse", 100000);
+  const alerteSoldeBas = caisseDisponible < seuilSoldeCaisse;
+
   res.json({
     totalFinance,
     totalRembourse,
@@ -153,6 +243,9 @@ router.get("/summary", async (req, res) => {
     bandesActives,
     bandesTerminees,
     alerteDepassementBudget,
+    alerteMortaliteActive,
+    alerteSoldeBas,
+    seuilSoldeCaisse,
     depensesParCategorie,
     prochainesVaccinations,
     previsions,
@@ -194,12 +287,16 @@ router.get("/comparaison-bandes", async (req, res) => {
     let dureeJours: number;
     if (bande.statut === "active") {
       dureeJours = Math.round((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    } else if (mortaliteRows.length > 0) {
-      const lastMortDay = Math.max(...mortaliteRows.map(m => m.ageJours));
-      dureeJours = lastMortDay;
+    } else if (bande.dateCloture) {
+      // Bande clôturée → durée = dateCloture - dateDeDepart (référence métier)
+      const cloture = new Date(bande.dateCloture);
+      dureeJours = Math.max(1, Math.round((cloture.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
     } else if (ventes.length > 0) {
       const lastVenteDate = new Date(Math.max(...ventes.map(v => new Date(v.date).getTime())));
       dureeJours = Math.round((lastVenteDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    } else if (mortaliteRows.length > 0) {
+      const lastMortDay = Math.max(...mortaliteRows.map(m => m.ageJours));
+      dureeJours = lastMortDay;
     } else {
       dureeJours = 45;
     }
@@ -276,7 +373,8 @@ router.get("/historique-caisse", async (req, res) => {
   for (const d of allBandeDepenses) {
     const montant = parseFloat(d.quantite) * parseFloat(d.prixUnitaire);
     const bInfo = bandeMap.get(d.bandeId);
-    const dateStr = bInfo?.dateDeDepart ?? "2026-01-01";
+    // Utilise la date propre à la dépense si disponible, sinon repli sur date de départ de la bande
+    const dateStr = d.date ?? bInfo?.dateDeDepart ?? "2026-01-01";
     entries.push({ date: dateStr, type: "sortie", categorie: "Production", designation: `[${bInfo?.nom ?? "?"}] ${d.categorie} : ${d.designation}`, montant, timestamp: new Date(dateStr + "T00:00:00") });
   }
   for (const v of allBandeVentes) {

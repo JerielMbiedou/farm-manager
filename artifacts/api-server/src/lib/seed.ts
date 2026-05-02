@@ -330,7 +330,10 @@ export async function seedDefaults() {
   await db.insert(parametresTable).values([
     { cle: "taux_depreciation_materiel", valeur: "10", description: "Taux de dépréciation annuel du matériel fixe (%)", categorie: "Charges fixes" },
     { cle: "taux_imprevus", valeur: "5", description: "Taux pour imprévus sur dépenses de production (%)", categorie: "Charges fixes" },
-    { cle: "seuil_mortalite_alerte_jour", valeur: "3", description: "Taux de mortalité journalier déclenchant une alerte rouge (%)", categorie: "Alertes" },
+    { cle: "seuil_mortalite_alerte_jour", valeur: "3", description: "Taux de mortalité journalier déclenchant une alerte rouge (%) — utilisé en finition (≥ J22)", categorie: "Alertes" },
+    { cle: "seuil_mortalite_alerte_jour_demarrage", valeur: "1", description: "Taux de mortalité journalier déclenchant une alerte rouge en démarrage (J0–J21) (%)", categorie: "Alertes" },
+    { cle: "seuil_mortalite_alerte_jour_finition", valeur: "0.5", description: "Taux de mortalité journalier déclenchant une alerte rouge en finition (≥ J22) (%)", categorie: "Alertes" },
+    { cle: "seuil_alerte_solde_caisse", valeur: "100000", description: "Seuil de solde caisse déclenchant une alerte basse (FCFA)", categorie: "Alertes" },
     { cle: "seuil_mortalite_alerte_cumul", valeur: "5", description: "Taux de mortalité cumulé affiché en rouge (%)", categorie: "Alertes" },
     { cle: "seuil_poids_alerte", valeur: "90", description: "Pourcentage minimum du poids objectif avant alerte (%)", categorie: "Alertes" },
     { cle: "ic_bon", valeur: "1.8", description: "Indice de conversion considéré comme bon (≤)", categorie: "Indice de conversion" },

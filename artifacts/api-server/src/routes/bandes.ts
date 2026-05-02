@@ -66,7 +66,13 @@ async function getBandeDetail(id: number) {
   const beneficeNetSansCharges = totalRecettes - totalDepenses - totalDepensesVente;
   const beneficeNet = totalRecettes - totalDepenses - chargesFixesTotal - totalDepensesVente;
   const sujetsVivants = bande.sujetsDepart - nombreDeces;
-  const coutParSujet = sujetsVivants > 0 ? (totalDepenses + chargesFixesTotal) / sujetsVivants : 0;
+  const coutTotalProduction = totalDepenses + chargesFixesTotal;
+  // Coût par sujet « départ » = coût réel par poussin acheté (référence métier)
+  const coutParSujetDepart = bande.sujetsDepart > 0 ? coutTotalProduction / bande.sujetsDepart : 0;
+  // Coût par sujet « vivant » = coût absorbé par les survivants (vue rentabilité)
+  const coutParSujetVivant = sujetsVivants > 0 ? coutTotalProduction / sujetsVivants : 0;
+  // Compatibilité : ancien champ `coutParSujet` = coutParSujetDepart (corrigé)
+  const coutParSujet = coutParSujetDepart;
 
   return {
     id: bande.id,
@@ -85,6 +91,8 @@ async function getBandeDetail(id: number) {
     beneficeNet,
     beneficeNetSansCharges,
     coutParSujet,
+    coutParSujetDepart,
+    coutParSujetVivant,
     dateDeDepart: bande.dateDeDepart,
     createdAt: bande.createdAt,
   };
@@ -351,6 +359,7 @@ router.get("/:id/depenses", async (req, res) => {
   res.json(rows.map(r => ({
     id: r.id,
     bandeId: r.bandeId,
+    date: r.date,
     designation: r.designation,
     categorie: r.categorie,
     quantite: parseFloat(r.quantite),
@@ -362,9 +371,11 @@ router.get("/:id/depenses", async (req, res) => {
 router.post("/:id/depenses", async (req, res) => {
   const bandeId = parseInt(req.params.id);
   if (!(await assertBandeWritable(bandeId, res))) return;
-  const { designation, categorie, quantite, prixUnitaire } = req.body;
+  const { date, designation, categorie, quantite, prixUnitaire } = req.body;
+  const dateValue = (typeof date === "string" && ISO_DATE_RE.test(date)) ? date : new Date().toISOString().split("T")[0];
   const rows = await db.insert(bandeDepensesTable).values({
     bandeId,
+    date: dateValue,
     designation,
     categorie,
     quantite: String(quantite),
@@ -375,6 +386,7 @@ router.post("/:id/depenses", async (req, res) => {
   res.status(201).json({
     id: r.id,
     bandeId: r.bandeId,
+    date: r.date,
     designation: r.designation,
     categorie: r.categorie,
     quantite: parseFloat(r.quantite),
@@ -386,17 +398,20 @@ router.post("/:id/depenses", async (req, res) => {
 router.put("/:id/depenses/:depenseId", async (req, res) => {
   if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const depenseId = parseInt(req.params.depenseId);
-  const { designation, categorie, quantite, prixUnitaire } = req.body;
-  const rows = await db.update(bandeDepensesTable).set({
+  const { date, designation, categorie, quantite, prixUnitaire } = req.body;
+  const updates: Record<string, unknown> = {
     designation,
     categorie,
     quantite: String(quantite),
     prixUnitaire: String(prixUnitaire),
-  }).where(eq(bandeDepensesTable.id, depenseId)).returning();
+  };
+  if (date !== undefined && typeof date === "string" && ISO_DATE_RE.test(date)) updates.date = date;
+  const rows = await db.update(bandeDepensesTable).set(updates).where(eq(bandeDepensesTable.id, depenseId)).returning();
   const r = rows[0];
   res.json({
     id: r.id,
     bandeId: r.bandeId,
+    date: r.date,
     designation: r.designation,
     categorie: r.categorie,
     quantite: parseFloat(r.quantite),
@@ -587,13 +602,16 @@ router.get("/:id/mortalite", async (req, res) => {
   const bande = (await db.select().from(bandesTable).where(eq(bandesTable.id, bandeId)))[0];
   if (!bande) { res.status(404).json({ error: "Bande introuvable" }); return; }
 
-  const seuilMortaliteJour = await getParam("seuil_mortalite_alerte_jour", 3);
+  // Seuils dépendants de l'âge : démarrage J0–J21 vs finition ≥ J22
+  const seuilDemarrage = await getParam("seuil_mortalite_alerte_jour_demarrage", 1);
+  const seuilFinition = await getParam("seuil_mortalite_alerte_jour_finition", 0.5);
   let decesCumules = 0;
   const data = rows.map(r => {
     const vivantsDebutJournee = bande.sujetsDepart - decesCumules;
     const tauxJour = vivantsDebutJournee > 0 ? (r.decesJour / vivantsDebutJournee) * 100 : 0;
     decesCumules += r.decesJour;
     const tauxMortalite = bande.sujetsDepart > 0 ? (decesCumules / bande.sujetsDepart) * 100 : 0;
+    const seuilApplicable = r.ageJours <= 21 ? seuilDemarrage : seuilFinition;
     return {
       id: r.id,
       bandeId: r.bandeId,
@@ -601,8 +619,10 @@ router.get("/:id/mortalite", async (req, res) => {
       ageJours: r.ageJours,
       decesJour: r.decesJour,
       decesCumules,
+      tauxJour: Math.round(tauxJour * 100) / 100,
       tauxMortalite: Math.round(tauxMortalite * 100) / 100,
-      alerteRouge: tauxJour > seuilMortaliteJour,
+      seuilApplicable,
+      alerteRouge: tauxJour > seuilApplicable,
     };
   });
   res.json(data);
@@ -615,10 +635,25 @@ router.post("/:id/mortalite", async (req, res) => {
   const rows = await db.insert(mortaliteJournaliereTable).values({ bandeId, date, ageJours, decesJour: decesJour ?? 0 }).returning();
   // Recompute from source of truth to avoid drift
   const sumRows = await db.select({ total: sql<number>`COALESCE(SUM(${mortaliteJournaliereTable.decesJour}), 0)` }).from(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.bandeId, bandeId));
-  await db.update(bandesTable).set({ nombreDeces: Number(sumRows[0]?.total ?? 0) }).where(eq(bandesTable.id, bandeId));
+  const totalDeces = Number(sumRows[0]?.total ?? 0);
+  await db.update(bandesTable).set({ nombreDeces: totalDeces }).where(eq(bandesTable.id, bandeId));
   const r = rows[0];
-  await logFromRequest(req, "Ajout mortalité", `${decesJour} décès - Bande ID: ${bandeId}`);
-  res.status(201).json({ id: r.id, bandeId: r.bandeId, date: r.date, ageJours: r.ageJours, decesJour: r.decesJour });
+
+  // Calcule l'alerte pour la nouvelle entrée
+  const bande = (await db.select().from(bandesTable).where(eq(bandesTable.id, bandeId)))[0];
+  const seuilDemarrage = await getParam("seuil_mortalite_alerte_jour_demarrage", 1);
+  const seuilFinition = await getParam("seuil_mortalite_alerte_jour_finition", 0.5);
+  const decesAvant = totalDeces - r.decesJour;
+  const vivantsDebutJournee = (bande?.sujetsDepart ?? 0) - decesAvant;
+  const tauxJour = vivantsDebutJournee > 0 ? (r.decesJour / vivantsDebutJournee) * 100 : 0;
+  const seuilApplicable = r.ageJours <= 21 ? seuilDemarrage : seuilFinition;
+  const alerteRouge = tauxJour > seuilApplicable;
+
+  await logFromRequest(req, "Ajout mortalité", `${decesJour} décès - Bande ID: ${bandeId}${alerteRouge ? " — ALERTE" : ""}`);
+  res.status(201).json({
+    id: r.id, bandeId: r.bandeId, date: r.date, ageJours: r.ageJours, decesJour: r.decesJour,
+    tauxJour: Math.round(tauxJour * 100) / 100, seuilApplicable, alerteRouge,
+  });
 });
 
 router.delete("/:id/mortalite/:mortaliteId", async (req, res) => {
@@ -641,31 +676,53 @@ router.get("/:id/pesees", async (req, res) => {
   const bandeId = parseInt(req.params.id);
   const rows = await db.select().from(peseesTable).where(eq(peseesTable.bandeId, bandeId)).orderBy(peseesTable.ageJours);
   const seuilPoids = await getParam("seuil_poids_alerte", 90);
-  res.json(rows.map(r => ({
-    id: r.id,
-    bandeId: r.bandeId,
-    date: r.date,
-    ageJours: r.ageJours,
-    poidsMoyenG: parseFloat(r.poidsMoyenG),
-    objectifPoidsG: r.objectifPoidsG ? parseFloat(r.objectifPoidsG) : null,
-    ecart: r.objectifPoidsG ? parseFloat(r.poidsMoyenG) - parseFloat(r.objectifPoidsG) : null,
-    alertePoids: r.objectifPoidsG ? parseFloat(r.poidsMoyenG) < parseFloat(r.objectifPoidsG) * (seuilPoids / 100) : false,
-  })));
+  res.json(rows.map(r => {
+    const poidsMoyen = parseFloat(r.poidsMoyenG);
+    const poidsMin = r.poidsMinG ? parseFloat(r.poidsMinG) : null;
+    const poidsMax = r.poidsMaxG ? parseFloat(r.poidsMaxG) : null;
+    const cv = (poidsMin != null && poidsMax != null && poidsMoyen > 0)
+      ? Math.round(((poidsMax - poidsMin) / poidsMoyen) * 1000) / 10
+      : null;
+    return {
+      id: r.id,
+      bandeId: r.bandeId,
+      date: r.date,
+      ageJours: r.ageJours,
+      poidsMoyenG: poidsMoyen,
+      poidsMinG: poidsMin,
+      poidsMaxG: poidsMax,
+      cv,
+      objectifPoidsG: r.objectifPoidsG ? parseFloat(r.objectifPoidsG) : null,
+      ecart: r.objectifPoidsG ? poidsMoyen - parseFloat(r.objectifPoidsG) : null,
+      alertePoids: r.objectifPoidsG ? poidsMoyen < parseFloat(r.objectifPoidsG) * (seuilPoids / 100) : false,
+    };
+  }));
 });
 
 router.post("/:id/pesees", async (req, res) => {
   const bandeId = parseInt(req.params.id);
   if (!(await assertBandeWritable(bandeId, res))) return;
-  const { date, ageJours, poidsMoyenG, objectifPoidsG } = req.body;
+  const { date, ageJours, poidsMoyenG, poidsMinG, poidsMaxG, objectifPoidsG } = req.body;
+  // Si min et max sont fournis mais pas la moyenne, calcule-la
+  let computedMoyen = poidsMoyenG;
+  if ((computedMoyen == null || computedMoyen === 0) && poidsMinG != null && poidsMaxG != null) {
+    computedMoyen = (Number(poidsMinG) + Number(poidsMaxG)) / 2;
+  }
   const rows = await db.insert(peseesTable).values({
     bandeId, date, ageJours,
-    poidsMoyenG: String(poidsMoyenG),
+    poidsMoyenG: String(computedMoyen),
+    poidsMinG: poidsMinG != null && poidsMinG !== "" ? String(poidsMinG) : null,
+    poidsMaxG: poidsMaxG != null && poidsMaxG !== "" ? String(poidsMaxG) : null,
     objectifPoidsG: objectifPoidsG ? String(objectifPoidsG) : null,
   }).returning();
   const r = rows[0];
+  const pmin = r.poidsMinG ? parseFloat(r.poidsMinG) : null;
+  const pmax = r.poidsMaxG ? parseFloat(r.poidsMaxG) : null;
+  const pmoy = parseFloat(r.poidsMoyenG);
+  const cv = (pmin != null && pmax != null && pmoy > 0) ? Math.round(((pmax - pmin) / pmoy) * 1000) / 10 : null;
   res.status(201).json({
     id: r.id, bandeId: r.bandeId, date: r.date, ageJours: r.ageJours,
-    poidsMoyenG: parseFloat(r.poidsMoyenG),
+    poidsMoyenG: pmoy, poidsMinG: pmin, poidsMaxG: pmax, cv,
     objectifPoidsG: r.objectifPoidsG ? parseFloat(r.objectifPoidsG) : null,
   });
 });
@@ -750,13 +807,21 @@ router.get("/:id/vaccinations", async (req, res) => {
 });
 
 router.put("/:id/vaccinations/:vaccId", async (req, res) => {
+  const bandeId = parseInt(req.params.id);
+  if (!(await assertBandeWritable(bandeId, res))) return;
   const vaccId = parseInt(req.params.vaccId);
   const { fait, dateFait, commentaire } = req.body;
   const updates: Record<string, unknown> = {};
   if (fait !== undefined) updates.fait = fait;
   if (dateFait !== undefined) updates.dateFait = dateFait;
   if (commentaire !== undefined) updates.commentaire = commentaire;
-  const rows = await db.update(vaccinationsTable).set(updates).where(eq(vaccinationsTable.id, vaccId)).returning();
+  const rows = await db.update(vaccinationsTable)
+    .set(updates)
+    .where(and(eq(vaccinationsTable.id, vaccId), eq(vaccinationsTable.bandeId, bandeId)))
+    .returning();
+  if (rows.length === 0) {
+    return res.status(404).json({ error: "Vaccination introuvable pour cette bande" });
+  }
   const r = rows[0];
   res.json({
     id: r.id, bandeId: r.bandeId, jourPrevu: r.jourPrevu, nom: r.nom,
