@@ -1,0 +1,78 @@
+{
+  "generated_at": "2026-05-02T21:23:03.349Z",
+  "source": "production",
+  "tables": {
+    "depenses_batiment": {
+      "columns": [
+        "id",
+        "designation",
+        "quantite",
+        "prix_unitaire",
+        "categorie",
+        "date",
+        "commentaire"
+      ],
+      "count": 0,
+      "rows": []
+    },
+    "depenses_puits": {
+      "columns": [
+        "id",
+        "designation",
+        "quantite",
+        "prix_unitaire",
+        "categorie",
+        "date",
+        "commentaire"
+      ],
+      "count": 0,
+      "rows": []
+    },
+    "devis_construction": {
+      "columns": [
+        "id",
+        "batiment_estime",
+        "batiment_notes",
+        "carburant_estime",
+        "updated_at"
+      ],
+      "count": 0,
+      "rows": []
+    },
+    "puits_items_devis": {
+      "columns": [
+        "id",
+        "designation",
+        "quantite",
+        "prix_unitaire"
+      ],
+      "count": 0,
+      "rows": []
+    },
+    "sorties_argent": {
+      "columns": [
+        "id",
+        "date",
+        "decaisse",
+        "depense",
+        "created_at",
+        "commentaire",
+        "photo_url"
+      ],
+      "count": 0,
+      "rows": []
+    },
+    "sorties_carburant": {
+      "columns": [
+        "id",
+        "date",
+        "montant",
+        "created_at",
+        "commentaire",
+        "photo_url"
+      ],
+      "count": 0,
+      "rows": []
+    }
+  }
+}

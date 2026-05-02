@@ -60,3 +60,21 @@ id = "-QqwOJQz6B11mwYeZUbB3"
 uri = "file://attached_assets/stock_images/chicken_feed_2.jpg"
 type = "image"
 title = "chicken feed grain poultry"
+
+[[outputs]]
+id = "Uovs1OP5JANMQyI4ByQeb"
+uri = "file://exports/prod-legacy-backup-2026-05-02-2125.tar.gz"
+type = "unspecified"
+title = "Sauvegarde complète prod (SQL + JSON, archive .tar.gz)"
+
+[[outputs]]
+id = "XpToK_Aed4fcNSNeUpYVg"
+uri = "file://exports/prod-legacy-backup-2026-05-02-2125.json"
+type = "unspecified"
+title = "Sauvegarde JSON (lisible directement)"
+
+[[outputs]]
+id = "RjrKHXTd3sE2raF2x8Zlv"
+uri = "file://exports/prod-legacy-backup-2026-05-02-2125.sql.txt"
+type = "text"
+title = "Sauvegarde SQL en .txt (renommez en .sql pour psql)"

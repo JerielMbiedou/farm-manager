@@ -1,0 +1,1068 @@
+{
+  "generated_at": "2026-05-02T21:24:46.230Z",
+  "source": "production_ferme_mbiedou",
+  "description": "Sauvegarde des tables legacy avant migration P9 (DROP de devis_construction, puits_items_devis, depenses_batiment, depenses_puits, sorties_argent, sorties_carburant)",
+  "tables": {
+    "depenses_batiment": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "designation",
+          "data_type": "text"
+        },
+        {
+          "column_name": "quantite",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "prix_unitaire",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "categorie",
+          "data_type": "text"
+        },
+        {
+          "column_name": "date",
+          "data_type": "date"
+        },
+        {
+          "column_name": "commentaire",
+          "data_type": "text"
+        }
+      ],
+      "count": 87,
+      "rows": [
+        {
+          "id": 1,
+          "designation": "Achats de planches",
+          "quantite": 1,
+          "prix_unitaire": 400000,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 2,
+          "designation": "Défrichage",
+          "quantite": 1,
+          "prix_unitaire": 25000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 3,
+          "designation": "Creusage fouille bâtiment principal",
+          "quantite": 1,
+          "prix_unitaire": 25000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 4,
+          "designation": "Devis bâtiment",
+          "quantite": 1,
+          "prix_unitaire": 10000,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 5,
+          "designation": "Tonnes de graviers 5/15",
+          "quantite": 21,
+          "prix_unitaire": 7500,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 6,
+          "designation": "Tonnes de sable carrière",
+          "quantite": 22,
+          "prix_unitaire": 5500,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 7,
+          "designation": "Transports sables + Taxe",
+          "quantite": 1,
+          "prix_unitaire": 40000,
+          "categorie": "transport",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 8,
+          "designation": "Transports graviers + Taxe",
+          "quantite": 1,
+          "prix_unitaire": 40000,
+          "categorie": "transport",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 9,
+          "designation": "Carburant",
+          "quantite": 1,
+          "prix_unitaire": 15000,
+          "categorie": "carburant",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 10,
+          "designation": "Boissons",
+          "quantite": 1,
+          "prix_unitaire": 3700,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 11,
+          "designation": "Coupage de bois",
+          "quantite": 1,
+          "prix_unitaire": 35000,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 12,
+          "designation": "Creusage fouille annexe",
+          "quantite": 1,
+          "prix_unitaire": 15000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 13,
+          "designation": "Location chambre pour le matériel (1 mois)",
+          "quantite": 1,
+          "prix_unitaire": 5000,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 14,
+          "designation": "Cubitainer d'eau",
+          "quantite": 1,
+          "prix_unitaire": 5000,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 15,
+          "designation": "Location cubitainer d'eau",
+          "quantite": 1,
+          "prix_unitaire": 2500,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 16,
+          "designation": "Dédommagement découpage arbre",
+          "quantite": 1,
+          "prix_unitaire": 5000,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 17,
+          "designation": "Carburant",
+          "quantite": 1,
+          "prix_unitaire": 15000,
+          "categorie": "carburant",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 18,
+          "designation": "Matériaux de construction (divers)",
+          "quantite": 1,
+          "prix_unitaire": 115000,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 19,
+          "designation": "Avance matériaux de construction",
+          "quantite": 1,
+          "prix_unitaire": 100000,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 20,
+          "designation": "Carburant",
+          "quantite": 1,
+          "prix_unitaire": 10000,
+          "categorie": "carburant",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 21,
+          "designation": "Sac de ciment",
+          "quantite": 4,
+          "prix_unitaire": 5100,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 22,
+          "designation": "Barres de fer de 6 + barres de fer de 8",
+          "quantite": 1,
+          "prix_unitaire": 9000,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 23,
+          "designation": "Parpaings",
+          "quantite": 40,
+          "prix_unitaire": 200,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 24,
+          "designation": "Solde parpaings",
+          "quantite": 1,
+          "prix_unitaire": 15000,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 25,
+          "designation": "Main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 13000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 26,
+          "designation": "Déjeuner",
+          "quantite": 1,
+          "prix_unitaire": 1000,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 27,
+          "designation": "Garage (réparation véhicule)",
+          "quantite": 1,
+          "prix_unitaire": 5000,
+          "categorie": "transport",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 28,
+          "designation": "Sac de ciment",
+          "quantite": 2,
+          "prix_unitaire": 5200,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 29,
+          "designation": "Location chambre",
+          "quantite": 1,
+          "prix_unitaire": 5000,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 30,
+          "designation": "Carburant",
+          "quantite": 1,
+          "prix_unitaire": 5000,
+          "categorie": "carburant",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 31,
+          "designation": "Déjeuner",
+          "quantite": 1,
+          "prix_unitaire": 1000,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 32,
+          "designation": "Main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 10000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 33,
+          "designation": "Parpaings",
+          "quantite": 100,
+          "prix_unitaire": 200,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 34,
+          "designation": "Parpaings",
+          "quantite": 400,
+          "prix_unitaire": 225,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 35,
+          "designation": "Fers de 8",
+          "quantite": 6,
+          "prix_unitaire": 2900,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 36,
+          "designation": "Sacs de ciment",
+          "quantite": 4,
+          "prix_unitaire": 5100,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 37,
+          "designation": "pelle ronde",
+          "quantite": 1,
+          "prix_unitaire": 2250,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 38,
+          "designation": "Fil d'attache",
+          "quantite": 1,
+          "prix_unitaire": 2100,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 39,
+          "designation": "Cadres + étriers",
+          "quantite": 1,
+          "prix_unitaire": 10000,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 40,
+          "designation": "Main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 13000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 41,
+          "designation": "Déjeuner",
+          "quantite": 1,
+          "prix_unitaire": 2000,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 43,
+          "designation": "Fers de 8",
+          "quantite": 3,
+          "prix_unitaire": 2850,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 44,
+          "designation": "Sacs de ciment",
+          "quantite": 3,
+          "prix_unitaire": 5100,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 45,
+          "designation": "Main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 10000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 46,
+          "designation": "Déjeuner",
+          "quantite": 1,
+          "prix_unitaire": 1500,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 47,
+          "designation": "2e versement eau",
+          "quantite": 1,
+          "prix_unitaire": 5000,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 48,
+          "designation": "Sacs de ciment",
+          "quantite": 3,
+          "prix_unitaire": 5200,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 49,
+          "designation": "Fer de 8",
+          "quantite": 1,
+          "prix_unitaire": 2900,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 50,
+          "designation": "Fer de 6",
+          "quantite": 1,
+          "prix_unitaire": 1600,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 51,
+          "designation": "Manche de pioche",
+          "quantite": 1,
+          "prix_unitaire": 250,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 52,
+          "designation": "Main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 10000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 54,
+          "designation": "Sac de ciment",
+          "quantite": 1,
+          "prix_unitaire": 5300,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 55,
+          "designation": "Main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 13000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 56,
+          "designation": "Parpaings de 12",
+          "quantite": 1,
+          "prix_unitaire": 30000,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 57,
+          "designation": "Carburant",
+          "quantite": 1,
+          "prix_unitaire": 5000,
+          "categorie": "carburant",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 58,
+          "designation": "Déjeuner",
+          "quantite": 1,
+          "prix_unitaire": 2000,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 59,
+          "designation": "Sacs de ciment",
+          "quantite": 2,
+          "prix_unitaire": 5200,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 60,
+          "designation": "Main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 10000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 61,
+          "designation": "Déjeuner",
+          "quantite": 1,
+          "prix_unitaire": 1500,
+          "categorie": "divers",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 62,
+          "designation": "Transport",
+          "quantite": 1,
+          "prix_unitaire": 1500,
+          "categorie": "transport",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 63,
+          "designation": "Ciment",
+          "quantite": 4,
+          "prix_unitaire": 5200,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 64,
+          "designation": "Parpaings",
+          "quantite": 400,
+          "prix_unitaire": 225,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 65,
+          "designation": "Main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 10000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 66,
+          "designation": "Fers de 8",
+          "quantite": 5,
+          "prix_unitaire": 27400,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 67,
+          "designation": "Main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 10000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 69,
+          "designation": "Dépense + transport",
+          "quantite": 1,
+          "prix_unitaire": 3000,
+          "categorie": "transport",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 70,
+          "designation": "Fers de 8",
+          "quantite": 6,
+          "prix_unitaire": 2900,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 71,
+          "designation": "Fer de 6",
+          "quantite": 1,
+          "prix_unitaire": 1500,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 72,
+          "designation": "Sacs de ciment",
+          "quantite": 2,
+          "prix_unitaire": 5200,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 73,
+          "designation": "Fil d'attache",
+          "quantite": 2,
+          "prix_unitaire": 750,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 74,
+          "designation": "Parpaings de 12",
+          "quantite": 20,
+          "prix_unitaire": 200,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 75,
+          "designation": "Transport",
+          "quantite": 1,
+          "prix_unitaire": 1500,
+          "categorie": "transport",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 76,
+          "designation": "Main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 10000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 77,
+          "designation": "Garage (réparation véhicule)",
+          "quantite": 1,
+          "prix_unitaire": 8500,
+          "categorie": "transport",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 78,
+          "designation": "Transport",
+          "quantite": 1,
+          "prix_unitaire": 2000,
+          "categorie": "transport",
+          "date": "2026-04-07",
+          "commentaire": null
+        },
+        {
+          "id": 79,
+          "designation": "Sac de ciment ",
+          "quantite": 4,
+          "prix_unitaire": 5200,
+          "categorie": "materiaux",
+          "date": "2026-04-07",
+          "commentaire": null
+        },
+        {
+          "id": 80,
+          "designation": "Parpaing",
+          "quantite": 100,
+          "prix_unitaire": 200,
+          "categorie": "materiaux",
+          "date": "2026-04-07",
+          "commentaire": null
+        },
+        {
+          "id": 81,
+          "designation": "Main d‘oeuvre",
+          "quantite": 1,
+          "prix_unitaire": 13000,
+          "categorie": "main_oeuvre",
+          "date": "2026-04-07",
+          "commentaire": null
+        },
+        {
+          "id": 82,
+          "designation": "Fonds de 15 pour coffrage ",
+          "quantite": 2,
+          "prix_unitaire": 2500,
+          "categorie": "materiaux",
+          "date": "2026-04-07",
+          "commentaire": null
+        },
+        {
+          "id": 83,
+          "designation": "Déjeuner",
+          "quantite": 1,
+          "prix_unitaire": 1000,
+          "categorie": "divers",
+          "date": "2026-04-07",
+          "commentaire": null
+        },
+        {
+          "id": 84,
+          "designation": "Fers de 8",
+          "quantite": 4,
+          "prix_unitaire": 2900,
+          "categorie": "materiaux",
+          "date": "2026-04-08",
+          "commentaire": null
+        },
+        {
+          "id": 85,
+          "designation": "Fil pour etriller lisse en 5.5 prometal en 12M",
+          "quantite": 2,
+          "prix_unitaire": 1600,
+          "categorie": "materiaux",
+          "date": "2026-04-08",
+          "commentaire": null
+        },
+        {
+          "id": 86,
+          "designation": "Fil d'attache",
+          "quantite": 2,
+          "prix_unitaire": 850,
+          "categorie": "materiaux",
+          "date": "2026-04-08",
+          "commentaire": null
+        },
+        {
+          "id": 87,
+          "designation": "Main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 10000,
+          "categorie": "main_oeuvre",
+          "date": "2026-04-08",
+          "commentaire": null
+        },
+        {
+          "id": 42,
+          "designation": "Carburant",
+          "quantite": 1,
+          "prix_unitaire": 5000,
+          "categorie": "carburant",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 53,
+          "designation": "Carburant",
+          "quantite": 1,
+          "prix_unitaire": 5000,
+          "categorie": "carburant",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 68,
+          "designation": "Carburant",
+          "quantite": 1,
+          "prix_unitaire": 10000,
+          "categorie": "carburant",
+          "date": null,
+          "commentaire": null
+        }
+      ]
+    },
+    "depenses_puits": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "designation",
+          "data_type": "text"
+        },
+        {
+          "column_name": "quantite",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "prix_unitaire",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "categorie",
+          "data_type": "text"
+        },
+        {
+          "column_name": "date",
+          "data_type": "date"
+        },
+        {
+          "column_name": "commentaire",
+          "data_type": "text"
+        }
+      ],
+      "count": 9,
+      "rows": [
+        {
+          "id": 1,
+          "designation": "Avance main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 50000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 2,
+          "designation": "Flash Band de 10 (détail)",
+          "quantite": 2,
+          "prix_unitaire": 1000,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 3,
+          "designation": "Avance main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 50000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 4,
+          "designation": "Avance main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 50000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 5,
+          "designation": "Corde",
+          "quantite": 1,
+          "prix_unitaire": 19000,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 6,
+          "designation": "Buse",
+          "quantite": 18,
+          "prix_unitaire": 13000,
+          "categorie": "materiaux",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 7,
+          "designation": "Avance main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 100000,
+          "categorie": "main_oeuvre",
+          "date": null,
+          "commentaire": null
+        },
+        {
+          "id": 8,
+          "designation": "Boissons",
+          "quantite": 1,
+          "prix_unitaire": 9000,
+          "categorie": "divers",
+          "date": "2026-04-08",
+          "commentaire": "Casier de biere pour creuseur de puit"
+        },
+        {
+          "id": 9,
+          "designation": "Avance main-d'œuvre",
+          "quantite": 1,
+          "prix_unitaire": 60000,
+          "categorie": "main_oeuvre",
+          "date": "2026-04-08",
+          "commentaire": "À confirmer chez papa"
+        }
+      ]
+    },
+    "devis_construction": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "batiment_estime",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "batiment_notes",
+          "data_type": "text"
+        },
+        {
+          "column_name": "carburant_estime",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "updated_at",
+          "data_type": "timestamp without time zone"
+        }
+      ],
+      "count": 1,
+      "rows": [
+        {
+          "id": 1,
+          "batiment_estime": 3525000,
+          "batiment_notes": null,
+          "carburant_estime": 150000,
+          "updated_at": "2026-04-07T17:13:54.240631"
+        }
+      ]
+    },
+    "puits_items_devis": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "designation",
+          "data_type": "text"
+        },
+        {
+          "column_name": "quantite",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "prix_unitaire",
+          "data_type": "numeric"
+        }
+      ],
+      "count": 1,
+      "rows": [
+        {
+          "id": 1,
+          "designation": "Puits (forage et équipement)",
+          "quantite": 1,
+          "prix_unitaire": 1370000
+        }
+      ]
+    },
+    "sorties_argent": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "date",
+          "data_type": "date"
+        },
+        {
+          "column_name": "decaisse",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "depense",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone"
+        },
+        {
+          "column_name": "commentaire",
+          "data_type": "text"
+        },
+        {
+          "column_name": "photo_url",
+          "data_type": "text"
+        }
+      ],
+      "count": 0,
+      "rows": []
+    },
+    "sorties_carburant": {
+      "columns": [
+        {
+          "column_name": "id",
+          "data_type": "integer"
+        },
+        {
+          "column_name": "date",
+          "data_type": "date"
+        },
+        {
+          "column_name": "montant",
+          "data_type": "numeric"
+        },
+        {
+          "column_name": "created_at",
+          "data_type": "timestamp without time zone"
+        },
+        {
+          "column_name": "commentaire",
+          "data_type": "text"
+        },
+        {
+          "column_name": "photo_url",
+          "data_type": "text"
+        }
+      ],
+      "count": 0,
+      "rows": []
+    }
+  }
+}
