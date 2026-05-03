@@ -1,0 +1,389 @@
+Prépare une version de ce projet entièrement indépendante de Replit,
+déployable sur n'importe quelle plateforme (Railway, Render, VPS,
+Coolify, etc.).
+
+Ne casse rien d'existant. Travaille en parallèle de la version actuelle.
+
+═══════════════════════════════════════════════════
+ÉTAPE 1 — AUDIT DES DÉPENDANCES REPLIT
+═══════════════════════════════════════════════════
+
+Avant de modifier quoi que ce soit, liste exhaustivement :
+
+1. Toutes les références à Replit dans le code :
+   - import/require de packages @replit/*
+   - Variables d'environnement REPLIT_* utilisées dans le code
+   - URLs contenant *.replit.dev ou *.repl.co
+   - Fichiers .replit, .replitignore
+   - Références dans replit.md, package.json, pnpm-workspace.yaml
+   - Proxy Gemini via Replit (AI_INTEGRATIONS_*)
+   - Sessions ou storage liés à Replit
+   - Tout autre couplage Replit détecté
+
+2. Pour chaque dépendance trouvée, indiquer :
+   - Fichier + ligne
+   - Ce que ça fait
+   - L'équivalent standard à utiliser à la place
+
+Affiche ce rapport complet avant de continuer.
+
+═══════════════════════════════════════════════════
+ÉTAPE 2 — CONFIGURATION ENVIRONNEMENT STANDARD
+═══════════════════════════════════════════════════
+
+2.1 — Créer un fichier .env.example à la racine
+Lister toutes les variables d'environnement nécessaires
+avec des valeurs d'exemple et des commentaires clairs :
+
+  # Base de données PostgreSQL
+  DATABASE_URL=postgresql://user:password@localhost:5432/ferme_mbiedou
+
+  # Sécurité sessions
+  SESSION_SECRET=change-this-to-a-long-random-string-in-production
+
+  # Environnement
+  NODE_ENV=production
+  PORT=3000
+
+  # Google Gemini (OCR fiches)
+  # Obtenir une clé sur https://aistudio.google.com/
+  GEMINI_API_KEY=your-gemini-api-key-here
+
+  # URL du frontend (pour CORS)
+  FRONTEND_URL=https://your-domain.com
+
+2.2 — Remplacer le proxy Replit Gemini par l'API Google directe
+Dans lib/integrations-gemini-ai/ :
+- Identifier comment le client Gemini est configuré
+- Si c'est via AI_INTEGRATIONS_GEMINI_BASE_URL et
+  AI_INTEGRATIONS_GEMINI_API_KEY (proxy Replit) :
+  Remplacer par le SDK Google Gemini officiel :
+    import { GoogleGenerativeAI } from "@google/generative-ai";
+    const genAI = new GoogleGenerativeAI(
+      process.env.GEMINI_API_KEY!
+    );
+- Garder la même interface pour ne pas casser les appelants
+- Installer @google/generative-ai si absent :
+    pnpm add @google/generative-ai
+
+2.3 — Supprimer/remplacer les variables REPLIT_*
+Dans tout le code, si des variables REPLIT_* sont utilisées :
+- REPLIT_DEV_DOMAIN → remplacer par FRONTEND_URL
+- REPLIT_DOMAINS → remplacer par FRONTEND_URL
+- Toute autre REPLIT_* → trouver l'équivalent standard
+
+═══════════════════════════════════════════════════
+ÉTAPE 3 — CONFIGURATION CORS ET SESSIONS
+═══════════════════════════════════════════════════
+
+3.1 — CORS configurable par variable d'environnement
+Dans artifacts/api-server/src/app.ts :
+Remplacer toute URL Replit hardcodée dans la config CORS par :
+
+  const allowedOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(",")
+    : ["http://localhost:5173"];
+
+  app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+  }));
+
+3.2 — Sessions PostgreSQL sans dépendance Replit
+Vérifier que connect-pg-simple utilise uniquement DATABASE_URL
+et ne dépend d'aucun service Replit.
+Si c'est déjà le cas : ✅ noter.
+Sinon corriger pour utiliser :
+  store: new PgSession({
+    conString: process.env.DATABASE_URL,
+    tableName: "session",
+  })
+
+3.3 — Cookie secure configurable
+  cookie: {
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 jours
+    sameSite: process.env.NODE_ENV === "production"
+      ? "strict" : "lax",
+  }
+
+═══════════════════════════════════════════════════
+ÉTAPE 4 — BUILD ET DÉMARRAGE PRODUCTION
+═══════════════════════════════════════════════════
+
+4.1 — Script de build complet
+Dans le package.json racine, ajouter si absent :
+  "scripts": {
+    "build": "pnpm --filter @workspace/ferme-familiale build &&
+              pnpm --filter @workspace/api-server build",
+    "start": "node artifacts/api-server/dist/index.js",
+    "db:migrate": "pnpm --filter @workspace/db push"
+  }
+
+4.2 — Servir le frontend depuis le backend en production
+Dans artifacts/api-server/src/app.ts, ajouter :
+  import path from "path";
+
+  if (process.env.NODE_ENV === "production") {
+    const frontendDist = path.resolve(
+      __dirname,
+      "../../../artifacts/ferme-familiale/dist"
+    );
+    app.use(express.static(frontendDist));
+    // Fallback SPA pour le routing côté client
+    app.get("*", (req, res) => {
+      if (!req.path.startsWith("/api")) {
+        res.sendFile(path.join(frontendDist, "index.html"));
+      }
+    });
+  }
+
+4.3 — Vite config : API URL configurable
+Dans artifacts/ferme-familiale/vite.config.ts :
+  export default defineConfig({
+    // En dev : proxy vers le backend local
+    server: {
+      proxy: {
+        "/api": {
+          target: process.env.VITE_API_URL
+                  || "http://localhost:3000",
+          changeOrigin: true,
+        }
+      }
+    }
+  })
+
+Ajouter dans .env.example :
+  # URL du backend (en dev uniquement, laisser vide en prod)
+  VITE_API_URL=http://localhost:3000
+
+═══════════════════════════════════════════════════
+ÉTAPE 5 — FICHIERS DE DÉPLOIEMENT
+═══════════════════════════════════════════════════
+
+5.1 — Dockerfile (déploiement universel)
+Créer un Dockerfile à la racine :
+
+  FROM node:20-alpine AS base
+  RUN npm install -g pnpm
+  WORKDIR /app
+
+  # Installer les dépendances
+  COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+  COPY artifacts/api-server/package.json
+       ./artifacts/api-server/
+  COPY artifacts/ferme-familiale/package.json
+       ./artifacts/ferme-familiale/
+  COPY lib/*/package.json ./lib/*/
+  RUN pnpm install --frozen-lockfile
+
+  # Copier les sources
+  COPY . .
+
+  # Build frontend et backend
+  RUN pnpm run build
+
+  # Image de prod légère
+  FROM node:20-alpine AS production
+  RUN npm install -g pnpm
+  WORKDIR /app
+  ENV NODE_ENV=production
+
+  COPY --from=base /app/package.json ./
+  COPY --from=base /app/pnpm-workspace.yaml ./
+  COPY --from=base /app/pnpm-lock.yaml ./
+  COPY --from=base /app/node_modules ./node_modules
+  COPY --from=base /app/artifacts ./artifacts
+  COPY --from=base /app/lib ./lib
+
+  EXPOSE 3000
+  CMD ["node", "artifacts/api-server/dist/index.js"]
+
+5.2 — docker-compose.yml (dev local complet)
+Créer un docker-compose.yml à la racine :
+
+  version: "3.9"
+  services:
+    postgres:
+      image: postgres:16-alpine
+      environment:
+        POSTGRES_DB: ferme_mbiedou
+        POSTGRES_USER: ferme
+        POSTGRES_PASSWORD: ferme_secret
+      ports:
+        - "5432:5432"
+      volumes:
+        - pgdata:/var/lib/postgresql/data
+
+    app:
+      build: .
+      ports:
+        - "3000:3000"
+      environment:
+        DATABASE_URL: postgresql://ferme:ferme_secret@postgres:5432/ferme_mbiedou
+        SESSION_SECRET: dev-secret-change-in-prod
+        NODE_ENV: production
+        GEMINI_API_KEY: ${GEMINI_API_KEY}
+        FRONTEND_URL: http://localhost:3000
+      depends_on:
+        - postgres
+
+  volumes:
+    pgdata:
+
+5.3 — railway.toml (déploiement Railway)
+Créer railway.toml à la racine :
+
+  [build]
+  builder = "nixpacks"
+  buildCommand = "pnpm install && pnpm run build"
+
+  [deploy]
+  startCommand = "node artifacts/api-server/dist/index.js"
+  healthcheckPath = "/api/healthz"
+  healthcheckTimeout = 30
+
+5.4 — render.yaml (déploiement Render)
+Créer render.yaml à la racine :
+
+  services:
+    - type: web
+      name: ferme-mbiedou
+      runtime: node
+      buildCommand: pnpm install && pnpm run build
+      startCommand: node artifacts/api-server/dist/index.js
+      healthCheckPath: /api/healthz
+      envVars:
+        - key: NODE_ENV
+          value: production
+        - key: DATABASE_URL
+          fromDatabase:
+            name: ferme-mbiedou-db
+            property: connectionString
+        - key: SESSION_SECRET
+          generateValue: true
+        - key: GEMINI_API_KEY
+          sync: false
+
+  databases:
+    - name: ferme-mbiedou-db
+      plan: free
+
+═══════════════════════════════════════════════════
+ÉTAPE 6 — DOCUMENTATION DE DÉPLOIEMENT
+═══════════════════════════════════════════════════
+
+Créer un fichier DEPLOY.md à la racine avec :
+
+  # Guide de déploiement — Ferme Mbiedou
+
+  ## Prérequis
+  - Node.js 20+
+  - PostgreSQL 15+
+  - pnpm
+  - Clé API Google Gemini (pour le scan de fiches)
+
+  ## Déploiement rapide avec Docker
+
+  1. Cloner le repo
+  2. Copier .env.example → .env et remplir les valeurs
+  3. docker-compose up -d
+  4. Accéder à http://localhost:3000
+  Compte par défaut : admin / admin123
+  ⚠️ Changer le mot de passe immédiatement en production.
+
+  ## Déploiement sur Railway (recommandé)
+  1. Créer un projet Railway
+  2. Connecter le repo GitHub
+  3. Ajouter une base PostgreSQL dans Railway
+  4. Configurer les variables d'environnement :
+     - DATABASE_URL (fournie automatiquement)
+     - SESSION_SECRET (générer une chaîne aléatoire)
+     - GEMINI_API_KEY (depuis aistudio.google.com)
+     - FRONTEND_URL (l'URL Railway de ton app)
+  5. Déployer
+
+  ## Déploiement sur Render
+  1. Connecter le repo GitHub à Render
+  2. render.yaml sera détecté automatiquement
+  3. Ajouter GEMINI_API_KEY dans les variables d'env
+  4. Déployer
+
+  ## Déploiement sur VPS (Ubuntu)
+  1. Installer Node 20, pnpm, PostgreSQL
+  2. git clone + pnpm install + pnpm build
+  3. Créer la DB et remplir DATABASE_URL
+  4. pm2 start artifacts/api-server/dist/index.js
+  5. Nginx en reverse proxy sur le port 3000
+
+  ## Variables d'environnement requises
+  [copier le contenu de .env.example]
+
+═══════════════════════════════════════════════════
+ÉTAPE 7 — NETTOYAGE FICHIERS REPLIT
+═══════════════════════════════════════════════════
+
+7.1 — Ajouter au .gitignore (si absent)
+  .replit
+  .replitignore
+  replit.md
+  .config/
+
+7.2 — Ne pas supprimer ces fichiers
+Les garder dans le repo (ils n'affectent pas les autres plateformes)
+mais s'assurer qu'ils ne contiennent pas de secrets.
+
+7.3 — Vérifier que replit.md ne contient pas de credentials
+Lire replit.md et supprimer toute information sensible
+(mots de passe, clés API, etc.) si présente.
+
+═══════════════════════════════════════════════════
+ÉTAPE 8 — TEST DE VALIDATION
+═══════════════════════════════════════════════════
+
+Après toutes les modifications, vérifier :
+
+8.1 — Build sans erreurs
+  pnpm run build
+→ Doit terminer sans erreur TypeScript ni erreur de build Vite.
+
+8.2 — Démarrage avec variables standard
+  DATABASE_URL=... SESSION_SECRET=test123 NODE_ENV=production
+  node artifacts/api-server/dist/index.js
+→ Le serveur doit démarrer et GET /api/healthz retourner 200.
+
+8.3 — Aucune référence Replit dans le code compilé
+  grep -r "replit" artifacts/api-server/dist/ --include="*.js"
+→ Ne doit retourner aucune référence à des services Replit.
+
+8.4 — Frontend servi correctement
+  curl http://localhost:3000/
+→ Doit retourner le HTML de l'app React.
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL OBLIGATOIRE
+═══════════════════════════════════════════════════
+
+## RAPPORT DE PORTABILITÉ — [date]
+
+### 🔍 DÉPENDANCES REPLIT TROUVÉES
+- Liste complète de ce qui était couplé à Replit
+
+### ✅ REMPLACÉ / CORRIGÉ
+- Ce qui a été découplé et comment
+
+### 📁 FICHIERS CRÉÉS
+- Dockerfile, docker-compose.yml, railway.toml,
+  render.yaml, .env.example, DEPLOY.md
+
+### 🏗️ BUILD
+- Résultat du build (succès / erreurs)
+
+### 🚀 PLATEFORMES SUPPORTÉES
+- Confirmer : Railway ✓ | Render ✓ | Docker ✓ | VPS ✓
+
+### ⚠️ POINTS D'ATTENTION
+- Ce que le développeur doit configurer avant déploiement
+- Notamment : GEMINI_API_KEY à obtenir manuellement
+- Changer les credentials par défaut (admin/admin123)
