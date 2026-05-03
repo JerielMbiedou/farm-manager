@@ -1,0 +1,61 @@
+Excellent audit — très propre et professionnel. Voici mes recommandations pour les 3 questions :
+
+---
+
+## Réponses aux 3 questions
+
+**Question 1 — Plugins Replit Vite**
+**→ Les retirer complètement.**
+Tu n'en as plus besoin hors Replit. Garder des dépendances inutiles dans package.json c'est de la dette. Si tu reviens sur Replit un jour, ils se réinstallent en 2 minutes.
+
+**Question 2 — Double-vie Gemini**
+**→ Oui, le fallback est la bonne approche.**
+```
+const apiKey = process.env.GEMINI_API_KEY 
+            || process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
+const baseUrl = process.env.GEMINI_BASE_URL 
+             || process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
+```
+Zéro downtime sur Replit actuel + déployable ailleurs immédiatement.
+
+**Question 3 — Architecture frontend/backend**
+**→ Tout-en-un (Express sert le frontend).**
+Pour une ferme familiale au Cameroun, la simplicité prime. Un seul service à gérer, un seul URL, un seul déploiement. Nginx séparé c'est de la complexité inutile à ce stade.
+
+---
+
+Voici la réponse à coller dans Claude Code :
+
+---
+
+```
+Parfait pour l'audit. Voici mes décisions sur les 3 points :
+
+1. PLUGINS REPLIT VITE
+Retirer complètement @replit/vite-plugin-runtime-error-modal,
+@replit/vite-plugin-cartographer et @replit/vite-plugin-dev-banner
+de package.json et de vite.config.ts.
+Supprimer aussi les blocs conditionnels REPL_ID qui les chargent.
+
+2. CLIENT GEMINI — DOUBLE FALLBACK
+Implémenter le fallback suivant dans lib/integrations-gemini-ai/ :
+  const apiKey = process.env.GEMINI_API_KEY
+              || process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
+  const baseUrl = process.env.GEMINI_BASE_URL
+               || process.env.AI_INTEGRATIONS_GEMINI_BASE_URL
+               || undefined; // undefined = API Google directe
+Ainsi Replit continue de fonctionner sans changement ET on peut
+déployer ailleurs avec juste GEMINI_API_KEY.
+
+3. ARCHITECTURE PRODUCTION
+Tout-en-un : Express sert le frontend en production.
+Activer sous condition :
+  if (process.env.NODE_ENV === "production") {
+    // Express sert dist/public (build Vite)
+  }
+Pas besoin de SERVE_STATIC flag séparé, NODE_ENV suffit.
+
+Procède maintenant aux ÉTAPES 2 à 8 d'un coup.
+Ne demande plus de confirmation intermédiaire.
+Génère le rapport final à la fin.
+```

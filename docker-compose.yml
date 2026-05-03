@@ -1,0 +1,46 @@
+# =============================================================================
+# Docker Compose pour développement local et déploiement VPS simple
+# Usage :
+#   1. Copier .env.example → .env et adapter les valeurs
+#   2. docker compose up -d --build
+#   3. Ouvrir http://localhost:3000  (admin / admin123)
+# =============================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ferme_mbiedou
+      POSTGRES_USER: ferme
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ferme_secret_change_me}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ferme -d ferme_mbiedou"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://ferme:${POSTGRES_PASSWORD:-ferme_secret_change_me}@postgres:5432/ferme_mbiedou
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET est requis dans .env}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
