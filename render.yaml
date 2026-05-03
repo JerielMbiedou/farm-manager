@@ -5,7 +5,8 @@ services:
   - type: web
     name: ferme-mbiedou
     runtime: node
-    plan: starter
+    region: frankfurt
+    plan: free
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm run build && pnpm run db:migrate
     startCommand: node --enable-source-maps artifacts/api-server/dist/index.mjs
     healthCheckPath: /api/healthz
@@ -13,8 +14,6 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
       - key: DATABASE_URL
         fromDatabase:
           name: ferme-mbiedou-db
@@ -25,9 +24,14 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: SEED_DEMO_DATA
+        value: "false"
 
 databases:
   - name: ferme-mbiedou-db
     plan: free
+    region: frankfurt
     databaseName: ferme_mbiedou
     user: ferme
