@@ -1,0 +1,131 @@
+Vérifie l'état actuel des filtres dans le module
+Infrastructure et ajoute ce qui manque.
+
+VÉRIFICATION D'ABORD :
+
+1. Dans infrastructure.tsx, les tableaux de dépenses
+   chantier ont-ils :
+   - Un filtre par date (jour, semaine, mois) ?
+   - Un filtre par catégorie ?
+   - Un filtre par lot ?
+   - Un champ de recherche texte libre ?
+   - Un export CSV/Excel des dépenses filtrées ?
+
+2. Même vérification pour le tableau des actifs.
+
+Affiche ce que tu trouves AVANT de modifier.
+
+═══════════════════════════════════════════════════
+SI CES FILTRES SONT ABSENTS — LES IMPLÉMENTER
+═══════════════════════════════════════════════════
+
+Pour chaque chantier, dans le tableau de ses dépenses,
+ajouter une barre de filtres au-dessus du tableau :
+
+┌────────────────────────────────────────────────┐
+│ 🔍 [Recherche texte]  📅 [Date début] [Date fin]│
+│ 📂 [Catégorie ▾]  🏗️ [Lot ▾]  [Réinitialiser] │
+│                              [📥 Exporter CSV]  │
+└────────────────────────────────────────────────┘
+
+FILTRE 1 — Recherche texte libre
+  Input placeholder : "Rechercher une désignation..."
+  Filtre sur : designation (insensible casse + accents)
+
+FILTRE 2 — Plage de dates
+  Deux inputs type="date" :
+  - "Du" (date début)
+  - "Au" (date fin)
+  Filtre sur : chantier_depenses.date
+  Si date début seulement → tout depuis cette date
+  Si date fin seulement → tout jusqu'à cette date
+  Si les deux → entre les deux dates incluses
+
+FILTRE 3 — Catégorie
+  Select avec toutes les catégories présentes :
+  Tous | Matériaux | Main d'œuvre | Carburant
+  Transport | Restauration | Eau | Logistique | Divers
+  Filtre sur : categorie
+
+FILTRE 4 — Lot
+  Select avec tous les lots du chantier :
+  Tous les lots | [Lot 1] | [Lot 2] | ...
+  Filtre sur : lot_id
+
+BOUTON RÉINITIALISER
+  Remet tous les filtres à leur valeur par défaut.
+  Icône ×, affiché seulement si un filtre est actif.
+
+EXPORT CSV
+  Bouton "📥 Exporter"
+  Télécharge TOUTES les dépenses filtrées
+  (pas seulement la page courante)
+  Format CSV :
+    Date, Lot, Catégorie, Désignation, Qté,
+    Prix unitaire, Montant, Commentaire
+  Nom du fichier :
+    depenses-[nom-chantier]-[date].csv
+
+═══════════════════════════════════════════════════
+TOTAUX DYNAMIQUES
+═══════════════════════════════════════════════════
+
+Sous la barre de filtres, afficher en temps réel :
+
+  Si filtres actifs :
+  "X dépenses trouvées — Total : Y FCFA
+   (sur Z dépenses totales — Total général : W FCFA)"
+
+  Si aucun filtre :
+  "Z dépenses — Total : W FCFA"
+
+Ainsi l'éleveur peut voir instantanément :
+- "Combien j'ai dépensé en matériaux ce mois-ci ?"
+- "Toutes les dépenses du lot Fondations ?"
+- "Combien a coûté la main d'œuvre en avril ?"
+
+═══════════════════════════════════════════════════
+MÊME FILTRES POUR LE TABLEAU GLOBAL DES ACTIFS
+═══════════════════════════════════════════════════
+
+Dans l'onglet Actifs de /infrastructure :
+
+Barre de filtres :
+  🔍 [Recherche texte]
+  📂 [Type d'actif : Tous | Terrain | Bâtiment
+       Matériel | Véhicule]
+  📅 [Acquis depuis] [Acquis jusqu'à]
+  💰 [Valeur résiduelle : Tous | > 50% | 20-50% | < 20%]
+
+Totaux dynamiques :
+  "X actifs — Valeur totale : Y FCFA
+   Valeur résiduelle totale : Z FCFA"
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL
+═══════════════════════════════════════════════════
+
+## RAPPORT — Filtres Infrastructure
+## [date]
+
+### État avant modification
+- Filtres présents : [liste]
+- Filtres manquants : [liste]
+
+### ✅ Implémenté
+- Filtres ajoutés : [liste par tableau]
+- Export CSV : ✓
+
+### 🔍 Test de validation
+Simuler les requêtes suivantes et confirmer
+que le résultat est correct :
+1. Filtre date : "01/04/2026" → "30/04/2026"
+   → Toutes les dépenses d'avril
+2. Filtre catégorie : "materiaux"
+   → Seulement les matériaux
+3. Filtre texte : "ciment"
+   → Toutes les lignes contenant "ciment"
+4. Combinaison : avril + matériaux
+   → Intersection des deux filtres
+5. Export CSV avec filtres actifs
+   → Fichier téléchargé avec bonnes données

@@ -21,6 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Plus, Trash2, Pencil, ArrowLeft, Construction, Package2, CheckCircle2, Clock, ChevronRight, ChevronDown, Building2, Wrench, MapPin, TrendingDown, Lock, MessageSquare, Search, FileDown, FileSpreadsheet } from "lucide-react";
 import { exportConstructionPDF, exportConstructionExcel } from "@/lib/export";
+import { matchesText, downloadCSV, safeFilenameSlug } from "@/lib/csv";
+import { X } from "lucide-react";
 
 const API = "/api";
 
@@ -451,15 +453,27 @@ function DepenseGroupSection({
   );
 }
 
-function GroupedDepensesTable({ items, isCloture, chantierId, lots, onDelete }: {
-  items: DepenseItem[]; isCloture: boolean; chantierId: number; lots?: LotDetail[]; onDelete: (id: number) => void;
+function GroupedDepensesTable({ items, isCloture, chantierId, chantierName, lots, onDelete }: {
+  items: DepenseItem[]; isCloture: boolean; chantierId: number; chantierName?: string; lots?: LotDetail[]; onDelete: (id: number) => void;
 }) {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateDebut, setDateDebut] = useState("");
+  const [dateFin, setDateFin] = useState("");
+  const [filterCategorie, setFilterCategorie] = useState<string>("__all__");
+  const [filterLot, setFilterLot] = useState<string>("__all__");
 
-  const filtered = searchQuery.trim()
-    ? items.filter(d => d.designation.toLowerCase().includes(searchQuery.toLowerCase()))
-    : items;
+  const filtered = items.filter(d => {
+    if (!matchesText(d.designation, searchQuery)) return false;
+    if (filterCategorie !== "__all__" && (d.categorie || "materiaux") !== filterCategorie) return false;
+    if (filterLot !== "__all__") {
+      const wantId = filterLot === "__none__" ? null : Number(filterLot);
+      if ((d.lotId ?? null) !== wantId) return false;
+    }
+    if (dateDebut && (!d.date || d.date < dateDebut)) return false;
+    if (dateFin && (!d.date || d.date > dateFin)) return false;
+    return true;
+  });
 
   const grouped = CATEGORIES_CONSTRUCTION.reduce((acc, cat) => {
     const catItems = filtered.filter(d => (d.categorie || "materiaux") === cat.value);
@@ -468,20 +482,94 @@ function GroupedDepensesTable({ items, isCloture, chantierId, lots, onDelete }: 
   }, {} as Record<string, DepenseItem[]>);
 
   const grandTotal = filtered.reduce((s, d) => s + d.prixTotal, 0);
+  const totalAll = items.reduce((s, d) => s + d.prixTotal, 0);
+  const hasActiveFilter = !!(searchQuery.trim() || dateDebut || dateFin || filterCategorie !== "__all__" || filterLot !== "__all__");
+
   const toggle = (cat: string) => setCollapsedGroups(prev => ({ ...prev, [cat]: !prev[cat] }));
+
+  const reset = () => {
+    setSearchQuery(""); setDateDebut(""); setDateFin(""); setFilterCategorie("__all__"); setFilterLot("__all__");
+  };
+
+  const handleExportCSV = () => {
+    const headers = ["Date", "Lot", "Catégorie", "Désignation", "Quantité", "Prix unitaire", "Montant", "Commentaire"];
+    const rows = filtered.map(d => [
+      d.date || "",
+      d.lotId ? (lots?.find(l => l.id === d.lotId)?.nom || "") : "",
+      catLabel(d.categorie || "materiaux"),
+      d.designation,
+      d.quantite,
+      d.prixUnitaire,
+      d.prixTotal,
+      d.commentaire || "",
+    ]);
+    const today = new Date().toISOString().split("T")[0];
+    const slug = safeFilenameSlug(chantierName || `chantier-${chantierId}`);
+    downloadCSV(`depenses-${slug}-${today}.csv`, headers, rows);
+  };
 
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Rechercher une désignation..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="w-full pl-8 pr-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-        />
+      {/* Barre de filtres */}
+      <div className="border rounded-md p-3 bg-muted/20 space-y-2" data-testid="depenses-filters-bar">
+        <div className="flex flex-wrap gap-2 items-end">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              placeholder="Rechercher une désignation..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-8 h-9"
+              data-testid="input-search-depense"
+            />
+          </div>
+          <div className="flex items-center gap-1">
+            <label className="text-xs text-muted-foreground">Du</label>
+            <Input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="h-9 w-[140px]" data-testid="input-date-debut" />
+          </div>
+          <div className="flex items-center gap-1">
+            <label className="text-xs text-muted-foreground">Au</label>
+            <Input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="h-9 w-[140px]" data-testid="input-date-fin" />
+          </div>
+          <Select value={filterCategorie} onValueChange={setFilterCategorie}>
+            <SelectTrigger className="h-9 w-[170px]" data-testid="select-filter-categorie"><SelectValue placeholder="Catégorie" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Toutes catégories</SelectItem>
+              {CATEGORIES_CONSTRUCTION.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {lots && lots.length > 0 && (
+            <Select value={filterLot} onValueChange={setFilterLot}>
+              <SelectTrigger className="h-9 w-[160px]" data-testid="select-filter-lot"><SelectValue placeholder="Lot" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Tous les lots</SelectItem>
+                <SelectItem value="__none__">Sans lot</SelectItem>
+                {lots.map(l => <SelectItem key={l.id} value={String(l.id)}>{l.nom}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          {hasActiveFilter && (
+            <Button variant="ghost" size="sm" onClick={reset} className="h-9 gap-1" data-testid="btn-reset-filters">
+              <X className="h-3 w-3" />Réinitialiser
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={handleExportCSV} className="h-9 gap-1 ml-auto" disabled={filtered.length === 0} data-testid="btn-export-csv-depenses">
+            <FileDown className="h-3 w-3" />Exporter CSV
+          </Button>
+        </div>
+        <div className="text-xs text-muted-foreground" data-testid="text-totaux-depenses">
+          {hasActiveFilter ? (
+            <span>
+              <strong className="text-foreground">{filtered.length}</strong> dépense(s) trouvée(s) — Total : <strong className="text-foreground">{formatFCFA(grandTotal)}</strong>
+              {" "}<span className="opacity-70">(sur {items.length} dépenses au total — Total général : {formatFCFA(totalAll)})</span>
+            </span>
+          ) : (
+            <span><strong className="text-foreground">{items.length}</strong> dépense(s) — Total : <strong className="text-foreground">{formatFCFA(totalAll)}</strong></span>
+          )}
+        </div>
       </div>
+
       <div className="border rounded-md overflow-hidden">
         <Table>
           <TableHeader>
@@ -498,7 +586,7 @@ function GroupedDepensesTable({ items, isCloture, chantierId, lots, onDelete }: 
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={isCloture ? 5 : 6} className="text-center py-8 text-muted-foreground">
-                  {searchQuery ? "Aucun résultat pour cette recherche" : "Aucune dépense enregistrée"}
+                  {hasActiveFilter ? "Aucun résultat pour ces filtres" : "Aucune dépense enregistrée"}
                 </TableCell>
               </TableRow>
             ) : (
@@ -594,7 +682,7 @@ function LotTabContent({ lot, chantier, isCloture, onDeleteDepense, onDeleteDevi
               <p className="text-sm">Aucune dépense pour ce lot</p>
             </div>
           ) : (
-            <GroupedDepensesTable items={lot.depenses} isCloture={isCloture} chantierId={chantier.id} lots={chantier.lots} onDelete={onDeleteDepense} />
+            <GroupedDepensesTable items={lot.depenses} isCloture={isCloture} chantierId={chantier.id} chantierName={`${chantier.nom}-${lot.nom}`} lots={chantier.lots} onDelete={onDeleteDepense} />
           )}
         </TabsContent>
 
@@ -811,7 +899,7 @@ function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: ()
                   <p className="text-sm">Aucune dépense enregistrée</p>
                 </div>
               ) : (
-                <GroupedDepensesTable items={chantier.depenses} isCloture={isCloture} chantierId={chantierId} lots={chantier.lots} onDelete={id => deleteDepense.mutate(id)} />
+                <GroupedDepensesTable items={chantier.depenses} isCloture={isCloture} chantierId={chantierId} chantierName={chantier.nom} lots={chantier.lots} onDelete={id => deleteDepense.mutate(id)} />
               )}
             </TabsContent>
 
@@ -1115,8 +1203,51 @@ function ActifsTab() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/actifs"] }); toast({ title: "Actif supprimé" }); },
   });
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<string>("__all__");
+  const [acquisDepuis, setAcquisDepuis] = useState("");
+  const [acquisJusqua, setAcquisJusqua] = useState("");
+  const [filterResiduelle, setFilterResiduelle] = useState<string>("__all__");
+
+  const filteredActifs = actifs.filter(a => {
+    if (!matchesText(`${a.nom} ${a.description || ""}`, searchQuery)) return false;
+    if (filterType !== "__all__" && a.type !== filterType) return false;
+    if (acquisDepuis && a.dateAcquisition < acquisDepuis) return false;
+    if (acquisJusqua && a.dateAcquisition > acquisJusqua) return false;
+    if (filterResiduelle !== "__all__") {
+      const resPct = a.valeur > 0 ? ((a.valeurResiduelle ?? a.valeur) / a.valeur) * 100 : 0;
+      if (filterResiduelle === "gt50" && !(resPct > 50)) return false;
+      if (filterResiduelle === "20_50" && !(resPct >= 20 && resPct <= 50)) return false;
+      if (filterResiduelle === "lt20" && !(resPct < 20)) return false;
+    }
+    return true;
+  });
+
   const totalValeur = actifs.reduce((s, a) => s + a.valeur, 0);
-  const byType = TYPE_ACTIF.map(t => ({ ...t, actifs: actifs.filter(a => a.type === t.value), total: actifs.filter(a => a.type === t.value).reduce((s, a) => s + a.valeur, 0) }));
+  const totalValeurFiltre = filteredActifs.reduce((s, a) => s + a.valeur, 0);
+  const totalResiduelleFiltre = filteredActifs.reduce((s, a) => s + (a.valeurResiduelle ?? a.valeur), 0);
+  const hasActiveFilter = !!(searchQuery.trim() || filterType !== "__all__" || acquisDepuis || acquisJusqua || filterResiduelle !== "__all__");
+
+  const byType = TYPE_ACTIF.map(t => ({ ...t, actifs: filteredActifs.filter(a => a.type === t.value), total: filteredActifs.filter(a => a.type === t.value).reduce((s, a) => s + a.valeur, 0) }));
+
+  const reset = () => { setSearchQuery(""); setFilterType("__all__"); setAcquisDepuis(""); setAcquisJusqua(""); setFilterResiduelle("__all__"); };
+
+  const handleExportCSV = () => {
+    const headers = ["Nom", "Type", "Description", "Date acquisition", "Valeur d'origine", "Taux annuel %", "Amortissement cumulé", "Valeur résiduelle", "Issu chantier"];
+    const rows = filteredActifs.map(a => [
+      a.nom,
+      typeLabel(a.type),
+      a.description || "",
+      a.dateAcquisition,
+      a.valeur,
+      a.tauxAmortissementAnnuel,
+      a.type === "terrain" ? "" : (a.amortissementCumule ?? 0),
+      a.type === "terrain" ? a.valeur : (a.valeurResiduelle ?? a.valeur),
+      a.chantierId ? "oui" : "",
+    ]);
+    const today = new Date().toISOString().split("T")[0];
+    downloadCSV(`actifs-${today}.csv`, headers, rows);
+  };
 
   return (
     <div className="space-y-6">
@@ -1128,7 +1259,54 @@ function ActifsTab() {
         <ActifFormDialog onSuccess={() => {}} trigger={<Button><Plus className="h-4 w-4 mr-2" />Ajouter un actif</Button>} />
       </div>
 
-      {totalValeur > 0 && (
+      {actifs.length > 0 && (
+        <div className="border rounded-md p-3 bg-muted/20 space-y-2" data-testid="actifs-filters-bar">
+          <div className="flex flex-wrap gap-2 items-end">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input type="text" placeholder="Rechercher un actif..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9" data-testid="input-search-actif" />
+            </div>
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="h-9 w-[150px]" data-testid="select-filter-type-actif"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Tous types</SelectItem>
+                {TYPE_ACTIF.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-1">
+              <label className="text-xs text-muted-foreground">Acquis depuis</label>
+              <Input type="date" value={acquisDepuis} onChange={e => setAcquisDepuis(e.target.value)} className="h-9 w-[140px]" data-testid="input-acquis-depuis" />
+            </div>
+            <div className="flex items-center gap-1">
+              <label className="text-xs text-muted-foreground">jusqu'à</label>
+              <Input type="date" value={acquisJusqua} onChange={e => setAcquisJusqua(e.target.value)} className="h-9 w-[140px]" data-testid="input-acquis-jusqua" />
+            </div>
+            <Select value={filterResiduelle} onValueChange={setFilterResiduelle}>
+              <SelectTrigger className="h-9 w-[170px]" data-testid="select-filter-residuelle"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Toute valeur résid.</SelectItem>
+                <SelectItem value="gt50">{"Résiduelle > 50%"}</SelectItem>
+                <SelectItem value="20_50">{"Résiduelle 20–50%"}</SelectItem>
+                <SelectItem value="lt20">{"Résiduelle < 20%"}</SelectItem>
+              </SelectContent>
+            </Select>
+            {hasActiveFilter && (
+              <Button variant="ghost" size="sm" onClick={reset} className="h-9 gap-1" data-testid="btn-reset-filters-actifs"><X className="h-3 w-3" />Réinitialiser</Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleExportCSV} className="h-9 gap-1 ml-auto" disabled={filteredActifs.length === 0} data-testid="btn-export-csv-actifs">
+              <FileDown className="h-3 w-3" />Exporter CSV
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground" data-testid="text-totaux-actifs">
+            <strong className="text-foreground">{filteredActifs.length}</strong> actif(s)
+            {hasActiveFilter && <span className="opacity-70"> sur {actifs.length}</span>}
+            {" — Valeur totale : "}<strong className="text-foreground">{formatFCFA(totalValeurFiltre)}</strong>
+            {" · Valeur résiduelle totale : "}<strong className="text-foreground">{formatFCFA(totalResiduelleFiltre)}</strong>
+          </div>
+        </div>
+      )}
+
+      {totalValeurFiltre > 0 && (
         <div className="grid grid-cols-3 gap-3">
           {byType.map(t => (
             <Card key={t.value} className="border-0 bg-muted/30">
@@ -1153,6 +1331,10 @@ function ActifsTab() {
           <p className="font-medium text-muted-foreground">Aucun actif enregistré</p>
           <p className="text-sm text-muted-foreground mt-1">Ajoutez vos terrains, bâtiments et matériels</p>
           <ActifFormDialog onSuccess={() => {}} trigger={<Button className="mt-4"><Plus className="h-4 w-4 mr-2" />Ajouter un actif</Button>} />
+        </div>
+      ) : filteredActifs.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground border rounded-lg bg-muted/10">
+          Aucun actif ne correspond aux filtres.
         </div>
       ) : (
         <div className="space-y-4">
