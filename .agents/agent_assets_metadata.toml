@@ -6,6 +6,24 @@ uri = "file://artifacts/ferme-familiale/public/images/logo-ferme-mbiedou.png"
 type = "image"
 title = "ferme mbiedou poultry logo"
 
+[[generated]]
+id = "CwcR8dqbW46O5vNjfbACc"
+uri = "file://artifacts/ferme-familiale/public/images/logo-variant-1-minimal.png"
+type = "image"
+title = "minimalist shield rooster logo"
+
+[[generated]]
+id = "9nrBgTmFzerrM-lq-8gNa"
+uri = "file://artifacts/ferme-familiale/public/images/logo-variant-2-vintage.png"
+type = "image"
+title = "vintage farmhouse rooster emblem"
+
+[[generated]]
+id = "f9_xkT1scUo1AHALjrdt7"
+uri = "file://artifacts/ferme-familiale/public/images/logo-variant-3-african-modern.png"
+type = "image"
+title = "modern african geometric logo"
+
 [[outputs]]
 id = "Mowr9Gm2HQI7qePNul_fA"
 uri = "file://attached_assets/stock_images/poultry_farm_hero_1.jpg"
@@ -89,3 +107,21 @@ id = "TfZE95XBpvL0jcs2HqJoA"
 uri = "file://artifacts/ferme-familiale/public/images/logo-ferme-mbiedou.png"
 type = "image"
 title = "Logo Ferme Mbiedou"
+
+[[outputs]]
+id = "1dHVFdhPPgCx_dRcERcGF"
+uri = "file://artifacts/ferme-familiale/public/images/logo-variant-1-minimal.png"
+type = "image"
+title = "Variante 1 — Minimaliste moderne (bouclier)"
+
+[[outputs]]
+id = "ASyii3ujzssIc4QY5joQG"
+uri = "file://artifacts/ferme-familiale/public/images/logo-variant-2-vintage.png"
+type = "image"
+title = "Variante 2 — Vintage artisanal (tampon)"
+
+[[outputs]]
+id = "5y2naWA2wsrn4D7gMuQp4"
+uri = "file://artifacts/ferme-familiale/public/images/logo-variant-3-african-modern.png"
+type = "image"
+title = "Variante 3 — Africain moderne (soleil + Bamiléké)"
