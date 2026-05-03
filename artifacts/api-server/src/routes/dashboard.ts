@@ -390,6 +390,21 @@ router.get("/historique-caisse", async (req, res) => {
     return { ...e, soldeApres: Math.round(solde), timestamp: undefined };
   });
 
+  // BLOC 8 — Pagination serveur (compat ascendante : sans `page`/`pageSize`,
+  // on renvoie l'ancien format avec toutes les entrées).
+  const hasPagination = req.query.page !== undefined || req.query.pageSize !== undefined;
+  if (hasPagination) {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const pageSize = Math.min(500, Math.max(1, parseInt(req.query.pageSize as string) || 50));
+    const total = result.length;
+    // Affichage chronologique inverse (plus récent en haut), comme l'UI le fait
+    const sortedDesc = [...result].reverse();
+    const start = (page - 1) * pageSize;
+    const items = sortedDesc.slice(start, start + pageSize);
+    res.json({ entries: items, total, page, pageSize, soldeCourant: Math.round(solde) });
+    return;
+  }
+
   res.json({ entries: result, soldeCourant: Math.round(solde) });
 });
 

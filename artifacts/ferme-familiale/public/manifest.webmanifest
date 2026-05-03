@@ -1,0 +1,20 @@
+{
+  "name": "Ferme Mbiedou",
+  "short_name": "Ferme",
+  "description": "Gestion familiale d'une ferme avicole",
+  "lang": "fr",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f7faf3",
+  "theme_color": "#22573a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

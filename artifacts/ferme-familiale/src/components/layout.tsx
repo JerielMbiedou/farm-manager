@@ -22,6 +22,7 @@ import { useGetMe, useLogout, UserRole } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { preloadBrand, getBrandSync } from "@/lib/branding";
+import { OfflineBanner } from "@/components/offline-banner";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -214,6 +215,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <OfflineBanner />
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-6xl mx-auto">
             {children}
