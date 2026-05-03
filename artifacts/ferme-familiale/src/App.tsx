@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { toast } from "@/hooks/use-toast";
 import { ConfirmDialogHost } from "@/lib/confirm-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -24,7 +25,40 @@ import Simulation from "@/pages/simulation";
 import Tresorerie from "@/pages/tresorerie";
 import Planification from "@/pages/planification";
 
+/**
+ * BLOC A3 — Toast d'erreur backend systématique pour TOUTES les mutations.
+ * Si une mutation déclare son propre `onError`, on n'affiche pas le toast global
+ * (pour éviter les doublons). Les 401 sont silencieux (gérés par redirection).
+ */
+function extractErrorMessage(error: unknown): string {
+  if (!error) return "Une erreur inattendue est survenue.";
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message || "Erreur inconnue.";
+  if (typeof error === "object") {
+    const e = error as { status?: number; message?: string; data?: { message?: string; error?: string } };
+    if (e.data?.message) return e.data.message;
+    if (e.data?.error) return e.data.error;
+    if (e.message) return e.message;
+    if (e.status) return `Erreur HTTP ${e.status}`;
+  }
+  return "Une erreur inattendue est survenue.";
+}
+
+const mutationCache = new MutationCache({
+  onError: (error, _vars, _ctx, mutation) => {
+    if (mutation.options.onError) return; // mutation gère elle-même l'erreur
+    const status = (error as { status?: number } | null)?.status;
+    if (status === 401) return; // session expirée → redirect ailleurs
+    toast({
+      title: "Erreur",
+      description: extractErrorMessage(error),
+      variant: "destructive",
+    });
+  },
+});
+
 const queryClient = new QueryClient({
+  mutationCache,
   defaultOptions: {
     queries: {
       retry: (failureCount, error: unknown) => {

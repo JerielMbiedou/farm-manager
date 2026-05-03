@@ -52,6 +52,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,7 +62,7 @@ import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { confirmAction } from "@/lib/confirm-dialog";
 import { useSortable } from "@/lib/use-sortable";
-import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download, Droplets, Pill, BookOpen, ChevronDown, ChevronRight, Search, CheckCircle2, Lock, RotateCcw, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download, Droplets, Pill, BookOpen, ChevronDown, ChevronRight, Search, CheckCircle2, Lock, RotateCcw, FileText, Menu } from "lucide-react";
 import { Link } from "wouter";
 import { BandeDetail } from "@workspace/api-client-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, PieChart, Pie, Cell, ComposedChart, Area } from "recharts";
@@ -773,6 +774,69 @@ function ClotureBandeDialog({ detail, isReopen }: { detail: any; isReopen?: bool
   );
 }
 
+/**
+ * BLOC A5 — Drawer mobile pour la navigation entre onglets de la bande.
+ * Affiché uniquement sur mobile (md:hidden), il remplace les 10 onglets
+ * empilés qui débordent sur petit écran.
+ */
+const MOBILE_TABS: Array<{ value: string; label: string; icon: typeof Info }> = [
+  { value: "resume", label: "Résumé", icon: Info },
+  { value: "depenses", label: "Dépenses", icon: Receipt },
+  { value: "ventes", label: "Ventes", icon: ShoppingCart },
+  { value: "mortalite", label: "Mortalité", icon: Skull },
+  { value: "pesees", label: "Pesées & IC", icon: Scale },
+  { value: "vaccinations", label: "Vaccins", icon: Syringe },
+  { value: "eau", label: "Eau", icon: Droplets },
+  { value: "traitements", label: "Traitements", icon: Pill },
+  { value: "journal", label: "Journal", icon: BookOpen },
+  { value: "charges", label: "Charges", icon: CheckSquare },
+];
+
+function MobileTabsSheet({ activeTab, onChange }: { activeTab: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const current = MOBILE_TABS.find(t => t.value === activeTab) || MOBILE_TABS[0];
+  const CurrentIcon = current.icon;
+  return (
+    <div className="md:hidden mb-4">
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button variant="outline" className="w-full justify-between h-11">
+            <span className="flex items-center gap-2">
+              <CurrentIcon className="h-4 w-4" />
+              <span className="font-medium">{current.label}</span>
+            </span>
+            <Menu className="h-4 w-4 text-muted-foreground" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="right" className="w-72 p-0">
+          <SheetHeader className="p-4 border-b">
+            <SheetTitle>Sections de la bande</SheetTitle>
+          </SheetHeader>
+          <nav className="p-2 flex flex-col gap-1">
+            {MOBILE_TABS.map(tab => {
+              const Icon = tab.icon;
+              const active = tab.value === activeTab;
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => { onChange(tab.value); setOpen(false); }}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-md text-sm text-left transition-colors ${
+                    active ? "bg-primary/10 text-primary font-semibold" : "hover:bg-muted text-foreground"
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
 export default function BandeDetailView() {
   const params = useParams<{ id: string }>();
   const bandeId = Number(params.id);
@@ -933,7 +997,7 @@ export default function BandeDetailView() {
       toast({ title: "Dépense enregistrée" });
       setIsDialogOpen(false);
       resetForms();
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const onVenteSubmit = async (values: z.infer<typeof venteSchema>) => {
@@ -945,7 +1009,7 @@ export default function BandeDetailView() {
       toast({ title: "Vente enregistrée" });
       setIsDialogOpen(false);
       resetForms();
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const onDepenseVenteSubmit = async (values: z.infer<typeof depenseVenteSchema>) => {
@@ -957,7 +1021,7 @@ export default function BandeDetailView() {
       toast({ title: "Frais de vente enregistré" });
       setIsDialogOpen(false);
       resetForms();
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const onChargesFixesSubmit = async (values: z.infer<typeof chargesFixesSchema>) => {
@@ -967,7 +1031,7 @@ export default function BandeDetailView() {
       invalidateBandeData();
       setLoyerInitialized(false);
       toast({ title: "Charges fixes mises à jour" });
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const onMortaliteSubmit = async (values: z.infer<typeof mortaliteSchema>) => {
@@ -978,7 +1042,7 @@ export default function BandeDetailView() {
       toast({ title: "Mortalité enregistrée" });
       setIsDialogOpen(false);
       resetForms();
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const onPeseeSubmit = async (values: z.infer<typeof peseeSchema>) => {
@@ -988,7 +1052,7 @@ export default function BandeDetailView() {
       toast({ title: "Pesée enregistrée" });
       setIsDialogOpen(false);
       resetForms();
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const onConsommationSubmit = async (values: z.infer<typeof consommationSchema>) => {
@@ -998,7 +1062,7 @@ export default function BandeDetailView() {
       toast({ title: "Consommation enregistrée" });
       setIsDialogOpen(false);
       resetForms();
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const onVaccinSubmit = async (values: z.infer<typeof vaccinSchema>) => {
@@ -1008,7 +1072,7 @@ export default function BandeDetailView() {
       toast({ title: "Vaccin ajouté" });
       setIsDialogOpen(false);
       resetForms();
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const onEauSubmit = async (values: z.infer<typeof eauSchema>) => {
@@ -1017,7 +1081,7 @@ export default function BandeDetailView() {
       toast({ title: "Consommation d'eau enregistrée" });
       setIsDialogOpen(false);
       resetForms();
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const onTraitementSubmit = async (values: z.infer<typeof traitementSchema>) => {
@@ -1026,7 +1090,7 @@ export default function BandeDetailView() {
       toast({ title: "Traitement enregistré" });
       setIsDialogOpen(false);
       resetForms();
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const onObservationSubmit = async (values: z.infer<typeof observationSchema>) => {
@@ -1035,7 +1099,7 @@ export default function BandeDetailView() {
       toast({ title: "Observation enregistrée" });
       setIsDialogOpen(false);
       resetForms();
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const handleMarkVaccinDone = async (vaccId: number) => {
@@ -1043,7 +1107,7 @@ export default function BandeDetailView() {
       await updateVaccination.mutateAsync({ id: bandeId, vaccId, data: { fait: "oui", dateFait: new Date().toISOString().split("T")[0] } });
       queryClient.invalidateQueries({ queryKey: getGetBandeVaccinationsQueryKey(bandeId) });
       toast({ title: "Vaccin marqué comme fait" });
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const handleEdit = (item: any, type: 'depense' | 'vente' | 'depenseVente') => {
@@ -1081,7 +1145,7 @@ export default function BandeDetailView() {
       }
       invalidateBandeData();
       toast({ title: "Élément supprimé" });
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   // ⚠️ Tous les Hooks doivent être appelés AVANT les early returns conditionnels.
@@ -1095,11 +1159,14 @@ export default function BandeDetailView() {
   const observationItems = (observationsData || []) as unknown as Array<Record<string, unknown>>;
   const refPoids = (referencePoids || []) as Array<{ ageJours: number; poidsG: number }>;
 
-  // BLOC 7 — Tri colonne pour les tableaux internes (mortalité, pesées, eau, traitements)
+  // BLOC 7 — Tri colonne pour les tableaux internes
   const mortaliteSorted = useSortable(mortaliteItems, "date", "desc");
   const peseesSorted = useSortable(peseesItems, "date", "desc");
   const eauSorted = useSortable(eauItems, "date", "desc");
   const traitementsSorted = useSortable(traitementItems, "date", "desc");
+  const vaccinationsSorted = useSortable(vaccinItems, "jourPrevu", "asc");
+  const consommationSorted = useSortable(consEntries, "date", "desc");
+  const observationsSorted = useSortable(observationItems, "date", "desc");
 
   if (isLoadingBande) return <div className="min-h-[50vh] flex items-center justify-center text-muted-foreground">Chargement de la bande...</div>;
   if (!bande) return <div>Bande introuvable.</div>;
@@ -1183,7 +1250,7 @@ export default function BandeDetailView() {
             <Form {...mortaliteForm}>
               <form onSubmit={mortaliteForm.handleSubmit(onMortaliteSubmit)} className="space-y-4">
                 <FormField control={mortaliteForm.control} name="date" render={({ field }) => (
-                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={mortaliteForm.control} name="ageJours" render={({ field }) => (
                   <FormItem><FormLabel>Âge (jours)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
@@ -1200,7 +1267,7 @@ export default function BandeDetailView() {
             <Form {...peseeForm}>
               <form onSubmit={peseeForm.handleSubmit(onPeseeSubmit)} className="space-y-4">
                 <FormField control={peseeForm.control} name="date" render={({ field }) => (
-                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={peseeForm.control} name="ageJours" render={({ field }) => (
                   <FormItem><FormLabel>Âge (jours)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
@@ -1229,7 +1296,7 @@ export default function BandeDetailView() {
             <Form {...consommationForm}>
               <form onSubmit={consommationForm.handleSubmit(onConsommationSubmit)} className="space-y-4">
                 <FormField control={consommationForm.control} name="date" render={({ field }) => (
-                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={consommationForm.control} name="quantiteKg" render={({ field }) => (
                   <FormItem><FormLabel>Quantité aliment (kg)</FormLabel><FormControl><Input type="number" step="0.1" {...field} /></FormControl><FormMessage /></FormItem>
@@ -1246,7 +1313,7 @@ export default function BandeDetailView() {
                   <FormItem><FormLabel>Jour prévu (J+)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={vaccinForm.control} name="nom" render={({ field }) => (
-                  <FormItem><FormLabel>Nom du vaccin</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Nom du vaccin</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={vaccinForm.control} name="description" render={({ field }) => (
                   <FormItem><FormLabel>Description (optionnel)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
@@ -1260,7 +1327,7 @@ export default function BandeDetailView() {
             <Form {...eauForm}>
               <form onSubmit={eauForm.handleSubmit(onEauSubmit)} className="space-y-4">
                 <FormField control={eauForm.control} name="date" render={({ field }) => (
-                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={eauForm.control} name="ageJours" render={({ field }) => (
                   <FormItem><FormLabel>Jour (J+)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
@@ -1277,13 +1344,13 @@ export default function BandeDetailView() {
             <Form {...traitementForm}>
               <form onSubmit={traitementForm.handleSubmit(onTraitementSubmit)} className="space-y-4">
                 <FormField control={traitementForm.control} name="date" render={({ field }) => (
-                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={traitementForm.control} name="ageJours" render={({ field }) => (
                   <FormItem><FormLabel>Jour (J+)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={traitementForm.control} name="produit" render={({ field }) => (
-                  <FormItem><FormLabel>Produit</FormLabel><FormControl><Input placeholder="ex: Anticoc, Bipestos..." {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Produit</FormLabel><FormControl><Input placeholder="ex: Anticoc, Bipestos..." {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={traitementForm.control} name="type" render={({ field }) => (
                   <FormItem>
@@ -1315,7 +1382,7 @@ export default function BandeDetailView() {
             <Form {...observationForm}>
               <form onSubmit={observationForm.handleSubmit(onObservationSubmit)} className="space-y-4">
                 <FormField control={observationForm.control} name="date" render={({ field }) => (
-                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={observationForm.control} name="ageJours" render={({ field }) => (
                   <FormItem><FormLabel>Jour (J+)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
@@ -1332,7 +1399,7 @@ export default function BandeDetailView() {
             <Form {...depenseForm}>
               <form onSubmit={depenseForm.handleSubmit(onDepenseSubmit)} className="space-y-4">
                 <FormField control={depenseForm.control} name="date" render={({ field }) => (
-                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={depenseForm.control} name="categorie" render={({ field }) => (
                   <FormItem>
@@ -1350,7 +1417,7 @@ export default function BandeDetailView() {
                   </FormItem>
                 )} />
                 <FormField control={depenseForm.control} name="designation" render={({ field }) => (
-                  <FormItem><FormLabel>Désignation</FormLabel><FormControl><DesignationCombobox value={field.value} onChange={field.onChange} suggestions={designationSuggestions} placeholder="Ex: Aliment démarrage" /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Désignation</FormLabel><FormControl><DesignationCombobox value={field.value} onChange={field.onChange} suggestions={designationSuggestions} placeholder="Ex: Aliment démarrage" /></FormControl><FormMessage /></FormItem>
                 )} />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={depenseForm.control} name="quantite" render={({ field }) => (
@@ -1369,7 +1436,7 @@ export default function BandeDetailView() {
             <Form {...venteForm}>
               <form onSubmit={venteForm.handleSubmit(onVenteSubmit)} className="space-y-4">
                 <FormField control={venteForm.control} name="date" render={({ field }) => (
-                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={venteForm.control} name="quantiteVendue" render={({ field }) => (
@@ -1388,7 +1455,7 @@ export default function BandeDetailView() {
             <Form {...depenseVenteForm}>
               <form onSubmit={depenseVenteForm.handleSubmit(onDepenseVenteSubmit)} className="space-y-4">
                 <FormField control={depenseVenteForm.control} name="designation" render={({ field }) => (
-                  <FormItem><FormLabel>Désignation</FormLabel><FormControl><Input placeholder="ex: Ticket, Sanitaire..." {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Désignation</FormLabel><FormControl><Input placeholder="ex: Ticket, Sanitaire..." {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={depenseVenteForm.control} name="montant" render={({ field }) => (
                   <FormItem><FormLabel>Montant (FCFA)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
@@ -1401,7 +1468,9 @@ export default function BandeDetailView() {
       </Dialog>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="flex flex-wrap w-full bg-muted/50 p-1 mb-6 h-auto gap-1">
+        {/* BLOC A5 — Sheet mobile : navigation par drawer pour les écrans étroits */}
+        <MobileTabsSheet activeTab={activeTab} onChange={setActiveTab} />
+        <TabsList className="hidden md:flex flex-wrap w-full bg-muted/50 p-1 mb-6 h-auto gap-1">
           <TabsTrigger value="resume" className="flex gap-1 text-xs sm:text-sm"><Info className="h-4 w-4" /><span className="hidden sm:inline">Résumé</span></TabsTrigger>
           <TabsTrigger value="depenses" className="flex gap-1 text-xs sm:text-sm"><Receipt className="h-4 w-4" /><span className="hidden sm:inline">Dépenses</span></TabsTrigger>
           <TabsTrigger value="ventes" className="flex gap-1 text-xs sm:text-sm"><ShoppingCart className="h-4 w-4" /><span className="hidden sm:inline">Ventes</span></TabsTrigger>
@@ -1741,7 +1810,7 @@ export default function BandeDetailView() {
                                     await deleteMortalite.mutateAsync({ id: bandeId, mortaliteId: m.id as number });
                                     queryClient.invalidateQueries({ queryKey: getGetBandeMortaliteQueryKey(bandeId) });
                                     invalidateBandeData();
-                                  } catch { toast({ title: "Erreur de suppression", variant: "destructive" }); }
+                                  } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
                                 }
                               }}><Trash2 className="h-4 w-4" /></Button>
                             </TableCell>
@@ -1845,7 +1914,7 @@ export default function BandeDetailView() {
                                     try {
                                       await deletePesee.mutateAsync({ id: bandeId, peseeId: p.id as number });
                                       queryClient.invalidateQueries({ queryKey: getGetBandePeseesQueryKey(bandeId) });
-                                    } catch { toast({ title: "Erreur de suppression", variant: "destructive" }); }
+                                    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
                                   }
                                 }}><Trash2 className="h-4 w-4" /></Button>
                               </TableCell>
@@ -1917,15 +1986,16 @@ export default function BandeDetailView() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/30">
-                          <TableHead>Date</TableHead><TableHead className="text-right">Quantité (kg)</TableHead>
+                          <TableHead className="cursor-pointer select-none" onClick={() => consommationSorted.toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{consommationSorted.sortIcon("date")}</span></TableHead>
+                          <TableHead className="text-right cursor-pointer select-none" onClick={() => consommationSorted.toggleSort("quantiteKg")}>Quantité (kg) <span className="text-xs text-muted-foreground">{consommationSorted.sortIcon("quantiteKg")}</span></TableHead>
                           {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {consEntries.length === 0 ? (
+                        {consommationSorted.sorted.length === 0 ? (
                           <TableRow><TableCell colSpan={3} className="text-center py-6 text-muted-foreground">Aucune consommation</TableCell></TableRow>
                         ) : (
-                          consEntries.map((c) => (
+                          consommationSorted.sorted.map((c) => (
                             <TableRow key={c.id as number}>
                               <TableCell>{c.date as string}</TableCell>
                               <TableCell className="text-right font-medium">{c.quantiteKg as number} kg</TableCell>
@@ -1941,7 +2011,7 @@ export default function BandeDetailView() {
                                       try {
                                         await deleteConsommation.mutateAsync({ id: bandeId, consId: c.id as number });
                                         queryClient.invalidateQueries({ queryKey: getGetBandeConsommationQueryKey(bandeId) });
-                                      } catch { toast({ title: "Erreur de suppression", variant: "destructive" }); }
+                                      } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
                                     }
                                   }}><Trash2 className="h-4 w-4" /></Button>
                                 </TableCell>
@@ -1969,17 +2039,19 @@ export default function BandeDetailView() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead>Jour</TableHead><TableHead>Vaccin</TableHead>
-                      <TableHead>Date prévue</TableHead><TableHead>Statut</TableHead>
-                      <TableHead>Date fait</TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => vaccinationsSorted.toggleSort("jourPrevu")}>Jour <span className="text-xs text-muted-foreground">{vaccinationsSorted.sortIcon("jourPrevu")}</span></TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => vaccinationsSorted.toggleSort("nom")}>Vaccin <span className="text-xs text-muted-foreground">{vaccinationsSorted.sortIcon("nom")}</span></TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => vaccinationsSorted.toggleSort("datePrevue")}>Date prévue <span className="text-xs text-muted-foreground">{vaccinationsSorted.sortIcon("datePrevue")}</span></TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => vaccinationsSorted.toggleSort("fait")}>Statut <span className="text-xs text-muted-foreground">{vaccinationsSorted.sortIcon("fait")}</span></TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => vaccinationsSorted.toggleSort("dateFait")}>Date fait <span className="text-xs text-muted-foreground">{vaccinationsSorted.sortIcon("dateFait")}</span></TableHead>
                       {!isReadOnly && <TableHead className="text-right w-24">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {vaccinItems.length === 0 ? (
+                    {vaccinationsSorted.sorted.length === 0 ? (
                       <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Aucune vaccination programmée</TableCell></TableRow>
                     ) : (
-                      vaccinItems.map((v) => (
+                      vaccinationsSorted.sorted.map((v) => (
                         <TableRow key={v.id as number} className={v.enRetard && v.fait !== "oui" ? "bg-red-50" : v.fait === "oui" ? "bg-green-50/50" : ""}>
                           <TableCell className="font-medium">J{v.jourPrevu as number}</TableCell>
                           <TableCell>
@@ -2085,7 +2157,7 @@ export default function BandeDetailView() {
                                   confirmText: "Supprimer",
                                   destructive: true,
                                 })) {
-                                  try { await deleteEau.mutateAsync(e.id); } catch { toast({ title: "Erreur", variant: "destructive" }); }
+                                  try { await deleteEau.mutateAsync(e.id); } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
                                 }
                               }}><Trash2 className="h-4 w-4" /></Button>
                             </TableCell>
@@ -2147,7 +2219,7 @@ export default function BandeDetailView() {
                                   confirmText: "Supprimer",
                                   destructive: true,
                                 })) {
-                                  try { await deleteTraitement.mutateAsync(t.id); } catch { toast({ title: "Erreur", variant: "destructive" }); }
+                                  try { await deleteTraitement.mutateAsync(t.id); } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
                                 }
                               }}><Trash2 className="h-4 w-4" /></Button>
                             </TableCell>
@@ -2169,11 +2241,21 @@ export default function BandeDetailView() {
               {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => openDialog("observation")}><Plus className="w-4 h-4" /> Ajouter</Button>}
             </CardHeader>
             <CardContent>
-              {observationItems.length === 0 ? (
+              {observationsSorted.sorted.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground">Aucune observation enregistrée</p>
               ) : (
                 <div className="space-y-3">
-                  {observationItems.map((o: any) => (
+                  <div className="flex items-center justify-end text-xs text-muted-foreground gap-2 mb-1">
+                    <span>Trier :</span>
+                    <button type="button" className="hover:text-foreground transition-colors" onClick={() => observationsSorted.toggleSort("date")}>
+                      Date {observationsSorted.sortIcon("date")}
+                    </button>
+                    <span>·</span>
+                    <button type="button" className="hover:text-foreground transition-colors" onClick={() => observationsSorted.toggleSort("ageJours")}>
+                      Jour {observationsSorted.sortIcon("ageJours")}
+                    </button>
+                  </div>
+                  {observationsSorted.sorted.map((o: any) => (
                     <div key={o.id} className="p-4 border rounded-lg flex justify-between items-start gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
@@ -2190,7 +2272,7 @@ export default function BandeDetailView() {
                             confirmText: "Supprimer",
                             destructive: true,
                           })) {
-                            try { await deleteObservation.mutateAsync(o.id); } catch { toast({ title: "Erreur", variant: "destructive" }); }
+                            try { await deleteObservation.mutateAsync(o.id); } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
                           }
                         }}><Trash2 className="h-4 w-4" /></Button>
                       )}

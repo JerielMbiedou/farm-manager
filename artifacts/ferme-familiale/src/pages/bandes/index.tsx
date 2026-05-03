@@ -147,7 +147,7 @@ export default function Bandes() {
                     name="nom"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nom de la bande (ex: Bande A1)</FormLabel>
+                        <FormLabel required>Nom de la bande (ex: Bande A1)</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -160,7 +160,7 @@ export default function Bandes() {
                     name="dateDeDepart"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Date de démarrage</FormLabel>
+                        <FormLabel required>Date de démarrage</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>

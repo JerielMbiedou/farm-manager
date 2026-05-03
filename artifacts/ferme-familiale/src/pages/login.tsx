@@ -149,7 +149,7 @@ export default function Login() {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
                   <FormField control={form.control} name="username" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Nom d'utilisateur</FormLabel>
+                      <FormLabel className="text-sm font-medium" required>Nom d'utilisateur</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -161,7 +161,7 @@ export default function Login() {
                   )} />
                   <FormField control={form.control} name="password" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Mot de passe</FormLabel>
+                      <FormLabel className="text-sm font-medium" required>Mot de passe</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -197,28 +197,28 @@ export default function Login() {
                 <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
                   <FormField control={registerForm.control} name="nom" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Nom complet</FormLabel>
+                      <FormLabel className="text-sm font-medium" required>Nom complet</FormLabel>
                       <FormControl><Input placeholder="Ex: Jean Mbiedou" className="h-11 bg-white border-border/80" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={registerForm.control} name="username" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Nom d'utilisateur</FormLabel>
+                      <FormLabel className="text-sm font-medium" required>Nom d'utilisateur</FormLabel>
                       <FormControl><Input placeholder="Ex: jean" className="h-11 bg-white border-border/80" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={registerForm.control} name="password" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Mot de passe</FormLabel>
+                      <FormLabel className="text-sm font-medium" required>Mot de passe</FormLabel>
                       <FormControl><Input type="password" placeholder="Minimum 6 caracteres" className="h-11 bg-white border-border/80" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={registerForm.control} name="passwordConfirm" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Confirmer le mot de passe</FormLabel>
+                      <FormLabel className="text-sm font-medium" required>Confirmer le mot de passe</FormLabel>
                       <FormControl><Input type="password" placeholder="Retapez le mot de passe" className="h-11 bg-white border-border/80" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>

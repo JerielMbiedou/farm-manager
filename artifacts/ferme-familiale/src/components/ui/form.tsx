@@ -84,10 +84,18 @@ const FormItem = React.forwardRef<
 })
 FormItem.displayName = "FormItem"
 
+/**
+ * BLOC A1 — `required` ajoute une astérisque rouge après le label.
+ * Usage : <FormLabel required>Nom de l'aliment</FormLabel>
+ */
+type FormLabelProps = React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> & {
+  required?: boolean
+}
+
 const FormLabel = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
->(({ className, ...props }, ref) => {
+  FormLabelProps
+>(({ className, children, required, ...props }, ref) => {
   const { error, formItemId } = useFormField()
 
   return (
@@ -96,7 +104,10 @@ const FormLabel = React.forwardRef<
       className={cn(error && "text-destructive", className)}
       htmlFor={formItemId}
       {...props}
-    />
+    >
+      {children}
+      {required && <span className="ml-0.5 text-destructive" aria-hidden="true">*</span>}
+    </Label>
   )
 })
 FormLabel.displayName = "FormLabel"

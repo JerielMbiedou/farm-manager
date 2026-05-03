@@ -72,7 +72,7 @@ export default function Stocks() {
       toast({ title: "Stock aliment enregistré" });
       setDialogOpen(false);
       alimentForm.reset({ designation: "", type: "entree", quantiteKg: 0, date: new Date().toISOString().split("T")[0], fournisseur: "", commentaire: "" });
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const onMedicamentSubmit = async (values: z.infer<typeof medicamentSchema>) => {
@@ -81,7 +81,7 @@ export default function Stocks() {
       toast({ title: "Stock médicament enregistré" });
       setDialogOpen(false);
       medicamentForm.reset({ nom: "", type: "entree", quantite: 0, unite: "flacon", date: new Date().toISOString().split("T")[0], fournisseur: "", commentaire: "" });
-    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
   const stockActuel = alimentsData?.stockActuel || 0;
@@ -148,7 +148,7 @@ export default function Stocks() {
                     try {
                       await deleteAliment.mutateAsync(id);
                       toast({ title: "Mouvement supprimé" });
-                    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+                    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
                   }
                 }}
               />
@@ -193,7 +193,7 @@ export default function Stocks() {
                                   try {
                                     await deleteAliment.mutateAsync(item.id);
                                     toast({ title: "Mouvement supprimé" });
-                                  } catch { toast({ title: "Erreur", variant: "destructive" }); }
+                                  } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
                                 }
                               }}><Trash2 className="h-4 w-4" /></Button>
                             </TableCell>
@@ -263,7 +263,7 @@ export default function Stocks() {
                     try {
                       await deleteMedicament.mutateAsync(id);
                       toast({ title: "Mouvement supprimé" });
-                    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+                    } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
                   }
                 }}
               />
@@ -308,7 +308,7 @@ export default function Stocks() {
                                   try {
                                     await deleteMedicament.mutateAsync(item.id);
                                     toast({ title: "Mouvement supprimé" });
-                                  } catch { toast({ title: "Erreur", variant: "destructive" }); }
+                                  } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
                                 }
                               }}><Trash2 className="h-4 w-4" /></Button>
                             </TableCell>
@@ -349,7 +349,7 @@ export default function Stocks() {
                   </FormItem>
                 )} />
                 <FormField control={alimentForm.control} name="designation" render={({ field }) => (
-                  <FormItem><FormLabel>Désignation</FormLabel><FormControl><Input placeholder="ex: Aliment démarrage" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Désignation</FormLabel><FormControl><Input placeholder="ex: Aliment démarrage" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={alimentForm.control} name="quantiteKg" render={({ field }) => (
@@ -360,7 +360,7 @@ export default function Stocks() {
                   )} />
                 </div>
                 <FormField control={alimentForm.control} name="date" render={({ field }) => (
-                  <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={alimentForm.control} name="fournisseur" render={({ field }) => (
                   <FormItem><FormLabel>Fournisseur (optionnel)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
@@ -385,7 +385,7 @@ export default function Stocks() {
                   </FormItem>
                 )} />
                 <FormField control={medicamentForm.control} name="nom" render={({ field }) => (
-                  <FormItem><FormLabel>Nom du produit</FormLabel><FormControl><Input placeholder="ex: Vaccin Newcastle" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel required>Nom du produit</FormLabel><FormControl><Input placeholder="ex: Vaccin Newcastle" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={medicamentForm.control} name="quantite" render={({ field }) => (
@@ -411,7 +411,7 @@ export default function Stocks() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={medicamentForm.control} name="date" render={({ field }) => (
-                    <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel required>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={medicamentForm.control} name="datePeremption" render={({ field }) => (
                     <FormItem><FormLabel>Péremption</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
