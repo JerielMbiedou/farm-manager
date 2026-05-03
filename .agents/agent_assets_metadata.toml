@@ -148,10 +148,10 @@ title = "Rapport final — Ferme Mbiedou — 03 mai 2026"
 id = "tyP9WqsaoF7wEVQ4mkxPh"
 uri = "file://exports/migration-render.tar.gz"
 type = "unspecified"
-title = "migration-render.tar.gz — Dump prod compressé (Render-ready, 17 KB)"
+title = "migration-render.tar.gz — Frischer Prod-Dump (komprimiert, 17 KB)"
 
 [[outputs]]
 id = "QlzCX4gZ_sZYl1rC7_7bZ"
 uri = "file://exports/migration-render.sql.txt"
 type = "text"
-title = "migration-render.sql (texte brut, 189 KB) — renommer en .sql après téléchargement"
+title = "migration-render.sql (Klartext, 189 KB) — nach Download in .sql umbenennen"
