@@ -46,6 +46,9 @@ const schema = z.object({
   alimentKg: numFromInput,
   typeAliment: z.enum(["demarrage", "croissance", "finition"]),
   eauLitres: numFromInput,
+  poidsMoyenG: numFromInput,
+  traitementProduit: z.string().optional(),
+  traitementDosage: z.string().optional(),
   observations: z.string().optional(),
 });
 
@@ -69,6 +72,9 @@ export default function JournalDuJour({ bande, open, onOpenChange, onSuccess }: 
       alimentKg: undefined,
       typeAliment: typeAlimentDefaut,
       eauLitres: undefined,
+      poidsMoyenG: undefined,
+      traitementProduit: "",
+      traitementDosage: "",
       observations: "",
     },
   });
@@ -113,6 +119,32 @@ export default function JournalDuJour({ bande, open, onOpenChange, onSuccess }: 
       );
     }
 
+    if (values.poidsMoyenG && values.poidsMoyenG > 0) {
+      tasks.push(
+        offlineFetch(`${baseUrl}/pesees`, {
+          method: "POST",
+          body: { date: today, ageJours, poidsMoyenG: values.poidsMoyenG },
+          label: `Pesée ${bande.nom} J${ageJours}`,
+        })
+      );
+    }
+
+    if (values.traitementProduit?.trim()) {
+      tasks.push(
+        offlineFetch(`${baseUrl}/traitements`, {
+          method: "POST",
+          body: {
+            date: today,
+            ageJours,
+            produit: values.traitementProduit.trim(),
+            type: "traitement",
+            dosage: values.traitementDosage?.trim() || null,
+          },
+          label: `Traitement ${bande.nom} J${ageJours}`,
+        })
+      );
+    }
+
     if (values.observations?.trim()) {
       tasks.push(
         offlineFetch(`${baseUrl}/observations`, {
@@ -149,6 +181,9 @@ export default function JournalDuJour({ bande, open, onOpenChange, onSuccess }: 
           alimentKg: undefined,
           typeAliment: typeAlimentDefaut,
           eauLitres: undefined,
+          poidsMoyenG: undefined,
+          traitementProduit: "",
+          traitementDosage: "",
           observations: "",
         });
       }
@@ -277,6 +312,76 @@ export default function JournalDuJour({ bande, open, onOpenChange, onSuccess }: 
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="poidsMoyenG"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Poids moyen (g)
+                    <span className="text-muted-foreground text-xs ml-2">(optionnel — si pesée du jour)</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      placeholder="Ex: 1850"
+                      data-testid="input-poids-moyen"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="rounded-md border bg-muted/20 p-3 space-y-3">
+              <p className="text-sm font-medium">
+                Traitement administré
+                <span className="text-muted-foreground text-xs ml-2">(optionnel)</span>
+              </p>
+              <FormField
+                control={form.control}
+                name="traitementProduit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Produit</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Ex: Amoxicilline, Vitamines, Anticoccidien..."
+                        data-testid="input-traitement-produit"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="traitementDosage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs">Dosage</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Ex: 1 g/L d'eau pendant 5 jours"
+                        data-testid="input-traitement-dosage"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      Le traitement n'est enregistré que si le produit est renseigné.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
