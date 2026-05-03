@@ -10,11 +10,11 @@ import { useSortable } from "@/lib/use-sortable";
 export default function ComparaisonBandes() {
   const { data: bandes, isLoading, error } = useGetComparaisonBandes();
 
-  if (isLoading) return <div className="min-h-[50vh] flex items-center justify-center text-muted-foreground">Chargement...</div>;
-  if (error) return <div className="text-destructive p-4">Erreur de chargement des données de comparaison.</div>;
-
   const items = (bandes || []) as unknown as Array<Record<string, unknown>>;
   const { sorted, toggleSort, sortIcon } = useSortable(items, "nom" as keyof Record<string, unknown>, "asc");
+
+  if (isLoading) return <div className="min-h-[50vh] flex items-center justify-center text-muted-foreground">Chargement...</div>;
+  if (error) return <div className="text-destructive p-4">Erreur de chargement des données de comparaison.</div>;
 
   // BLOC 7 — Export CSV du tableau comparatif
   const handleExportCSV = () => {
