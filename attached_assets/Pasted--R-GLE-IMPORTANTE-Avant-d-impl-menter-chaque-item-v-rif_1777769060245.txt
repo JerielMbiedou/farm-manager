@@ -1,0 +1,798 @@
+```
+RÈGLE IMPORTANTE : Avant d'implémenter chaque item, vérifie
+d'abord si c'est déjà en place. Si c'est déjà implémenté,
+marque-le ✅ DÉJÀ PRÉSENT et passe au suivant sans rien toucher.
+Si c'est partiellement fait, marque ⚠️ PARTIEL et complète
+seulement ce qui manque. Si c'est absent, marque ❌ ABSENT
+et implémente complètement.
+
+Ne demande pas de confirmation, exécute directement.
+À la fin, génère un rapport complet de tout ce qui a été fait.
+
+═══════════════════════════════════════════════════
+BLOC 1 — SÉCURITÉ CRITIQUE
+═══════════════════════════════════════════════════
+
+1.1 — Mot de passe admin initial sécurisé
+VÉRIFICATION : seed.ts utilise-t-il encore "admin123" en dur ?
+Si oui :
+- Lire process.env.INITIAL_ADMIN_PASSWORD
+- Si la variable est définie → utiliser cette valeur
+- Si absente → générer un mot de passe aléatoire de 12 chars
+  (lettres + chiffres + symboles) via crypto.randomBytes
+- Afficher le mot de passe généré UNE SEULE FOIS dans les logs
+  au démarrage avec un message clair :
+  ⚠️  MOT DE PASSE ADMIN INITIAL : [mdp]
+  ⚠️  Notez-le maintenant — il ne sera plus affiché.
+- Ne plus jamais logger "admin123" nulle part
+
+Ajouter dans .env.example :
+  # Mot de passe admin initial (laisser vide = généré automatiquement)
+  INITIAL_ADMIN_PASSWORD=
+
+1.2 — Bcrypt rounds 10 → 12
+VÉRIFICATION : bcrypt.hash utilise-t-il 10 rounds ?
+Si oui, remplacer par 12 dans tous les fichiers
+(seed.ts, auth.ts, et tout autre endroit).
+
+1.3 — Modèle Gemini en variable d'environnement
+VÉRIFICATION : le modèle Gemini est-il hardcodé dans le code ?
+Si oui, remplacer par :
+  const model = process.env.GEMINI_MODEL
+             ?? "gemini-2.5-flash";
+Ajouter dans .env.example :
+  # Modèle Gemini pour l'OCR des fiches
+  GEMINI_MODEL=gemini-2.5-flash
+
+═══════════════════════════════════════════════════
+BLOC 2 — BRANDING PARAMÉTRABLE
+═══════════════════════════════════════════════════
+
+VÉRIFICATION : "Ferme Mbiedou" est-il écrit en dur dans
+export.ts ? Y a-t-il des champs branding dans /parametres ?
+
+2.1 — Ajouter les paramètres branding dans seedDefaults
+Dans seed.ts, ajouter si absents :
+  { cle: "branding_nom_ferme",
+    valeur: "Ferme Mbiedou",
+    description: "Nom de la ferme affiché dans les exports",
+    categorie: "branding" }
+  { cle: "branding_adresse",
+    valeur: "",
+    description: "Adresse de la ferme",
+    categorie: "branding" }
+  { cle: "branding_telephone",
+    valeur: "",
+    description: "Téléphone de la ferme",
+    categorie: "branding" }
+  { cle: "branding_email",
+    valeur: "",
+    description: "Email de la ferme",
+    categorie: "branding" }
+  { cle: "branding_niu",
+    valeur: "",
+    description: "Numéro d'Identification Unique (NIU)",
+    categorie: "branding" }
+  { cle: "branding_slogan",
+    valeur: "",
+    description: "Slogan ou description courte",
+    categorie: "branding" }
+
+2.2 — Section Branding dans /parametres
+Dans parametres.tsx, ajouter une section "Identité de la ferme"
+avec les champs :
+- Nom de la ferme (input text)
+- Adresse (textarea)
+- Téléphone (input tel)
+- Email (input email)
+- NIU / Numéro fiscal (input text)
+- Slogan (input text)
+Bouton "Sauvegarder" par section.
+
+2.3 — Utiliser le branding dans les exports PDF
+Dans export.ts, remplacer toutes les occurrences de
+"Ferme Mbiedou" hardcodé par :
+  const nomFerme = await getParam("branding_nom_ferme")
+                ?? "Ferme Mbiedou";
+  const adresse = await getParam("branding_adresse") ?? "";
+  const telephone = await getParam("branding_telephone") ?? "";
+  const niu = await getParam("branding_niu") ?? "";
+
+Passer ces valeurs comme paramètres à generateRapportBande().
+Dans l'en-tête PDF :
+  Ligne 1 : [nomFerme] (grand, gras)
+  Ligne 2 : [adresse] (si renseignée)
+  Ligne 3 : [telephone] | [email] (si renseignés)
+  Ligne 4 : NIU : [niu] (si renseigné)
+
+2.4 — Utiliser le branding dans le nom de l'app
+Dans le manifest PWA (vite.config.ts), lire le nom depuis
+les paramètres si possible, sinon garder "Ferme Mbiedou"
+comme valeur par défaut.
+
+═══════════════════════════════════════════════════
+BLOC 3 — PHASES D'ÉLEVAGE CONFIGURABLES
+═══════════════════════════════════════════════════
+
+VÉRIFICATION : les phases sont-elles hardcodées dans
+bandes/[id].tsx et export.ts ? Sont-elles dans parametres ?
+
+3.1 — Ajouter les phases dans parametres (table)
+Dans seedDefaults, ajouter si absents :
+  { cle: "phase_demarrage_min", valeur: "1",
+    description: "Jour début phase démarrage",
+    categorie: "phases" }
+  { cle: "phase_demarrage_max", valeur: "15",
+    description: "Jour fin phase démarrage",
+    categorie: "phases" }
+  { cle: "phase_croissance_min", valeur: "16",
+    description: "Jour début phase croissance",
+    categorie: "phases" }
+  { cle: "phase_croissance_max", valeur: "28",
+    description: "Jour fin phase croissance",
+    categorie: "phases" }
+  { cle: "phase_finition_min", valeur: "29",
+    description: "Jour début phase finition",
+    categorie: "phases" }
+  { cle: "phase_finition_max", valeur: "45",
+    description: "Jour fin phase finition (= durée cible bande)",
+    categorie: "phases" }
+  { cle: "duree_bande_cible", valeur: "45",
+    description: "Durée cible d'une bande en jours",
+    categorie: "phases" }
+
+3.2 — Créer un helper getPhases() côté backend
+Dans api-server/src/lib/parametres.ts, ajouter :
+  export async function getPhases() {
+    return {
+      demarrage: {
+        min: parseInt(await getParam("phase_demarrage_min") ?? "1"),
+        max: parseInt(await getParam("phase_demarrage_max") ?? "15"),
+      },
+      croissance: {
+        min: parseInt(await getParam("phase_croissance_min") ?? "16"),
+        max: parseInt(await getParam("phase_croissance_max") ?? "28"),
+      },
+      finition: {
+        min: parseInt(await getParam("phase_finition_min") ?? "29"),
+        max: parseInt(await getParam("phase_finition_max") ?? "45"),
+      },
+      dureeJoursCible: parseInt(
+        await getParam("duree_bande_cible") ?? "45"
+      ),
+    };
+  }
+
+Utiliser getPhases() dans toutes les routes bandes.ts qui
+font des calculs par phase (IC, mortalité, graphiques).
+
+3.3 — Exposer les phases dans l'API dashboard/summary
+Retourner les phases et dureeJoursCible dans la réponse
+GET /api/dashboard/summary pour que le frontend puisse
+les utiliser (barre de progression J0→J45, etc.)
+
+3.4 — Supprimer les PHASES hardcodées du frontend
+Dans bandes/[id].tsx, remplacer le const PHASES hardcodé par
+une lecture depuis l'API (via les données du dashboard/summary
+ou un endpoint GET /api/parametres?categorie=phases).
+
+Dans export.ts, même chose : utiliser les phases dynamiques
+au lieu des valeurs figées.
+
+3.5 — Section Phases dans /parametres
+Dans parametres.tsx, ajouter une section "Phases d'élevage" :
+  Démarrage : J[min] à J[max] (2 inputs number)
+  Croissance : J[min] à J[max] (2 inputs number)
+  Finition : J[min] à J[max] (2 inputs number)
+  Durée cible d'une bande : [X] jours
+  Note : "Ces phases pilotent les calculs d'IC, de mortalité
+  par phase et les graphiques. Adapter selon votre souche."
+
+═══════════════════════════════════════════════════
+BLOC 4 — NETTOYAGE DU SEED
+═══════════════════════════════════════════════════
+
+VÉRIFICATION : seed.ts contient-il des données réelles
+de la Bande 1 (mortalité, aliment, eau de fév-avril 2026) ?
+
+4.1 — Séparer seed réel vs seed démo
+Dans seed.ts, identifier le bloc qui insère les données
+réelles de Bande 1 (40+ lignes de mortalité, aliment, eau).
+
+Entourer ce bloc d'une condition :
+  if (process.env.SEED_DEMO_DATA === "true") {
+    // données de démo (ne jamais exécuter en prod)
+    // insérer mortalité, aliment, eau démo...
+  }
+
+Ainsi les vraies données ne se réinsèrent pas si la DB
+est réinitialisée en production.
+
+Ajouter dans .env.example :
+  # Insérer des données de démo au démarrage (dev uniquement)
+  SEED_DEMO_DATA=false
+
+4.2 — Heure et rétention backup dans /parametres
+VÉRIFICATION : backup.ts utilise-t-il "0 2 * * *" en dur ?
+
+Ajouter dans seedDefaults si absents :
+  { cle: "backup_heure", valeur: "2",
+    description: "Heure du backup automatique (0-23)",
+    categorie: "systeme" }
+  { cle: "backup_retention_jours", valeur: "7",
+    description: "Nombre de jours de rétention des backups",
+    categorie: "systeme" }
+
+Dans backup.ts, lire ces paramètres au lieu des valeurs figées :
+  const heure = await getParam("backup_heure") ?? "2";
+  const retention = parseInt(
+    await getParam("backup_retention_jours") ?? "7"
+  );
+  cron.schedule(`0 ${heure} * * *`, () => runBackup(retention));
+
+Dans /parametres, afficher ces 2 champs dans une section
+"Sauvegardes" (déjà existante si implémentée précédemment).
+
+═══════════════════════════════════════════════════
+BLOC 5 — CORRECTION AMORTISSEMENT PAR BANDE
+═══════════════════════════════════════════════════
+
+CONTEXTE MÉTIER :
+L'amortissement = valeur × (taux / 100) × fraction_utilisee
+PAR BANDE. Pas par année. Pas par jours.
+Exemple : Bâtiment 6 000 000 FCFA × 10% × 100% = 600 000 FCFA
+par bande, quelle que soit sa durée.
+
+VÉRIFICATION :
+- getBandeDetail() utilise-t-il dateAcquisition + années ?
+- bandeActifsTable est-elle utilisée dans le calcul ?
+- L'UI dit-elle "annuel" quelque part ?
+
+5.1 — Corriger le calcul backend
+Dans bandes.ts getBandeDetail() :
+  const allocationsBande = await db
+    .select({
+      valeur: actifsTable.valeur,
+      taux: actifsTable.tauxAmortissementAnnuel,
+      fractionUtilisee: bandeActifsTable.fractionUtilisee,
+      nomActif: actifsTable.nom,
+      typeActif: actifsTable.type,
+    })
+    .from(bandeActifsTable)
+    .innerJoin(actifsTable,
+      eq(bandeActifsTable.actifId, actifsTable.id))
+    .where(eq(bandeActifsTable.bandeId, bande.id));
+
+  const depreciationParActif = allocationsBande.map(a => ({
+    nomActif: a.nomActif,
+    typeActif: a.typeActif,
+    valeur: parseFloat(a.valeur),
+    taux: parseFloat(a.taux ?? "10"),
+    fractionUtilisee: parseFloat(a.fractionUtilisee ?? "1"),
+    amortissement: parseFloat(a.valeur)
+      * (parseFloat(a.taux ?? "10") / 100)
+      * parseFloat(a.fractionUtilisee ?? "1"),
+  }));
+
+  const valeurPerdueMateriel = allocationsBande.length > 0
+    ? depreciationParActif.reduce((s, a) => s + a.amortissement, 0)
+    : parseFloat(bande.valeurMaterielFixe ?? "0")
+      * (tauxDepreciation / 100);
+
+  Retourner depreciationParActif dans la réponse.
+
+5.2 — Corriger actifs.ts GET /
+Pour chaque actif :
+  amortissementParBande = valeur × (taux / 100)
+  nbBandesUtilisees = count bandes clôturées via bandeActifsTable
+  valeurResiduelle = Math.max(0,
+    valeur - amortissementParBande × nbBandesUtilisees)
+Retourner ces 3 valeurs dans la réponse.
+
+5.3 — Corriger l'affichage dans /bandes/:id
+Tableau dans l'onglet Charges :
+  Actif | Valeur | Taux | Fraction | Charge / bande
+  Total amortissement : X FCFA
+  Note : "Calculé par bande (taux × valeur × fraction)"
+
+5.4 — Corriger /infrastructure ActifsTab
+Colonnes : Amortissement/bande | Bandes utilisées | Valeur résiduelle
+Supprimer toute mention "annuel" dans ce contexte.
+
+5.5 — Corriger le label dans /parametres
+"Taux d'amortissement annuel" → "Taux d'amortissement par bande (%)"
+
+═══════════════════════════════════════════════════
+BLOC 6 — 10 QUICK WINS UX
+═══════════════════════════════════════════════════
+
+QW1 — Redirect / → /dashboard si session active
+Dans App.tsx, si useGetMe() retourne un user ET route
+est "/" ou "/login" → rediriger vers "/dashboard".
+
+QW2 — Astérisque rouge sur champs obligatoires
+Sur chaque Label de champ requis dans tous les formulaires :
+  <Label>Champ <span className="text-red-500">*</span></Label>
+
+QW3 — Remplacer tous les window.confirm() par AlertDialog
+Chercher exhaustivement window.confirm() dans tout le projet.
+Remplacer chaque occurrence par AlertDialog shadcn/ui
+(titre + description + Annuler/Confirmer).
+S'inspirer du pattern déjà utilisé dans infrastructure.tsx.
+
+QW4 — Remonter les messages d'erreur backend dans les toasts
+  onError: (error: any) => {
+    const message = error?.response?.data?.error
+                 || error?.message
+                 || "Erreur lors de la sauvegarde";
+    toast.error(message);
+  }
+Appliquer à tous les onError de mutations react-query.
+
+QW5 — Pagination /historique-caisse (côté client interim)
+50 entrées/page, boutons Précédent/Suivant,
+indicateur "Page X / Y (Z entrées)".
+Filtres existants conservés, pagination reset au filtre.
+
+QW6 — Filtres + pagination /activity-log
+Ajouter : Select utilisateur, Select type action,
+Date début + Date fin, bouton reset.
+Pagination 50/page. Filtrage côté client sur données chargées.
+
+QW7 — Bouton "Tout sauvegarder" dans /parametres
+Bouton sticky bottom-4, sauvegarde toutes les sections
+modifiées en parallèle (Promise.all).
+
+QW8 — Onglets /bandes/:id → Sheet sur mobile
+useIsMobile() → si mobile : bouton fixe bas "☰ Navigation"
+ouvre Sheet avec liste complète onglets + labels + icônes.
+Desktop : tabs inchangés.
+
+QW9 — Tri colonnes /comparaison-bandes
+Clic en-tête → tri asc, double clic → tri desc.
+Flèches ↑↓ sur colonne active.
+Toutes colonnes numériques triables.
+
+QW10 — Banner offline navigator.onLine
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  // event listeners online/offline dans useEffect
+Banner amber si offline. Toast succès à la reconnexion.
+
+═══════════════════════════════════════════════════
+BLOC 7 — PAGINATION ET TRI SUR TOUS LES TABLEAUX
+═══════════════════════════════════════════════════
+
+RÈGLE GÉNÉRALE À APPLIQUER PARTOUT :
+- Pagination : dès qu'un tableau peut dépasser 50 lignes
+- Tri : sur toutes les colonnes numériques et dates
+- Pattern uniforme : composant réutilisable SortableTable
+  ou hook useSortableTable(data, columns)
+
+7.1 — Créer un hook useSortableTable
+Dans src/lib/use-sortable-table.ts, créer :
+  export function useSortableTable<T>(
+    data: T[],
+    pageSize = 50
+  ) {
+    const [sortKey, setSortKey] = useState<keyof T | null>(null);
+    const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+    const [page, setPage] = useState(1);
+
+    const sorted = useMemo(() => {
+      if (!sortKey) return data;
+      return [...data].sort((a, b) => {
+        const av = a[sortKey], bv = b[sortKey];
+        const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }, [data, sortKey, sortDir]);
+
+    const paginated = sorted.slice(
+      (page - 1) * pageSize, page * pageSize
+    );
+    const totalPages = Math.ceil(sorted.length / pageSize);
+
+    const toggleSort = (key: keyof T) => {
+      if (sortKey === key) {
+        setSortDir(d => d === "asc" ? "desc" : "asc");
+      } else {
+        setSortKey(key);
+        setSortDir("asc");
+      }
+      setPage(1);
+    };
+
+    return { paginated, sorted, page, setPage,
+             totalPages, sortKey, sortDir, toggleSort };
+  }
+
+7.2 — Créer un composant TablePagination réutilisable
+Dans src/components/ui/table-pagination.tsx :
+  <div className="flex items-center justify-between mt-4">
+    <span className="text-sm text-muted-foreground">
+      {total} entrées — Page {page} / {totalPages}
+    </span>
+    <div className="flex gap-2">
+      <Button onClick={() => setPage(p => Math.max(1, p-1))
+        disabled={page === 1}>← Précédent</Button>
+      // numéros de pages (max 5 visibles)
+      <Button onClick={() => setPage(p => Math.min(totalPages, p+1))}
+        disabled={page === totalPages}>Suivant →</Button>
+    </div>
+  </div>
+
+7.3 — Créer un composant SortableHeader réutilisable
+Dans src/components/ui/sortable-header.tsx :
+  // En-tête de colonne cliquable avec indicateur ↑↓
+  <TableHead
+    className="cursor-pointer select-none hover:bg-muted/50"
+    onClick={() => toggleSort(columnKey)}>
+    {label}
+    {sortKey === columnKey
+      ? (sortDir === "asc" ? " ↑" : " ↓")
+      : " ↕"}
+  </TableHead>
+
+7.4 — Appliquer sur TOUS les tableaux suivants
+Pour chaque tableau, utiliser useSortableTable + TablePagination
++ SortableHeader :
+
+/historique-caisse
+  Tri : date, montant, solde après
+  Pagination serveur : 50/page (brancher sur l'API)
+  + Champ recherche texte libre
+  + Bouton export CSV (toutes entrées filtrées)
+
+/activity-log
+  Tri : date, utilisateur, action
+  Pagination serveur : 50/page
+
+/comparaison-bandes
+  Tri : toutes colonnes numériques
+  Pas de pagination (nombre de bandes limité)
+  + Bouton export CSV/Excel
+
+/bandes/:id → onglet Dépenses
+  Tri : date, catégorie, montant
+  Pagination si > 50 lignes
+
+/bandes/:id → onglet Ventes
+  Tri : date, quantité, montant
+  Pagination si > 20 lignes
+
+/bandes/:id → onglet Mortalité
+  Tri : date, âge, décès jour, taux
+  Pagination si > 45 lignes
+
+/bandes/:id → onglet Pesées
+  Tri : date, âge, poids moyen, CV
+  Pas de pagination (peu de lignes)
+
+/bandes/:id → onglet Vaccins
+  Tri : jour prévu, statut
+  Pas de pagination
+
+/bandes/:id → onglet Traitements
+  Tri : date, produit, type
+  Pagination si > 30 lignes
+
+/stocks → Mouvements aliments
+  Tri : date, type, quantité
+  Pagination : 50/page
+
+/stocks → Mouvements médicaments
+  Tri : date, type, quantité, péremption
+  Pagination : 50/page
+
+/financement → Investissements
+  Tri : nom, montant, date, type
+  Pas de pagination (peu de lignes)
+
+/financement → Remboursements
+  Tri : nom, montant, date
+  Pagination si > 30 lignes
+
+/utilisateurs
+  Tri : nom, rôle, date création
+  Pas de pagination
+
+/infrastructure → Dépenses chantier
+  Tri : date, désignation, montant, catégorie
+  Pagination : 50/page
+
+═══════════════════════════════════════════════════
+BLOC 8 — PAGINATION SERVEUR (routes critiques)
+═══════════════════════════════════════════════════
+
+8.1 — Pagination serveur /historique-caisse
+Dans dashboard.ts GET /historique-caisse :
+  Accepter query params : page, limit, categorie, mois, search
+  Appliquer OFFSET/LIMIT sur la requête SQL
+  Retourner : { entries, total, page, totalPages, cashflowMensuel }
+
+8.2 — Pagination serveur /activity-log
+Dans routes/activity-log.ts (ou équivalent) GET / :
+  Accepter : page, limit, userId, action, dateDebut, dateFin
+  Retourner : { logs, total, page, totalPages }
+
+═══════════════════════════════════════════════════
+BLOC 9 — SAISIE RAPIDE ÉTENDUE
+═══════════════════════════════════════════════════
+
+VÉRIFICATION :
+- saisie-rapide.tsx existe et est utilisé dans /dashboard ?
+- Y a-t-il déjà un formulaire unifié journalier dans /bandes/:id ?
+
+9.1 — Composant JournalDuJour (Dialog unifié)
+Créer src/components/journal-du-jour.tsx :
+
+  Dialog avec un seul formulaire :
+
+  HEADER non éditable :
+    🐔 [nom bande] | 📅 [date FR] | ⏱️ J[âge auto calculé]
+
+  SECTION 1 — Mortalité
+    "Décès aujourd'hui" (number, min=0, défaut=0)
+
+  SECTION 2 — Alimentation
+    "Aliment consommé (kg)" (number, min=0)
+    Select type pré-rempli selon âge :
+      < J14 → Démarrage
+      J14-J28 → Croissance
+      > J28 → Finition
+
+  SECTION 3 — Eau
+    "Eau consommée (litres)" (number, min=0)
+
+  SECTION 4 — Observations (optionnel)
+    Textarea placeholder : "Traitements, comportement
+    anormal, visiteurs, météo..."
+
+  Bouton "✓ Enregistrer la journée" :
+  → Promise.all des POST :
+    - /mortalite si deces >= 0
+    - /consommation si aliment > 0
+    - /consommation-eau si eau > 0
+    - /observations si texte non vide
+  → Spinner + toast succès "Journée J[X] enregistrée ✓"
+  → Fermeture auto
+
+9.2 — Bouton dans /bandes/:id
+Bouton vert primaire "📋 Saisir la journée" en haut de page.
+
+9.3 — Bouton dans /dashboard
+Bouton "Saisir aujourd'hui →" sur chaque card bande active.
+
+═══════════════════════════════════════════════════
+BLOC 10 — PWA + MODE HORS-LIGNE
+═══════════════════════════════════════════════════
+
+VÉRIFICATION :
+- Service Worker présent ? vite-plugin-pwa installé ?
+- manifest.webmanifest présent ?
+- IndexedDB / queue offline présente ?
+
+10.1 — Installer vite-plugin-pwa
+  pnpm add -D vite-plugin-pwa --filter @workspace/ferme-familiale
+  pnpm add workbox-window idb --filter @workspace/ferme-familiale
+
+10.2 — Configurer vite.config.ts
+  VitePWA({
+    registerType: "autoUpdate",
+    manifest: {
+      name: "Ferme Mbiedou",
+      short_name: "Ferme",
+      theme_color: "#1a5c32",
+      background_color: "#ffffff",
+      display: "standalone",
+      orientation: "portrait",
+      start_url: "/",
+      icons: [
+        { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+        { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      ],
+    },
+    workbox: {
+      globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+      runtimeCaching: [
+        {
+          urlPattern: /^\/api\/dashboard\/summary/,
+          handler: "NetworkFirst",
+          options: { cacheName: "api-summary",
+            expiration: { maxAgeSeconds: 300 } },
+        },
+        {
+          urlPattern: /^\/api\/bandes$/,
+          handler: "NetworkFirst",
+          options: { cacheName: "api-bandes",
+            expiration: { maxAgeSeconds: 300 } },
+        },
+        {
+          urlPattern: /^\/api\/bandes\/\d+$/,
+          handler: "NetworkFirst",
+          options: { cacheName: "api-bande-detail",
+            expiration: { maxAgeSeconds: 60 } },
+        },
+      ],
+    },
+  })
+
+10.3 — Icônes PWA
+Créer dans public/ :
+  icon-192.png (192×192) et icon-512.png (512×512)
+  SVG vert #1a5c32 avec initiales "FM" si génération
+  d'image impossible.
+
+10.4 — Queue hors-ligne (IndexedDB)
+Créer src/lib/offline-queue.ts :
+
+  import { openDB } from "idb";
+  const DB_NAME = "ferme-offline-queue";
+  const STORE = "requests";
+
+  interface QueuedRequest {
+    id: string; url: string; method: string;
+    body: any; timestamp: number; description: string;
+  }
+
+  async function getDB() {
+    return openDB(DB_NAME, 1, {
+      upgrade(db) { db.createObjectStore(STORE,{keyPath:"id"}); }
+    });
+  }
+
+  export async function enqueueRequest(
+    url: string, method: string, body: any, description: string
+  ) {
+    const db = await getDB();
+    await db.put(STORE, {
+      id: crypto.randomUUID(), url, method, body,
+      timestamp: Date.now(), description
+    });
+  }
+
+  export async function getPendingRequests(): Promise<QueuedRequest[]> {
+    return (await getDB()).getAll(STORE);
+  }
+
+  export async function removeRequest(id: string) {
+    return (await getDB()).delete(STORE, id);
+  }
+
+  export async function syncPendingRequests() {
+    const pending = await getPendingRequests();
+    let success = 0, failed = 0;
+    const errors: string[] = [];
+    for (const req of pending) {
+      try {
+        const res = await fetch(req.url, {
+          method: req.method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(req.body),
+          credentials: "include",
+        });
+        if (res.ok) { await removeRequest(req.id); success++; }
+        else { failed++; errors.push(`${req.description}: ${res.status}`); }
+      } catch {
+        failed++;
+        errors.push(`${req.description}: réseau indisponible`);
+      }
+    }
+    return { success, failed, errors };
+  }
+
+10.5 — Wrapper postWithOffline
+Créer src/lib/api-with-offline.ts :
+
+  import { enqueueRequest } from "./offline-queue";
+
+  export async function postWithOffline(
+    url: string, body: any, description: string
+  ): Promise<{ queued: boolean; data?: any }> {
+    if (!navigator.onLine) {
+      await enqueueRequest(url, "POST", body, description);
+      return { queued: true };
+    }
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return { queued: false, data: await res.json() };
+    } catch {
+      await enqueueRequest(url, "POST", body, description);
+      return { queued: true };
+    }
+  }
+
+10.6 — Intégrer offline dans JournalDuJour
+Utiliser postWithOffline au lieu des mutations react-query.
+Si queued → toast amber "Saisie enregistrée localement".
+Si succès → toast vert "Journée J[X] enregistrée ✓".
+
+10.7 — Sync automatique au retour de connexion
+Dans layout.tsx, étendre l'event listener "online" :
+  const pending = await getPendingRequests();
+  if (pending.length > 0) {
+    toast.info(`Synchronisation de ${pending.length} saisie(s)...`);
+    const { success, failed, errors } = await syncPendingRequests();
+    if (failed === 0) {
+      toast.success(`✓ ${success} saisie(s) synchronisée(s)`);
+      queryClient.invalidateQueries();
+    } else {
+      toast.error(`${success} ok, ${failed} échouée(s)`);
+    }
+  } else {
+    toast.success("Connexion rétablie ✓");
+  }
+
+10.8 — Badge saisies en attente dans le header
+Si getPendingRequests().length > 0 → badge amber dans header :
+  "📴 X en attente"
+Clic → Dialog listant les saisies (description + heure).
+
+10.9 — Bouton installation PWA
+  useEffect(() => {
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    });
+  }, []);
+Si installPrompt disponible → bouton "📱 Installer l'app"
+dans le header. Clic → installPrompt.prompt().
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL OBLIGATOIRE
+═══════════════════════════════════════════════════
+
+## RAPPORT D'IMPLÉMENTATION COMPLET
+## [date du jour]
+
+### ✅ DÉJÀ PRÉSENT (non modifié)
+
+### ✅ IMPLÉMENTÉ
+Pour chaque item : fichier(s), ce qui a changé, lignes.
+
+### ⚠️ PARTIELLEMENT FAIT
+
+### ❌ NON FAIT + raison
+
+### 🔐 SÉCURITÉ
+- Mot de passe admin : généré/env var ✓
+- Bcrypt rounds : 12 ✓
+- Modèle Gemini : env var ✓
+
+### 🏷️ BRANDING
+- Champs dans /parametres ✓
+- Exports PDF dynamiques ✓
+
+### 📊 PHASES
+- Configurables depuis /parametres ✓
+- Plus de duplication frontend/export ✓
+
+### 🔧 AMORTISSEMENT
+- Calcul par bande confirmé
+- Exemple chiffré : "Bâtiment X : 6 000 000 × 10% = 600 000 FCFA"
+
+### 📄 PAGINATION & TRI
+- Liste de tous les tableaux mis à jour
+- Hook useSortableTable créé ✓
+
+### 📱 PWA
+- Installable sur mobile ✓
+- Service Worker actif ✓
+- Offline queue fonctionnelle ✓
+- Sync automatique fonctionnelle ✓
+
+### 🌱 SEED
+- Données réelles protégées par SEED_DEMO_DATA ✓
+
+### ⚠️ POINTS D'ATTENTION
+- Tester offline sur mobile (couper réseau, saisir, reconnecter)
+- Vérifier que les exports PDF lisent bien le branding depuis DB
+- Vérifier que les phases dynamiques n'ont pas cassé les graphiques
+- Changer le mot de passe admin immédiatement après déploiement
+```

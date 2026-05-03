@@ -14,7 +14,7 @@ async function verifyPassword(stored: string, input: string): Promise<boolean> {
 
 async function migratePasswordIfNeeded(userId: number, stored: string, plaintext: string) {
   if (!stored.startsWith("$2a$") && !stored.startsWith("$2b$")) {
-    const hashed = await bcrypt.hash(plaintext, 10);
+    const hashed = await bcrypt.hash(plaintext, 12);
     await db.update(usersTable).set({ password: hashed }).where(eq(usersTable.id, userId));
   }
 }
@@ -68,7 +68,7 @@ router.post("/register", async (req, res) => {
     return;
   }
 
-  const hashed = await bcrypt.hash(password, 10);
+  const hashed = await bcrypt.hash(password, 12);
   const rows = await db.insert(usersTable).values({
     nom,
     username,

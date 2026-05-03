@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getBrand, getPhases, getBrandSync, getPhasesSync, preloadBrand } from "./branding";
 
 interface AggregatedDepense {
   categorie: string;
@@ -38,11 +39,12 @@ function aggregateDepenses(depenses: any[]): AggregatedDepense[] {
   return result;
 }
 
-export function exportBandePDF(detail: any, depenses: any[], ventes: any[], chargesFixes: any, mortalite: any[], pesees: any[], consommation: any) {
+export async function exportBandePDF(detail: any, depenses: any[], ventes: any[], chargesFixes: any, mortalite: any[], pesees: any[], consommation: any) {
+  const brand = await getBrand();
   const doc = new jsPDF();
 
   doc.setFontSize(18);
-  doc.text("Ferme Mbiedou", 14, 20);
+  doc.text(brand.nom, 14, 20);
   doc.setFontSize(14);
   doc.text(`Rapport - ${detail.nom}`, 14, 30);
   doc.setFontSize(10);
@@ -191,11 +193,12 @@ export function exportBandeExcel(detail: any, depenses: any[], ventes: any[], ch
   });
 }
 
-export function exportConstructionPDF(items: any[], title: string) {
+export async function exportConstructionPDF(items: any[], title: string) {
+  const brand = await getBrand();
   const doc = new jsPDF();
 
   doc.setFontSize(18);
-  doc.text("Ferme Mbiedou", 14, 20);
+  doc.text(brand.nom, 14, 20);
   doc.setFontSize(14);
   doc.text(`Rapport - ${title}`, 14, 30);
   doc.setFontSize(10);
@@ -296,7 +299,7 @@ function formatFCFA(n: number): string {
   return formatted + " FCFA";
 }
 
-export function generateRapportBande(
+export async function generateRapportBande(
   detail: any,
   depenses: any[],
   ventes: any[],
@@ -308,6 +311,10 @@ export function generateRapportBande(
   traitements: any[],
   vaccinations: any[],
 ) {
+  // Préchargement des paramètres branding + phases
+  await preloadBrand();
+  const brand = getBrandSync();
+  const phasesConfig = getPhasesSync();
   const doc = new jsPDF();
   const marginX = 14;
   let y = 18;
@@ -321,7 +328,7 @@ export function generateRapportBande(
 
   doc.setFontSize(20);
   doc.setTextColor(34, 87, 47);
-  doc.text("Ferme Mbiedou", marginX, y);
+  doc.text(brand.nom, marginX, y);
   y += 8;
   doc.setFontSize(15);
   doc.setTextColor(0, 0, 0);
@@ -484,12 +491,8 @@ export function generateRapportBande(
     y = (doc as any).lastAutoTable.finalY + 10;
   }
 
-  const PHASES = [
-    { nom: "Démarrage", min: 1, max: 15 },
-    { nom: "Croissance", min: 16, max: 28 },
-    { nom: "Finition", min: 29, max: 45 },
-    { nom: "Réformé", min: 46, max: 999 },
-  ];
+  // BLOC 3 — phases configurables : on s'appuie sur la configuration centralisée.
+  const PHASES = phasesConfig.map(p => ({ nom: p.label, min: p.min, max: p.max }));
   if (mortalite.length > 0) {
     const byPhase = PHASES.map(p => {
       const total = mortalite
@@ -626,7 +629,7 @@ export function generateRapportBande(
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text(`Ferme Mbiedou — Rapport ${detail.nom} — Page ${i}/${pageCount}`, marginX, 290);
+    doc.text(`${brand.nom} — Rapport ${detail.nom} — Page ${i}/${pageCount}`, marginX, 290);
   }
 
   doc.save(`rapport_bande_${(detail.nom || "bande").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`);

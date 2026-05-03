@@ -16,29 +16,47 @@ type Parametre = {
 };
 
 const CATEGORY_ORDER = [
+  "Identité de la ferme",
+  "Phases d'élevage",
   "Charges fixes",
   "Alertes",
   "Indice de conversion",
   "Budget construction",
   "Calendrier vaccinal",
+  "Sauvegarde",
 ];
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  "Identité de la ferme": "Nom, contacts et devise affichés dans les en-têtes et les rapports PDF",
+  "Phases d'élevage": "Bornes en jours qui définissent les phases démarrage / croissance / finition",
   "Charges fixes": "Taux utilisés pour calculer les charges fixes des bandes de poulets",
   "Alertes": "Seuils de déclenchement des alertes sur le tableau de bord et les fiches de bandes",
   "Indice de conversion": "Bornes pour qualifier l'indice de conversion alimentaire (IC)",
   "Budget construction": "Montants par défaut si aucun devis n'a été saisi",
   "Calendrier vaccinal": "Programme de vaccination appliqué automatiquement aux nouvelles bandes",
+  "Sauvegarde": "Configuration de la sauvegarde automatique nocturne de la base de données",
 };
 
 const UNIT_LABELS: Record<string, string> = {
   taux_depreciation_materiel: "%",
   taux_imprevus: "%",
   seuil_mortalite_alerte_jour: "%",
+  seuil_mortalite_alerte_jour_demarrage: "%",
+  seuil_mortalite_alerte_jour_finition: "%",
   seuil_mortalite_alerte_cumul: "%",
   seuil_poids_alerte: "%",
+  seuil_alerte_solde_caisse: "FCFA",
   budget_batiment_defaut: "FCFA",
   budget_carburant_defaut: "FCFA",
+  phase_demarrage_min: "j",
+  phase_demarrage_max: "j",
+  phase_croissance_min: "j",
+  phase_croissance_max: "j",
+  phase_finition_min: "j",
+  phase_finition_max: "j",
+  duree_bande_cible: "j",
+  backup_heure: "h",
+  backup_retention_jours: "j",
 };
 
 export default function Parametres() {

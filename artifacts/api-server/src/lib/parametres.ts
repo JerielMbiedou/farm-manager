@@ -82,3 +82,26 @@ export async function getVaccinationSchedule(): Promise<Array<{ jourPrevu: numbe
   }
   return schedule.length > 0 ? schedule : DEFAULT_VACCINS;
 }
+
+export interface PhaseConfig {
+  demarrage: { min: number; max: number };
+  croissance: { min: number; max: number };
+  finition: { min: number; max: number };
+  dureeJoursCible: number;
+}
+
+export async function getPhases(): Promise<PhaseConfig> {
+  const params = await getParametres();
+  const num = (cle: string, def: number) => {
+    const v = params[cle];
+    if (v === undefined) return def;
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : def;
+  };
+  return {
+    demarrage: { min: num("phase_demarrage_min", 1),  max: num("phase_demarrage_max", 15) },
+    croissance:{ min: num("phase_croissance_min", 16), max: num("phase_croissance_max", 28) },
+    finition:  { min: num("phase_finition_min", 29),  max: num("phase_finition_max", 45) },
+    dureeJoursCible: num("duree_bande_cible", 45),
+  };
+}

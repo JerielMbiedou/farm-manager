@@ -25,7 +25,7 @@ export async function generateImage(
   prompt: string
 ): Promise<{ b64_json: string; mimeType: string }> {
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-image",
+    model: process.env.GEMINI_IMAGE_MODEL ?? "gemini-2.5-flash-image",
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     config: {
       responseModalities: [Modality.TEXT, Modality.IMAGE],

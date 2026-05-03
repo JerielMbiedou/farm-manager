@@ -968,7 +968,7 @@ Règles:
 - Retourne UNIQUEMENT le JSON, sans texte avant ou après`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
       contents: [{
         role: "user",
         parts: [
@@ -1073,7 +1073,10 @@ router.get("/:id/actifs", async (req, res) => {
     const taux = parseFloat(actif.tauxAmortissementAnnuel);
     const dateDebut = bandeRow?.dateDeDepart ? new Date(bandeRow.dateDeDepart) : new Date();
     const dureeJours = Math.max(1, Math.floor((Date.now() - dateDebut.getTime()) / (1000 * 60 * 60 * 24)));
-    const amortissement = valeur * fraction * (taux / 100) * (dureeJours / 365);
+    // Amortissement PAR BANDE = valeur × (taux/100) × fraction utilisée
+    // (taux est désormais "par bande", indépendant de la durée)
+    void dureeJours;
+    const amortissement = valeur * fraction * (taux / 100);
     return {
       id: a.id,
       actifId: a.actifId,

@@ -1,8 +1,10 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
+import { useGetMe } from "@workspace/api-client-react";
 
 import { Layout } from "@/components/layout";
 import Login from "@/pages/login";
@@ -34,11 +36,24 @@ const queryClient = new QueryClient({
   },
 });
 
+/** QW1 — Si l'utilisateur est déjà authentifié et atterrit sur /, on l'envoie sur /dashboard. */
+function HomeRoute() {
+  const { data: user, isLoading } = useGetMe();
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    if (!isLoading && user) {
+      setLocation("/dashboard");
+    }
+  }, [user, isLoading, setLocation]);
+  return <Login />;
+}
+
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Login} />
+      <Route path="/" component={HomeRoute} />
       <Route path="/login" component={Login} />
+      <Route path="/dashboard/" component={() => { const [, set] = useLocation(); useEffect(() => set("/dashboard"), [set]); return null; }} />
       
       <Route path="/dashboard">
         <Layout><Dashboard /></Layout>

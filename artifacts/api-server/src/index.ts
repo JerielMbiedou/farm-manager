@@ -1,6 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { seedDefaults } from "./lib/seed";
+import { seedDefaults, ensureParametres } from "./lib/seed";
 import { startBackupCron } from "./lib/backup";
 
 const rawPort = process.env["PORT"];
@@ -17,17 +17,20 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-seedDefaults().then(() => {
-  app.listen(port, (err) => {
-    if (err) {
-      logger.error({ err }, "Error listening on port");
-      process.exit(1);
-    }
+seedDefaults()
+  .then(() => ensureParametres())
+  .then(() => {
+    app.listen(port, (err) => {
+      if (err) {
+        logger.error({ err }, "Error listening on port");
+        process.exit(1);
+      }
 
-    logger.info({ port }, "Server listening");
-    startBackupCron();
+      logger.info({ port }, "Server listening");
+      startBackupCron();
+    });
+  })
+  .catch((err) => {
+    logger.error({ err }, "Failed to seed defaults");
+    process.exit(1);
   });
-}).catch((err) => {
-  logger.error({ err }, "Failed to seed defaults");
-  process.exit(1);
-});

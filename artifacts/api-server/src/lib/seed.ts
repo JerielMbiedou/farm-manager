@@ -121,12 +121,82 @@ async function importBande1Data() {
   }
 }
 
+function generateRandomPassword(len = 16): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*";
+  let out = "";
+  for (let i = 0; i < len; i++) out += chars.charAt(Math.floor(Math.random() * chars.length));
+  return out;
+}
+
+// Liste centralisée de TOUS les paramètres applicatifs.
+// Utilisée à la fois par seedDefaults (DB vide) et par ensureParametres (DB existante).
+const ALL_PARAMETRES: Array<{ cle: string; valeur: string; description: string; categorie: string }> = [
+  { cle: "taux_depreciation_materiel", valeur: "10", description: "Taux de dépréciation annuel du matériel fixe (%)", categorie: "Charges fixes" },
+  { cle: "taux_imprevus", valeur: "5", description: "Taux pour imprévus sur dépenses de production (%)", categorie: "Charges fixes" },
+  { cle: "seuil_mortalite_alerte_jour", valeur: "3", description: "Taux de mortalité journalier déclenchant une alerte rouge (%) — utilisé en finition (≥ J22)", categorie: "Alertes" },
+  { cle: "seuil_mortalite_alerte_jour_demarrage", valeur: "1", description: "Taux de mortalité journalier déclenchant une alerte rouge en démarrage (J0–J21) (%)", categorie: "Alertes" },
+  { cle: "seuil_mortalite_alerte_jour_finition", valeur: "0.5", description: "Taux de mortalité journalier déclenchant une alerte rouge en finition (≥ J22) (%)", categorie: "Alertes" },
+  { cle: "seuil_alerte_solde_caisse", valeur: "100000", description: "Seuil de solde caisse déclenchant une alerte basse (FCFA)", categorie: "Alertes" },
+  { cle: "seuil_mortalite_alerte_cumul", valeur: "5", description: "Taux de mortalité cumulé affiché en rouge (%)", categorie: "Alertes" },
+  { cle: "seuil_poids_alerte", valeur: "90", description: "Pourcentage minimum du poids objectif avant alerte (%)", categorie: "Alertes" },
+  { cle: "ic_bon", valeur: "1.8", description: "Indice de conversion considéré comme bon (≤)", categorie: "Indice de conversion" },
+  { cle: "ic_moyen", valeur: "2.2", description: "Indice de conversion considéré comme moyen (≤)", categorie: "Indice de conversion" },
+  { cle: "budget_batiment_defaut", valeur: "3525000", description: "Budget bâtiment par défaut si aucun devis (FCFA)", categorie: "Budget construction" },
+  { cle: "budget_carburant_defaut", valeur: "150000", description: "Budget carburant par défaut si aucun devis (FCFA)", categorie: "Budget construction" },
+
+  // Identité de la ferme (BLOC 2)
+  { cle: "ferme_nom", valeur: "Ferme Mbiedou", description: "Nom de la ferme (PDF, en-têtes)", categorie: "Identité de la ferme" },
+  { cle: "ferme_localite", valeur: "", description: "Localité / village (ex. : Mbiedou, Cameroun)", categorie: "Identité de la ferme" },
+  { cle: "ferme_responsable", valeur: "", description: "Nom du responsable", categorie: "Identité de la ferme" },
+  { cle: "ferme_telephone", valeur: "", description: "Téléphone de contact", categorie: "Identité de la ferme" },
+  { cle: "ferme_email", valeur: "", description: "Email de contact", categorie: "Identité de la ferme" },
+  { cle: "ferme_devise", valeur: "FCFA", description: "Devise affichée (FCFA, EUR, …)", categorie: "Identité de la ferme" },
+
+  // Phases d'élevage (BLOC 3)
+  { cle: "phase_demarrage_min",  valeur: "1",  description: "Début de la phase démarrage (jour)", categorie: "Phases d'élevage" },
+  { cle: "phase_demarrage_max",  valeur: "15", description: "Fin de la phase démarrage (jour)", categorie: "Phases d'élevage" },
+  { cle: "phase_croissance_min", valeur: "16", description: "Début de la phase croissance (jour)", categorie: "Phases d'élevage" },
+  { cle: "phase_croissance_max", valeur: "28", description: "Fin de la phase croissance (jour)", categorie: "Phases d'élevage" },
+  { cle: "phase_finition_min",   valeur: "29", description: "Début de la phase finition (jour)", categorie: "Phases d'élevage" },
+  { cle: "phase_finition_max",   valeur: "45", description: "Fin de la phase finition (jour)", categorie: "Phases d'élevage" },
+  { cle: "duree_bande_cible",    valeur: "45", description: "Durée cible d'une bande (jours)", categorie: "Phases d'élevage" },
+
+  // Sauvegarde automatique (BLOC 4)
+  { cle: "backup_heure",            valeur: "2", description: "Heure d'exécution de la sauvegarde automatique (0–23)", categorie: "Sauvegarde" },
+  { cle: "backup_retention_jours",  valeur: "7", description: "Nombre de sauvegardes conservées (rotation)", categorie: "Sauvegarde" },
+];
+
+/**
+ * Insère les paramètres manquants sans toucher à ceux qui existent déjà.
+ * Idempotent — sûr à appeler à chaque démarrage.
+ */
+export async function ensureParametres() {
+  try {
+    let inserted = 0;
+    for (const p of ALL_PARAMETRES) {
+      const r = await db.execute(sql`
+        INSERT INTO parametres (cle, valeur, description, categorie)
+        VALUES (${p.cle}, ${p.valeur}, ${p.description}, ${p.categorie})
+        ON CONFLICT (cle) DO NOTHING
+      `);
+      if ((r as any).rowCount > 0) inserted++;
+    }
+    if (inserted > 0) console.log(`ensureParametres: ${inserted} new parameter(s) inserted`);
+  } catch (e) {
+    console.log("ensureParametres skipped:", (e as Error).message);
+  }
+}
+
 export async function seedDefaults() {
   await db.execute(sql`CREATE TABLE IF NOT EXISTS session (sid VARCHAR NOT NULL COLLATE "default", sess JSON NOT NULL, expire TIMESTAMP(6) NOT NULL, CONSTRAINT session_pkey PRIMARY KEY (sid))`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON session (expire)`);
 
-  await fixSpelling();
-  await importBande1Data();
+  const seedDemo = (process.env.SEED_DEMO_DATA ?? "true").toLowerCase() !== "false";
+
+  if (seedDemo) {
+    await fixSpelling();
+    await importBande1Data();
+  }
 
   const existingUsers = await db.select().from(usersTable);
   if (existingUsers.length > 0) {
@@ -134,17 +204,42 @@ export async function seedDefaults() {
     return;
   }
 
-  console.log("Empty database detected, seeding all data...");
+  console.log("Empty database detected, seeding base data (admin + parameters)...");
 
-  const adminHash = await bcrypt.hash("admin123", 10);
+  // BLOC 1 — sécurité : mot de passe admin depuis env, sinon généré aléatoirement,
+  // puis loggué une seule fois pour permettre à l'opérateur de le récupérer.
+  let adminPlaintext = process.env.INITIAL_ADMIN_PASSWORD;
+  let adminPwdGenerated = false;
+  if (!adminPlaintext) {
+    adminPlaintext = generateRandomPassword(16);
+    adminPwdGenerated = true;
+  }
+  const adminHash = await bcrypt.hash(adminPlaintext, 12);
 
   await db.insert(usersTable).values([
     { username: "admin", password: adminHash, nom: "Administrateur", role: "admin" },
-    { username: "papa", password: "papa123", nom: "Papa", role: "investisseur" },
-    { username: "gestionnaire", password: "gest123", nom: "Gestionnaire", role: "gestionnaire" },
   ]);
-  console.log("Users seeded");
+  console.log("Admin user seeded");
+  if (adminPwdGenerated) {
+    console.log("============================================================");
+    console.log("⚠️  MOT DE PASSE ADMIN GÉNÉRÉ (à noter MAINTENANT) :");
+    console.log("    Identifiant : admin");
+    console.log("    Mot de passe :", adminPlaintext);
+    console.log("    (réglez INITIAL_ADMIN_PASSWORD dans l'env pour fixer ce mot de passe)");
+    console.log("============================================================");
+  }
 
+  if (seedDemo) {
+    const papaHash = await bcrypt.hash("papa123", 12);
+    const gestHash = await bcrypt.hash("gest123", 12);
+    await db.insert(usersTable).values([
+      { username: "papa", password: papaHash, nom: "Papa", role: "investisseur" },
+      { username: "gestionnaire", password: gestHash, nom: "Gestionnaire", role: "gestionnaire" },
+    ]);
+    console.log("Demo users seeded (papa, gestionnaire)");
+  }
+
+  if (seedDemo) {
   await db.insert(financementTable).values([
     { nom: "Papa", montant: "600000", date: "2024-01-01" },
     { nom: "Maman", montant: "1500000", date: "2024-01-01" },
@@ -338,6 +433,7 @@ export async function seedDefaults() {
     { bandeId: bande.id, jourPrevu: 21, nom: "Rappel Bipestos + Antistress", description: "Rappel bipestos (Newcastle+Gumboro) + antistress", fait: "non" },
   ] as any);
   console.log("Vaccinations seeded");
+  } // fin if (seedDemo) — financement / chantier / bande / dépenses / vaccinations
 
   await db.insert(parametresTable).values([
     { cle: "taux_depreciation_materiel", valeur: "10", description: "Taux de dépréciation annuel du matériel fixe (%)", categorie: "Charges fixes" },
@@ -367,6 +463,27 @@ export async function seedDefaults() {
     { cle: "vaccin_j21_nom", valeur: "Rappel Bipestos + Antistress", description: "Nom du vaccin jour 21", categorie: "Calendrier vaccinal" },
     { cle: "vaccin_j21_jour", valeur: "21", description: "Jour prévu pour le rappel bipestos", categorie: "Calendrier vaccinal" },
     { cle: "vaccin_j21_description", valeur: "Rappel bipestos (Newcastle+Gumboro) + antistress", description: "Description vaccin jour 21", categorie: "Calendrier vaccinal" },
+
+    // BLOC 2 — Branding / identité de la ferme (utilisé dans PDF & en-têtes UI)
+    { cle: "ferme_nom", valeur: "Ferme Mbiedou", description: "Nom de la ferme (PDF, en-têtes)", categorie: "Identité de la ferme" },
+    { cle: "ferme_localite", valeur: "", description: "Localité / village (ex. : Mbiedou, Cameroun)", categorie: "Identité de la ferme" },
+    { cle: "ferme_responsable", valeur: "", description: "Nom du responsable", categorie: "Identité de la ferme" },
+    { cle: "ferme_telephone", valeur: "", description: "Téléphone de contact", categorie: "Identité de la ferme" },
+    { cle: "ferme_email", valeur: "", description: "Email de contact", categorie: "Identité de la ferme" },
+    { cle: "ferme_devise", valeur: "FCFA", description: "Devise affichée (FCFA, EUR, …)", categorie: "Identité de la ferme" },
+
+    // BLOC 3 — Phases d'élevage (bornes en jours) + durée cible
+    { cle: "phase_demarrage_min",  valeur: "1",  description: "Début de la phase démarrage (jour)", categorie: "Phases d'élevage" },
+    { cle: "phase_demarrage_max",  valeur: "15", description: "Fin de la phase démarrage (jour)", categorie: "Phases d'élevage" },
+    { cle: "phase_croissance_min", valeur: "16", description: "Début de la phase croissance (jour)", categorie: "Phases d'élevage" },
+    { cle: "phase_croissance_max", valeur: "28", description: "Fin de la phase croissance (jour)", categorie: "Phases d'élevage" },
+    { cle: "phase_finition_min",   valeur: "29", description: "Début de la phase finition (jour)", categorie: "Phases d'élevage" },
+    { cle: "phase_finition_max",   valeur: "45", description: "Fin de la phase finition (jour)", categorie: "Phases d'élevage" },
+    { cle: "duree_bande_cible",    valeur: "45", description: "Durée cible d'une bande (jours)", categorie: "Phases d'élevage" },
+
+    // BLOC 4 — Sauvegarde automatique
+    { cle: "backup_heure",            valeur: "2", description: "Heure d'exécution de la sauvegarde automatique (0–23)", categorie: "Sauvegarde" },
+    { cle: "backup_retention_jours",  valeur: "7", description: "Nombre de sauvegardes conservées (rotation)", categorie: "Sauvegarde" },
   ]);
   console.log("Paramètres seeded");
 

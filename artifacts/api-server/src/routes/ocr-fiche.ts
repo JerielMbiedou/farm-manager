@@ -88,7 +88,7 @@ router.post("/", upload.single("photo"), async (req, res) => {
 
     const ai = await getAI();
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
       contents: [
         {
           role: "user",

@@ -21,6 +21,7 @@ import {
 import { useGetMe, useLogout, UserRole } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { preloadBrand, getBrandSync } from "@/lib/branding";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -28,6 +29,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const logout = useLogout();
   const { toast } = useToast();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // BLOC 2 — nom de la ferme dynamique (chargé depuis /api/parametres)
+  const [fermeNom, setFermeNom] = useState<string>(getBrandSync().nom);
+  useEffect(() => {
+    let alive = true;
+    preloadBrand().then(() => { if (alive) setFermeNom(getBrandSync().nom); });
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !user && location !== "/login" && location !== "/") {
@@ -141,7 +149,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <div>
               <h1 className="text-lg font-bold tracking-tight text-sidebar-primary leading-tight">
-                Ferme Mbiedou
+                {fermeNom}
               </h1>
               <p className="text-[11px] text-sidebar-foreground/50 leading-tight">Gestion avicole</p>
             </div>

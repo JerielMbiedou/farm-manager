@@ -69,15 +69,18 @@ import { useConsommationEau, useCreateConsommationEau, useDeleteConsommationEau,
 import ScanFiche from "@/components/scan-fiche";
 import DesignationCombobox from "@/components/designation-combobox";
 
-const PHASES = [
+// Phases d'élevage : valeurs par défaut, écrasées par /api/parametres au montage (BLOC 3).
+import { getPhasesSync, preloadBrand, type PhaseConfig } from "@/lib/branding";
+
+const DEFAULT_PHASES: PhaseConfig[] = [
   { nom: "Demarrage", label: "Démarrage", min: 1, max: 15, color: "#3b82f6" },
   { nom: "Croissance", label: "Croissance", min: 16, max: 28, color: "#22c55e" },
   { nom: "Finition", label: "Finition", min: 29, max: 45, color: "#f59e0b" },
   { nom: "Reforme", label: "Réformé", min: 46, max: 999, color: "#8b5cf6" },
 ];
 
-function getPhase(ageJours: number) {
-  return PHASES.find(p => ageJours >= p.min && ageJours <= p.max) || PHASES[3];
+function getPhaseFromArr(phases: PhaseConfig[], ageJours: number) {
+  return phases.find(p => ageJours >= p.min && ageJours <= p.max) || phases[phases.length - 1];
 }
 
 const depenseSchema = z.object({
@@ -772,6 +775,16 @@ export default function BandeDetailView() {
   const params = useParams<{ id: string }>();
   const bandeId = Number(params.id);
 
+  // BLOC 3 — phases d'élevage chargées dynamiquement depuis /api/parametres
+  const [phases, setPhases] = useState<PhaseConfig[]>(DEFAULT_PHASES);
+  useEffect(() => {
+    let alive = true;
+    preloadBrand().then(() => {
+      if (alive) setPhases(getPhasesSync());
+    });
+    return () => { alive = false; };
+  }, []);
+
   const { data: user } = useGetMe();
   const { data: bande, isLoading: isLoadingBande } = useGetBande(bandeId, {
     query: { enabled: !!bandeId, queryKey: getGetBandeQueryKey(bandeId) }
@@ -1078,7 +1091,7 @@ export default function BandeDetailView() {
   const observationItems = (observationsData || []) as Array<Record<string, unknown>>;
   const refPoids = (referencePoids || []) as Array<{ ageJours: number; poidsG: number }>;
 
-  const mortaliteParPhase = PHASES.map(phase => {
+  const mortaliteParPhase = phases.map(phase => {
     const items = mortaliteItems.filter((m: any) => m.ageJours >= phase.min && m.ageJours <= phase.max);
     const totalDeces = items.reduce((s: number, m: any) => s + (m.decesJour || 0), 0);
     return { ...phase, totalDeces, count: items.length };
@@ -1086,7 +1099,7 @@ export default function BandeDetailView() {
 
   const icParPhase = (() => {
     const result: Array<{ label: string; color: string; alimentKg: number; poidsGagne: number; ic: number | null }> = [];
-    for (const phase of PHASES) {
+    for (const phase of phases) {
       const alimentEntries = consEntries.filter((c: any) => {
         const d = new Date(c.date as string);
         const startDate = new Date(detail.dateDeDepart);
