@@ -46,7 +46,8 @@ const schema = z.object({
   alimentKg: numFromInput,
   typeAliment: z.enum(["demarrage", "croissance", "finition"]),
   eauLitres: numFromInput,
-  poidsMoyenG: numFromInput,
+  poidsMinG: numFromInput,
+  poidsMaxG: numFromInput,
   traitementProduit: z.string().optional(),
   traitementDosage: z.string().optional(),
   observations: z.string().optional(),
@@ -72,7 +73,8 @@ export default function JournalDuJour({ bande, open, onOpenChange, onSuccess }: 
       alimentKg: undefined,
       typeAliment: typeAlimentDefaut,
       eauLitres: undefined,
-      poidsMoyenG: undefined,
+      poidsMinG: undefined,
+      poidsMaxG: undefined,
       traitementProduit: "",
       traitementDosage: "",
       observations: "",
@@ -119,11 +121,18 @@ export default function JournalDuJour({ bande, open, onOpenChange, onSuccess }: 
       );
     }
 
-    if (values.poidsMoyenG && values.poidsMoyenG > 0) {
+    const hasMin = values.poidsMinG != null && values.poidsMinG > 0;
+    const hasMax = values.poidsMaxG != null && values.poidsMaxG > 0;
+    if (hasMin && hasMax) {
       tasks.push(
         offlineFetch(`${baseUrl}/pesees`, {
           method: "POST",
-          body: { date: today, ageJours, poidsMoyenG: values.poidsMoyenG },
+          body: {
+            date: today,
+            ageJours,
+            poidsMinG: values.poidsMinG,
+            poidsMaxG: values.poidsMaxG,
+          },
           label: `Pesée ${bande.nom} J${ageJours}`,
         })
       );
@@ -181,7 +190,8 @@ export default function JournalDuJour({ bande, open, onOpenChange, onSuccess }: 
           alimentKg: undefined,
           typeAliment: typeAlimentDefaut,
           eauLitres: undefined,
-          poidsMoyenG: undefined,
+          poidsMinG: undefined,
+          poidsMaxG: undefined,
           traitementProduit: "",
           traitementDosage: "",
           observations: "",
@@ -313,31 +323,61 @@ export default function JournalDuJour({ bande, open, onOpenChange, onSuccess }: 
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="poidsMoyenG"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Poids moyen (g)
-                    <span className="text-muted-foreground text-xs ml-2">(optionnel — si pesée du jour)</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={1}
-                      placeholder="Ex: 1850"
-                      data-testid="input-poids-moyen"
-                      {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="rounded-md border bg-muted/20 p-3 space-y-3">
+              <p className="text-sm font-medium">
+                Pesée du jour
+                <span className="text-muted-foreground text-xs ml-2">(optionnel — poids moyen calculé automatiquement)</span>
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="poidsMinG"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Poids min (g)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          placeholder="Ex: 1700"
+                          data-testid="input-poids-min"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="poidsMaxG"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Poids max (g)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          placeholder="Ex: 2000"
+                          data-testid="input-poids-max"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                La pesée n'est enregistrée que si le min ET le max sont renseignés.
+              </p>
+            </div>
 
             <div className="rounded-md border bg-muted/20 p-3 space-y-3">
               <p className="text-sm font-medium">
