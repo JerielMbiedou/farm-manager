@@ -155,3 +155,15 @@ id = "QlzCX4gZ_sZYl1rC7_7bZ"
 uri = "file://exports/migration-render.sql.txt"
 type = "text"
 title = "migration-render.sql (Klartext, 189 KB) — nach Download in .sql umbenennen"
+
+[[outputs]]
+id = "5-0eWj9Sm5ypkc_GbbWJf"
+uri = "file://exports/migration-render-v2.tar.gz"
+type = "unspecified"
+title = "migration-render-v2.tar.gz — Render-compatible (compressé, 16 KB)"
+
+[[outputs]]
+id = "bhMvmCZKPKMS4QD71P5F3"
+uri = "file://exports/migration-render-v2.sql.txt"
+type = "text"
+title = "migration-render-v2.sql (texte brut, 184 KB) — renommer en .sql après téléchargement"
