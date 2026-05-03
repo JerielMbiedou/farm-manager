@@ -167,4 +167,81 @@ router.post("/migrate-data-2026-05", async (req, res) => {
   }
 });
 
+/**
+ * Migration orthographe 2026-05 — unification des variantes de désignations.
+ * Idempotent. Chaque correction est listée explicitement (avant/après).
+ *
+ * Usage : POST /api/admin/migrate-spelling-2026-05  (rôle admin requis)
+ */
+router.post("/migrate-spelling-2026-05", async (req, res) => {
+  if (!(await requireAdmin(req, res))) return;
+
+  // Liste explicite des corrections (avant → après)
+  const BANDE_FIXES: Array<[string, string]> = [
+    ["desinfectant", "Désinfectant"],
+    ["Detergent", "Détergent"],
+    ["seaux", "Seaux"],
+    ["Aliments démarrage", "Aliment démarrage"],
+  ];
+
+  const CHANTIER_FIXES: Array<[string, string]> = [
+    ["Main d'oeuvre", "Main-d'œuvre"],
+    ["derniere tranche main d'oeuvre", "Dernière tranche main-d'œuvre"],
+    ["Fers de 8", "Fer de 8"],
+    ["Parpaing", "Parpaings"],
+    ["Sacs de ciment", "Sac de ciment"],
+    ["pelle ronde", "Pelle ronde"],
+  ];
+
+  const report: Record<string, number> = {};
+
+  try {
+    for (const [from, to] of BANDE_FIXES) {
+      const r = await db.execute(sql`
+        UPDATE bande_depenses SET designation = ${to} WHERE designation = ${from}
+      `);
+      report[`bande: "${from}" → "${to}"`] = r.rowCount ?? 0;
+    }
+
+    for (const [from, to] of CHANTIER_FIXES) {
+      const r = await db.execute(sql`
+        UPDATE chantier_depenses SET designation = ${to} WHERE designation = ${from}
+      `);
+      report[`chantier: "${from}" → "${to}"`] = r.rowCount ?? 0;
+    }
+
+    // Vérifications : désignations distinctes après correction
+    const apresBandes = await db.execute(sql`
+      SELECT designation, categorie, COUNT(*)::int as nb
+      FROM bande_depenses GROUP BY designation, categorie
+      ORDER BY categorie, LOWER(designation)
+    `);
+    const apresChantiers = await db.execute(sql`
+      SELECT designation, categorie, COUNT(*)::int as nb
+      FROM chantier_depenses GROUP BY designation, categorie
+      ORDER BY categorie, LOWER(designation)
+    `);
+
+    await logFromRequest(req, "Migration orthographe 2026-05", JSON.stringify(report));
+
+    res.json({
+      success: true,
+      message: "Corrections orthographiques appliquées",
+      corrections: report,
+      referentiel_final: {
+        bande_depenses: apresBandes.rows,
+        chantier_depenses: apresChantiers.rows,
+      },
+    });
+  } catch (err: any) {
+    req.log?.error({ err }, "Migration orthographe 2026-05 failed");
+    res.status(500).json({
+      success: false,
+      message: "Erreur durant la migration orthographe",
+      error: err.message,
+      partial_report: report,
+    });
+  }
+});
+
 export default router;
