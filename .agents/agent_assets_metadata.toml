@@ -24,6 +24,30 @@ uri = "file://artifacts/ferme-familiale/public/images/logo-variant-3-african-mod
 type = "image"
 title = "modern african geometric logo"
 
+[[generated]]
+id = "w0O7ZCyuf9a0S28-yonu2"
+uri = "file://attached_assets/logos/v1_modern_minimal.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "CcZNInseLm8ymeNeLsBOU"
+uri = "file://attached_assets/logos/v3_warm_african.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "byBVZGP6uawtK8TL1qrs4"
+uri = "file://attached_assets/logos/v2_circular_emblem.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "P6KabcrT-owdGyZEYk259"
+uri = "file://attached_assets/logos/v4_corporate_shield.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "Mowr9Gm2HQI7qePNul_fA"
 uri = "file://attached_assets/stock_images/poultry_farm_hero_1.jpg"
@@ -167,3 +191,27 @@ id = "bhMvmCZKPKMS4QD71P5F3"
 uri = "file://exports/migration-render-v2.sql.txt"
 type = "text"
 title = "migration-render-v2.sql (texte brut, 184 KB) — renommer en .sql après téléchargement"
+
+[[outputs]]
+id = "YIlDaAZAAEBX5BfGKGq53"
+uri = "file://attached_assets/logos/v1_modern_minimal.png"
+type = "image"
+title = "V1 — Moderne minimaliste (vert + beige)"
+
+[[outputs]]
+id = "bpb_j-sNDJmcFiYT8RYMg"
+uri = "file://attached_assets/logos/v2_circular_emblem.png"
+type = "image"
+title = "V2 — Emblème circulaire (vert + or, style coopérative)"
+
+[[outputs]]
+id = "ejmm3NIowhvSRzGTW_PlE"
+uri = "file://attached_assets/logos/v3_warm_african.png"
+type = "image"
+title = "V3 — Illustration africaine chaleureuse (terracotta + motifs Bamileke)"
+
+[[outputs]]
+id = "s216dpCeZzC7JUC-IPiHw"
+uri = "file://attached_assets/logos/v4_corporate_shield.png"
+type = "image"
+title = "V4 — Bouclier corporate (bleu marine + émeraude)"
