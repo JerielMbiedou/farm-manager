@@ -1,0 +1,234 @@
+Effectue un audit complet et détaillé de l'application côté
+expérience utilisateur, interface et workflows.
+
+Lis toutes les pages, composants, et routes frontend.
+Ne modifie rien. Rapport uniquement.
+
+═══════════════════════════════════════════════════
+PARTIE 1 — INVENTAIRE DES WORKFLOWS
+═══════════════════════════════════════════════════
+
+Pour chaque workflow utilisateur de l'app, décris :
+- Le nom du workflow
+- Les étapes exactes (écran par écran, clic par clic)
+- Les données saisies à chaque étape
+- Ce qui se passe en cas d'erreur
+- Ce qui manque ou pourrait être simplifié
+
+Workflows à couvrir obligatoirement :
+
+1. Inscription / Connexion / Gestion des rôles
+2. Création d'une nouvelle bande (de zéro à première saisie)
+3. Saisie quotidienne d'une journée de production
+   (mortalité + aliment + eau + observations)
+4. Enregistrement d'une dépense de production
+5. Enregistrement d'une vente
+6. Consultation du résumé financier d'une bande
+7. Scan d'une fiche de suivi papier (OCR)
+8. Clôture d'une bande
+9. Consultation du dashboard principal
+10. Gestion des stocks (aliments + médicaments)
+11. Gestion d'un chantier Infrastructure
+    (création → lots → dépenses → clôture)
+12. Gestion du financement investisseurs
+    (ajout apport → remboursement)
+13. Consultation de l'historique de caisse
+14. Simulation de rentabilité
+15. Export PDF / Excel d'une bande
+16. Gestion des paramètres globaux
+17. Consultation du journal d'activité
+18. Comparaison inter-bandes
+
+═══════════════════════════════════════════════════
+PARTIE 2 — INVENTAIRE UI / COMPOSANTS
+═══════════════════════════════════════════════════
+
+Pour chaque page de l'application, décris :
+
+Page : [nom + route]
+├── Layout général (sidebar / header / contenu)
+├── Composants présents (cards, tables, formulaires,
+│   graphiques, modals, tabs, badges, alertes...)
+├── Actions disponibles (boutons, liens, filtres)
+├── États gérés (loading, empty, error, success)
+├── Responsivité mobile (OK / problèmes détectés)
+└── Cohérence visuelle (couleurs, typo, espacement)
+
+Pages à couvrir :
+/login, /dashboard, /bandes, /bandes/:id,
+/comparaison-bandes, /infrastructure, /financement,
+/tresorerie, /historique-caisse, /simulation,
+/planification, /stocks, /parametres,
+/utilisateurs, /activity-log
+
+Pour chaque page, noter aussi :
+- Les données affichées (source API)
+- Les graphiques présents (type, données, lisibilité)
+- Les tableaux (colonnes, tri, pagination, export)
+- Les formulaires (champs, validation, feedback)
+
+═══════════════════════════════════════════════════
+PARTIE 3 — ANALYSE UX GLOBALE
+═══════════════════════════════════════════════════
+
+3.1 — Navigation et structure
+- La sidebar est-elle bien organisée ?
+- Les groupes de menu sont-ils logiques ?
+- Y a-t-il des pages difficiles à trouver ?
+- Le breadcrumb existe-t-il ? Est-il utile ?
+- Les raccourcis clavier existent-ils ?
+
+3.2 — Cohérence visuelle
+- Les couleurs sont-elles cohérentes (vert primaire,
+  rouge danger, amber warning...) ?
+- Les typographies sont-elles uniformes ?
+- Les espacements sont-ils harmonieux ?
+- Les icônes sont-elles cohérentes (même librairie) ?
+- Les états vides (empty states) sont-ils soignés ?
+
+3.3 — Formulaires et saisie
+- Les labels sont-ils clairs ?
+- Les messages d'erreur sont-ils explicites ?
+- Les champs obligatoires sont-ils marqués ?
+- Les valeurs par défaut sont-elles utiles ?
+- La tabulation (ordre des champs) est-elle logique ?
+- Les confirmations de suppression existent-elles ?
+
+3.4 — Feedback utilisateur
+- Les toasts (notifications) existent-ils ?
+- Les états de chargement (spinners) sont-ils présents ?
+- Les confirmations de succès sont-elles claires ?
+- Les erreurs API sont-elles affichées à l'utilisateur ?
+
+3.5 — Mobile
+- L'app est-elle réellement utilisable sur smartphone ?
+- Quels écrans posent problème sur petit écran ?
+- Les tableaux sont-ils scrollables horizontalement ?
+- Les boutons sont-ils assez grands pour le tactile ?
+- Les formulaires sont-ils confortables sur mobile ?
+
+3.6 — Performance perçue
+- Y a-t-il des pages qui chargent lentement ?
+- Les listes longues sont-elles paginées ?
+- Les graphiques alourdissent-ils le rendu ?
+
+═══════════════════════════════════════════════════
+PARTIE 4 — FONCTIONNALITÉS EXISTANTES DÉTAILLÉES
+═══════════════════════════════════════════════════
+
+Pour chaque fonctionnalité, donne une fiche complète :
+
+┌─────────────────────────────────────────────────┐
+│ NOM DE LA FONCTIONNALITÉ                        │
+├─────────────────────────────────────────────────┤
+│ Page(s) : /route                                │
+│ Composant(s) : fichier.tsx                      │
+│ Route(s) API : METHOD /api/...                  │
+├─────────────────────────────────────────────────┤
+│ Ce que ça fait (description utilisateur)        │
+│ Ce que l'utilisateur voit                       │
+│ Ce que l'utilisateur peut faire                 │
+├─────────────────────────────────────────────────┤
+│ État : ✅ Complet | ⚠️ Partiel | ❌ Cassé       │
+│ Qualité UX : ⭐⭐⭐⭐⭐                           │
+│ Qualité visuelle : ⭐⭐⭐⭐⭐                      │
+└─────────────────────────────────────────────────┘
+
+Fonctionnalités à couvrir :
+- Authentification multi-rôles
+- Dashboard KPIs
+- Gestion des bandes (CRUD)
+- Suivi mortalité quotidien
+- Suivi pesées + CV
+- Suivi consommation aliment
+- Suivi consommation eau
+- Calendrier vaccinations
+- Journal traitements
+- Journal observations
+- Dépenses de production
+- Ventes + frais de vente
+- Charges fixes
+- Actifs alloués par bande
+- Clôture / réouverture bande
+- OCR scan fiche papier
+- Export PDF bande
+- Export Excel
+- Comparaison inter-bandes
+- Simulation rentabilité
+- Stocks aliments
+- Stocks médicaments
+- Chantiers + lots + dépenses + devis
+- Actifs amortis
+- Financement investisseurs
+- Remboursements
+- Historique caisse
+- Cash-flow mensuel
+- Trésorerie consolidée
+- Paramètres globaux
+- Gestion utilisateurs
+- Journal d'activité
+- Planification
+- Alertes mortalité
+- Alertes solde caisse
+- Alertes dépassement budget
+
+═══════════════════════════════════════════════════
+PARTIE 5 — RECOMMANDATIONS PAR PRIORITÉ
+═══════════════════════════════════════════════════
+
+Après l'inventaire complet, donne tes recommandations :
+
+5.1 — Ce qui doit être corrigé immédiatement
+(bugs UX, incohérences bloquantes, éléments cassés)
+
+5.2 — Ce qui doit être amélioré
+(UX sous-optimale, visuels à reprendre, workflows
+à simplifier, feedbacks manquants)
+
+5.3 — Ce qui pourrait être ajouté
+(nouvelles fonctionnalités qui manquent et qui
+auraient un fort impact sur l'usage quotidien)
+
+5.4 — Quick wins (< 1h chacun)
+Liste des 10 améliorations rapides qui améliorent
+significativement l'expérience sans gros effort.
+
+5.5 — Chantiers lourds (> 1 journée)
+Liste des refactorisations ou nouvelles fonctionnalités
+importantes qui nécessitent un effort significatif.
+
+═══════════════════════════════════════════════════
+FORMAT DU RAPPORT
+═══════════════════════════════════════════════════
+
+Structure le rapport ainsi :
+
+# AUDIT UX/UI & FONCTIONNALITÉS — Ferme Mbiedou
+# [date]
+
+## PARTIE 1 — WORKFLOWS
+[...]
+
+## PARTIE 2 — PAGES & COMPOSANTS
+[...]
+
+## PARTIE 3 — ANALYSE UX GLOBALE
+[...]
+
+## PARTIE 4 — FONCTIONNALITÉS (fiches détaillées)
+[...]
+
+## PARTIE 5 — RECOMMANDATIONS
+### 🔴 Corrections immédiates
+### 🟠 Améliorations
+### 🟡 Ajouts suggérés
+### ⚡ Quick wins
+### 🏗️ Chantiers lourds
+
+## SYNTHÈSE EXÉCUTIVE
+Score UX global : X/10
+Score visuel global : X/10
+Score fonctionnel global : X/10
+Top 3 points forts
+Top 3 points faibles
+Recommandation principale
