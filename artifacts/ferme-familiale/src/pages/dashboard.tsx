@@ -8,6 +8,8 @@ import { Wallet, Receipt, Construction, Bird, AlertTriangle, Syringe, TrendingUp
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { Link } from "wouter";
 import SaisieRapide from "@/components/saisie-rapide";
+import JournalDuJour from "@/components/journal-du-jour";
+import { useState } from "react";
 
 type ProchaineVacc = {
   bandeId: number;
@@ -29,6 +31,8 @@ type AlerteMortalite = {
 type BandeActiveCard = {
   id: number;
   nom: string;
+  dateDeDepart: string;
+  statut: string;
   sujetsDepart: number;
   sujetsVivants: number;
   coutProduction: number;
@@ -51,6 +55,7 @@ export default function Dashboard() {
   const { data: summary, isLoading, error } = useGetDashboardSummary();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [journalBande, setJournalBande] = useState<BandeActiveCard | null>(null);
 
   if (isLoading) return (
     <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
@@ -252,6 +257,18 @@ export default function Dashboard() {
                           )}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            className="h-7 px-2 bg-green-700 hover:bg-green-800 text-white text-xs gap-1"
+                            data-testid={`button-saisir-journee-${bande.id}`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setJournalBande(bande);
+                            }}
+                          >
+                            📋 Saisir la journée
+                          </Button>
                           <span className="text-sm bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-medium">
                             {bande.sujetsVivants} sujets
                           </span>
@@ -322,6 +339,21 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+        {journalBande && (
+          <JournalDuJour
+            bande={{
+              id: journalBande.id,
+              nom: journalBande.nom,
+              dateDeDepart: journalBande.dateDeDepart,
+              statut: journalBande.statut,
+            }}
+            open={!!journalBande}
+            onOpenChange={(o) => { if (!o) setJournalBande(null); }}
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+            }}
+          />
+        )}
 
         <div className="space-y-6">
           {previsions && (

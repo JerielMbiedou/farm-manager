@@ -1,0 +1,402 @@
+Implémente le Journal du Jour unifié.
+Vérifie d'abord ce qui existe, complète seulement ce qui manque.
+
+VÉRIFICATION D'ABORD :
+- saisie-rapide.tsx existe-t-il ? Est-il utilisé dans
+  /dashboard uniquement ou aussi dans /bandes/:id ?
+- journal-du-jour.tsx existe-t-il déjà ?
+- Y a-t-il déjà un bouton "Saisir la journée" dans
+  /bandes/:id ?
+- offlineFetch est-il déjà créé dans lib/ ?
+- getAgeJours() existe-t-il dans lib/utils.ts ?
+Affiche ce que tu trouves puis implémente.
+
+═══════════════════════════════════════════════════
+C1 — COMPOSANT JOURNALDUJOUR
+═══════════════════════════════════════════════════
+
+Créer ou améliorer
+src/components/journal-du-jour.tsx :
+
+Interface du composant :
+  interface JournalDuJourProps {
+    bande: {
+      id: number;
+      nom: string;
+      dateDeDepart: string;
+      statut: string;
+    };
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSuccess?: () => void;
+  }
+
+C'est un Dialog shadcn/ui avec ce contenu :
+
+── HEADER (non éditable, informatif) ──────────────
+
+  <div className="bg-muted/50 rounded-lg p-4 mb-4 space-y-1">
+    <div className="flex items-center gap-2 text-base font-semibold">
+      <span>🐔</span>
+      <span>{bande.nom}</span>
+    </div>
+    <div className="flex items-center gap-4 text-sm
+                    text-muted-foreground">
+      <span>
+        📅 {formatDateFR(today)}
+        {/* ex: "Dimanche 3 mai 2026" */}
+      </span>
+      <span>
+        ⏱️ J{ageJours}
+        {/* calculé depuis bande.dateDeDepart */}
+      </span>
+    </div>
+  </div>
+
+Fonction formatDateFR :
+  function formatDateFR(dateStr: string): string {
+    return new Date(dateStr).toLocaleDateString("fr-FR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  }
+
+Calcul ageJours :
+  const today = new Date().toISOString().split("T")[0];
+  const ageJours = Math.max(1, Math.floor(
+    (new Date(today).getTime() -
+     new Date(bande.dateDeDepart).getTime())
+    / 86400000
+  ) + 1);
+
+── FORMULAIRE ──────────────────────────────────────
+
+Utiliser react-hook-form avec ce schéma Zod :
+
+  const schema = z.object({
+    deces: z.number().int().min(0).default(0),
+    alimentKg: z.number().min(0).optional()
+      .or(z.literal("")),
+    typeAliment: z.enum([
+      "demarrage", "croissance", "finition"
+    ]).default(
+      ageJours < 14 ? "demarrage"
+      : ageJours <= 28 ? "croissance"
+      : "finition"
+    ),
+    eauLitres: z.number().min(0).optional()
+      .or(z.literal("")),
+    observations: z.string().optional(),
+  });
+
+SECTION 1 — Mortalité
+  <FormField name="deces">
+    <FormLabel>
+      Décès aujourd'hui
+      <span className="text-red-500 ml-1">*</span>
+    </FormLabel>
+    <FormControl>
+      <Input type="number" min={0} defaultValue={0} />
+    </FormControl>
+    <FormDescription>
+      Indiquer 0 si aucun décès aujourd'hui
+    </FormDescription>
+  </FormField>
+
+SECTION 2 — Alimentation
+  <FormField name="alimentKg">
+    <FormLabel>Aliment consommé (kg)</FormLabel>
+    <FormControl>
+      <Input type="number" min={0} step={0.5}
+        placeholder="Ex: 48" />
+    </FormControl>
+  </FormField>
+
+  <FormField name="typeAliment">
+    <FormLabel>Type d'aliment</FormLabel>
+    <Select defaultValue={typeAlimentDefaut}>
+      <SelectItem value="demarrage">
+        Démarrage (J0-J13)
+      </SelectItem>
+      <SelectItem value="croissance">
+        Croissance (J14-J28)
+      </SelectItem>
+      <SelectItem value="finition">
+        Finition (J29+)
+      </SelectItem>
+    </Select>
+    <FormDescription className="text-xs">
+      Pré-sélectionné selon l'âge actuel (J{ageJours})
+    </FormDescription>
+  </FormField>
+
+SECTION 3 — Eau
+  <FormField name="eauLitres">
+    <FormLabel>Eau consommée (litres)</FormLabel>
+    <FormControl>
+      <Input type="number" min={0} step={1}
+        placeholder="Ex: 120" />
+    </FormControl>
+  </FormField>
+
+SECTION 4 — Observations (optionnel)
+  <FormField name="observations">
+    <FormLabel>
+      Observations du jour
+      <span className="text-muted-foreground
+                        text-xs ml-2">(optionnel)</span>
+    </FormLabel>
+    <FormControl>
+      <Textarea
+        placeholder="Traitements administrés,
+          comportement anormal, visiteurs, météo,
+          problèmes observés..."
+        rows={3}
+      />
+    </FormControl>
+  </FormField>
+
+── BOUTON SUBMIT ───────────────────────────────────
+
+  <Button
+    type="submit"
+    className="w-full"
+    size="lg"
+    disabled={isSubmitting}>
+    {isSubmitting
+      ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Enregistrement...</>
+      : "✓ Enregistrer la journée"
+    }
+  </Button>
+
+── LOGIQUE SUBMIT ──────────────────────────────────
+
+  const onSubmit = async (values) => {
+    setIsSubmitting(true);
+    const baseUrl = `/api/bandes/${bande.id}`;
+
+    // Vérifier si offlineFetch existe,
+    // sinon utiliser fetch classique avec fallback
+    const fetchFn = typeof offlineFetch !== "undefined"
+      ? offlineFetch
+      : async (url, body, desc) => {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+            credentials: "include",
+          });
+          return { queued: false, data: await res.json() };
+        };
+
+    const promises = [];
+    let anyQueued = false;
+
+    // Mortalité — toujours envoyée (même 0)
+    promises.push(
+      fetchFn(
+        `${baseUrl}/mortalite`,
+        {
+          date: today,
+          ageJours,
+          decesJour: values.deces,
+        },
+        `Mortalité ${bande.nom} J${ageJours}`
+      ).then(r => { if (r.queued) anyQueued = true; })
+    );
+
+    // Aliment — seulement si > 0
+    if (values.alimentKg && values.alimentKg > 0) {
+      promises.push(
+        fetchFn(
+          `${baseUrl}/consommation`,
+          {
+            date: today,
+            ageJours,
+            quantiteKg: values.alimentKg,
+            typeAliment: values.typeAliment,
+          },
+          `Aliment ${bande.nom} J${ageJours}`
+        ).then(r => { if (r.queued) anyQueued = true; })
+      );
+    }
+
+    // Eau — seulement si > 0
+    if (values.eauLitres && values.eauLitres > 0) {
+      promises.push(
+        fetchFn(
+          `${baseUrl}/consommation-eau`,
+          {
+            date: today,
+            ageJours,
+            quantiteLitres: values.eauLitres,
+          },
+          `Eau ${bande.nom} J${ageJours}`
+        ).then(r => { if (r.queued) anyQueued = true; })
+      );
+    }
+
+    // Observations — seulement si non vide
+    if (values.observations?.trim()) {
+      promises.push(
+        fetchFn(
+          `${baseUrl}/observations`,
+          {
+            date: today,
+            ageJours,
+            contenu: values.observations.trim(),
+          },
+          `Observation ${bande.nom} J${ageJours}`
+        ).then(r => { if (r.queued) anyQueued = true; })
+      );
+    }
+
+    try {
+      await Promise.allSettled(promises);
+
+      if (anyQueued) {
+        toast.warning(
+          "📴 Saisie enregistrée localement — " +
+          "synchronisation automatique à la reconnexion"
+        );
+      } else {
+        toast.success(`✓ Journée J${ageJours} enregistrée`);
+      }
+
+      // Invalider les queries react-query
+      queryClient.invalidateQueries({
+        queryKey: ["bande", bande.id]
+      });
+
+      onSuccess?.();
+      onOpenChange(false);
+      form.reset();
+
+    } catch (err) {
+      toast.error("Erreur lors de l'enregistrement");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+═══════════════════════════════════════════════════
+C2 — BOUTON DANS /BANDES/:ID
+═══════════════════════════════════════════════════
+
+Dans bandes/[id].tsx, ajouter l'état et le bouton :
+
+  const [journalOpen, setJournalOpen] = useState(false);
+
+Ajouter le bouton EN HAUT DE PAGE, avant les onglets,
+dans la zone des boutons d'action existants
+(à côté de "Clôturer la bande", "Rapport PDF", etc.) :
+
+  {bande.statut === "active" && (
+    <>
+      <Button
+        onClick={() => setJournalOpen(true)}
+        size="lg"
+        className="w-full sm:w-auto
+                   bg-green-700 hover:bg-green-800">
+        📋 Saisir la journée d'aujourd'hui
+      </Button>
+
+      <JournalDuJour
+        bande={bande}
+        open={journalOpen}
+        onOpenChange={setJournalOpen}
+        onSuccess={() => {
+          // Recharger les données de la bande
+          queryClient.invalidateQueries({
+            queryKey: ["bande", bande.id]
+          });
+        }}
+      />
+    </>
+  )}
+
+Le bouton n'est visible que si la bande est active
+(pas sur une bande terminée).
+
+═══════════════════════════════════════════════════
+C3 — BOUTON DANS /DASHBOARD
+═══════════════════════════════════════════════════
+
+Dans dashboard.tsx, sur chaque card de bande active :
+
+  const [journalBande, setJournalBande] =
+    useState<BandeActive | null>(null);
+
+Sur chaque card de bande active, ajouter en bas
+de la card (avant ou après le bouton existant
+"Saisir aujourd'hui" si présent) :
+
+  <Button
+    variant="outline"
+    size="sm"
+    className="w-full mt-2"
+    onClick={() => setJournalBande(bande)}>
+    📋 Saisir la journée
+  </Button>
+
+En dehors de la boucle des cards, ajouter le Dialog :
+
+  {journalBande && (
+    <JournalDuJour
+      bande={journalBande}
+      open={!!journalBande}
+      onOpenChange={(open) => {
+        if (!open) setJournalBande(null);
+      }}
+      onSuccess={() => {
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard-summary"]
+        });
+      }}
+    />
+  )}
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL
+═══════════════════════════════════════════════════
+
+## RAPPORT — Journal du Jour
+## [date]
+
+### État initial trouvé
+- saisie-rapide.tsx : [utilisé où ?]
+- journal-du-jour.tsx : [existait / créé]
+- offlineFetch : [trouvé / fallback utilisé]
+- getAgeJours : [trouvé / recréé inline]
+
+### ✅ Implémenté
+- Composant JournalDuJour : [fichier]
+- Bouton dans /bandes/:id : [lignes]
+- Bouton dans /dashboard : [lignes]
+
+### 🧪 Test
+1. Ouvrir /bandes/:id sur une bande active
+   → Bouton vert "📋 Saisir la journée" visible ✓
+   → Clic → Dialog s'ouvre ✓
+   → Header affiche nom + date + âge ✓
+   → Type aliment pré-sélectionné selon âge ✓
+   → Soumettre → toast succès ✓
+   → Dialog se ferme automatiquement ✓
+
+2. Ouvrir /dashboard
+   → Bouton "📋 Saisir la journée" sur chaque
+     card de bande active ✓
+   → Même Dialog s'ouvre ✓
+
+3. Test offline (couper réseau)
+   → Soumettre → toast amber ✓
+   → Badge "en attente" dans header ✓
+
+### ⚠️ Points d'attention
+- Le bouton n'apparaît que sur les bandes actives
+- Si offlineFetch absent : fallback fetch classique
+- queryClient.invalidateQueries après succès pour
+  rafraîchir les données sans recharger la page

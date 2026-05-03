@@ -73,6 +73,7 @@ import { exportBandePDF, exportBandeExcel, generateRapportBande } from "@/lib/ex
 import { useConsommationEau, useCreateConsommationEau, useDeleteConsommationEau, useTraitements, useCreateTraitement, useDeleteTraitement, useObservations, useCreateObservation, useDeleteObservation, useReferencePoids } from "@/lib/bande-extras-api";
 import ScanFiche from "@/components/scan-fiche";
 import DesignationCombobox, { type DesignationSuggestion } from "@/components/designation-combobox";
+import JournalDuJour from "@/components/journal-du-jour";
 
 // Désignations qui ressemblent à un actif amortissable (BLOC 3 — alerte UI)
 const DESIGNATIONS_ACTIFS_POTENTIELS = [
@@ -940,6 +941,7 @@ export default function BandeDetailView() {
 
   const [activeTab, setActiveTab] = useState("resume");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [journalOpen, setJournalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [dialogType, setDialogType] = useState<string>("");
   const [designationSuggestions, setDesignationSuggestions] = useState<DesignationSuggestion[]>([]);
@@ -1662,7 +1664,31 @@ export default function BandeDetailView() {
             </Button>
             {!isReadOnly && detail.statut === "active" && <ClotureBandeDialog detail={detail} />}
             {!isReadOnly && detail.statut === "terminee" && <ClotureBandeDialog detail={detail} isReopen />}
+            {!isReadOnly && detail.statut === "active" && (
+              <Button
+                size="sm"
+                className="gap-2 bg-green-700 hover:bg-green-800 text-white"
+                onClick={() => setJournalOpen(true)}
+                data-testid="button-saisir-journee"
+              >
+                📋 Saisir la journée
+              </Button>
+            )}
           </div>
+          {!isReadOnly && detail.statut === "active" && (
+            <JournalDuJour
+              bande={{ id: detail.id, nom: detail.nom, dateDeDepart: detail.dateDeDepart, statut: detail.statut }}
+              open={journalOpen}
+              onOpenChange={setJournalOpen}
+              onSuccess={() => {
+                queryClient.invalidateQueries({ queryKey: getGetBandeQueryKey(detail.id) });
+                queryClient.invalidateQueries({ queryKey: getGetBandeMortaliteQueryKey(detail.id) });
+                queryClient.invalidateQueries({ queryKey: getGetBandeConsommationQueryKey(detail.id) });
+                queryClient.invalidateQueries({ queryKey: ["consommation-eau", detail.id] });
+                queryClient.invalidateQueries({ queryKey: ["observations", detail.id] });
+              }}
+            />
+          )}
 
           {(() => {
             const totalVendus = (detail as any).totalVendus ?? 0;
