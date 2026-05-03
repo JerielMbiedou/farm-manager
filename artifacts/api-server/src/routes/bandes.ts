@@ -81,7 +81,23 @@ async function getBandeDetail(id: number) {
     0,
   );
 
-  const chargesFixesTotal = valeurPerdueMateriel + imprevus + loyer + totalChargesCustom;
+  // Amortissement des actifs alloués à cette bande (système actifs/allocations)
+  const actifsAllocs = await db
+    .select({
+      fraction: bandeActifsTable.fractionUtilisee,
+      valeur: actifsTable.valeur,
+      taux: actifsTable.tauxAmortissementAnnuel,
+    })
+    .from(bandeActifsTable)
+    .innerJoin(actifsTable, eq(bandeActifsTable.actifId, actifsTable.id))
+    .where(eq(bandeActifsTable.bandeId, id));
+  const totalAmortissementActifs = actifsAllocs.reduce(
+    (s, a) => s + parseFloat(a.valeur) * parseFloat(a.fraction) * (parseFloat(a.taux) / 100),
+    0,
+  );
+
+  const chargesFixesTotal =
+    valeurPerdueMateriel + imprevus + loyer + totalChargesCustom + totalAmortissementActifs;
 
   const sujetsRestants = bande.sujetsDepart - nombreDeces - totalVendus;
   const totalDepensesVente = depensesVente.reduce((s, d) => s + parseFloat(d.montant), 0);
@@ -112,6 +128,7 @@ async function getBandeDetail(id: number) {
     chargesFixesTotal,
     chargesCustom,
     totalChargesCustom,
+    totalAmortissementActifs,
     beneficeNet,
     beneficeNetSansCharges,
     coutParSujet,
