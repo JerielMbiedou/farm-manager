@@ -12,6 +12,7 @@ import ocrFicheRouter from "./ocr-fiche";
 import chantiersRouter from "./chantiers";
 import actifsRouter from "./actifs";
 import backupsRouter from "./backups";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use("/ocr-fiche", ocrFicheRouter);
 router.use("/chantiers", chantiersRouter);
 router.use("/actifs", actifsRouter);
 router.use("/backups", backupsRouter);
+router.use("/admin", adminRouter);
 
 export default router;
