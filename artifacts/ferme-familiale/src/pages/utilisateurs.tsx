@@ -7,8 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Shield, Users } from "lucide-react";
+import { Trash2, Shield, Users, UserPlus } from "lucide-react";
 import { useSortable } from "@/lib/use-sortable";
 import { DataPagination } from "@/components/data-pagination";
 import { confirmAction } from "@/lib/confirm-dialog";
@@ -41,6 +44,9 @@ export default function Utilisateurs() {
   const { sorted, toggleSort, sortIcon } = useSortable<UserInfo>(users, "nom", "asc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ nom: "", username: "", password: "", role: "lecteur" });
 
   const baseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.origin}/api`;
 
@@ -76,6 +82,33 @@ export default function Utilisateurs() {
     }
   };
 
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.nom.trim() || form.username.trim().length < 3 || form.password.length < 6) {
+      toast({ title: "Champs invalides", description: "Nom requis, identifiant ≥ 3 caractères, mot de passe ≥ 6 caractères.", variant: "destructive" });
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await fetch(`${baseUrl}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.message || "Erreur");
+      toast({ title: "Compte créé", description: `${form.nom} (${form.role}) ajouté.` });
+      setForm({ nom: "", username: "", password: "", role: "lecteur" });
+      setCreateOpen(false);
+      fetchUsers();
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleDelete = async (userId: number, nom: string) => {
     const ok = await confirmAction({
       title: "Supprimer cet utilisateur ?",
@@ -102,9 +135,51 @@ export default function Utilisateurs() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Gestion des utilisateurs</h1>
-        <p className="text-muted-foreground mt-1">Gérez les comptes et les droits d'accès</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Gestion des utilisateurs</h1>
+          <p className="text-muted-foreground mt-1">Gérez les comptes et les droits d'accès</p>
+        </div>
+        {currentUser?.role === "admin" && (
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2"><UserPlus className="h-4 w-4" /> Nouvel utilisateur</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Créer un compte</DialogTitle>
+                <DialogDescription>Le nouvel utilisateur pourra se connecter immédiatement avec ces identifiants.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreate} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-nom">Nom complet</Label>
+                  <Input id="new-nom" value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} placeholder="Ex: Marie Mbiedou" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-username">Identifiant (min. 3 caractères)</Label>
+                  <Input id="new-username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="Ex: marie" autoComplete="off" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">Mot de passe (min. 6 caractères)</Label>
+                  <Input id="new-password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} autoComplete="new-password" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-role">Rôle</Label>
+                  <Select value={form.role} onValueChange={(val) => setForm({ ...form, role: val })}>
+                    <SelectTrigger id="new-role"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ROLES.map(r => (<SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>Annuler</Button>
+                  <Button type="submit" disabled={creating}>{creating ? "Création..." : "Créer le compte"}</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
