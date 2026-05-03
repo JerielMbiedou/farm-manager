@@ -52,7 +52,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,6 +62,8 @@ import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { confirmAction } from "@/lib/confirm-dialog";
 import { useSortable } from "@/lib/use-sortable";
+import { usePaged } from "@/lib/use-paged";
+import { DataPagination } from "@/components/data-pagination";
 import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download, Droplets, Pill, BookOpen, ChevronDown, ChevronRight, Search, CheckCircle2, Lock, RotateCcw, FileText, Menu } from "lucide-react";
 import { Link } from "wouter";
 import { BandeDetail } from "@workspace/api-client-react";
@@ -811,6 +813,7 @@ function MobileTabsSheet({ activeTab, onChange }: { activeTab: string; onChange:
         <SheetContent side="right" className="w-72 p-0">
           <SheetHeader className="p-4 border-b">
             <SheetTitle>Sections de la bande</SheetTitle>
+            <SheetDescription className="sr-only">Choisissez la section à afficher pour cette bande</SheetDescription>
           </SheetHeader>
           <nav className="p-2 flex flex-col gap-1">
             {MOBILE_TABS.map(tab => {
@@ -1167,6 +1170,12 @@ export default function BandeDetailView() {
   const vaccinationsSorted = useSortable(vaccinItems, "jourPrevu", "asc");
   const consommationSorted = useSortable(consEntries, "date", "desc");
   const observationsSorted = useSortable(observationItems, "date", "desc");
+
+  // BLOC B12-B13 — Pagination des tableaux principaux (25 lignes/page par défaut)
+  const mortalitePaged = usePaged(mortaliteSorted.sorted);
+  const vaccinationsPaged = usePaged(vaccinationsSorted.sorted);
+  const eauPaged = usePaged(eauSorted.sorted);
+  const traitementsPaged = usePaged(traitementsSorted.sorted);
 
   if (isLoadingBande) return <div className="min-h-[50vh] flex items-center justify-center text-muted-foreground">Chargement de la bande...</div>;
   if (!bande) return <div>Bande introuvable.</div>;
@@ -1787,7 +1796,7 @@ export default function BandeDetailView() {
                     {mortaliteSorted.sorted.length === 0 ? (
                       <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Aucune donnée de mortalité</TableCell></TableRow>
                     ) : (
-                      mortaliteSorted.sorted.map((m) => (
+                      mortalitePaged.paginated.map((m) => (
                         <TableRow key={m.id as number} className={m.alerteRouge ? "bg-red-50" : ""}>
                           <TableCell>{m.date as string}</TableCell>
                           <TableCell className="text-right">J{m.ageJours as number}</TableCell>
@@ -1820,6 +1829,7 @@ export default function BandeDetailView() {
                     )}
                   </TableBody>
                 </Table>
+                <DataPagination page={mortalitePaged.page} pageSize={mortalitePaged.pageSize} total={mortalitePaged.total} onPageChange={mortalitePaged.setPage} onPageSizeChange={mortalitePaged.setPageSize} className="border-t" />
               </div>
             </CardContent>
           </Card>
@@ -2051,7 +2061,7 @@ export default function BandeDetailView() {
                     {vaccinationsSorted.sorted.length === 0 ? (
                       <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Aucune vaccination programmée</TableCell></TableRow>
                     ) : (
-                      vaccinationsSorted.sorted.map((v) => (
+                      vaccinationsPaged.paginated.map((v) => (
                         <TableRow key={v.id as number} className={v.enRetard && v.fait !== "oui" ? "bg-red-50" : v.fait === "oui" ? "bg-green-50/50" : ""}>
                           <TableCell className="font-medium">J{v.jourPrevu as number}</TableCell>
                           <TableCell>
@@ -2085,6 +2095,7 @@ export default function BandeDetailView() {
                     )}
                   </TableBody>
                 </Table>
+                <DataPagination page={vaccinationsPaged.page} pageSize={vaccinationsPaged.pageSize} total={vaccinationsPaged.total} onPageChange={vaccinationsPaged.setPage} onPageSizeChange={vaccinationsPaged.setPageSize} className="border-t" />
               </div>
             </CardContent>
           </Card>
@@ -2143,7 +2154,7 @@ export default function BandeDetailView() {
                     {eauSorted.sorted.length === 0 ? (
                       <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Aucune donnée de consommation d'eau</TableCell></TableRow>
                     ) : (
-                      eauSorted.sorted.map((e: any) => (
+                      eauPaged.paginated.map((e: any) => (
                         <TableRow key={e.id}>
                           <TableCell>{e.date}</TableCell>
                           <TableCell className="text-right">J{e.ageJours}</TableCell>
@@ -2167,6 +2178,7 @@ export default function BandeDetailView() {
                     )}
                   </TableBody>
                 </Table>
+                <DataPagination page={eauPaged.page} pageSize={eauPaged.pageSize} total={eauPaged.total} onPageChange={eauPaged.setPage} onPageSizeChange={eauPaged.setPageSize} className="border-t" />
               </div>
             </CardContent>
           </Card>
@@ -2195,7 +2207,7 @@ export default function BandeDetailView() {
                     {traitementsSorted.sorted.length === 0 ? (
                       <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Aucun traitement enregistré</TableCell></TableRow>
                     ) : (
-                      traitementsSorted.sorted.map((t: any) => (
+                      traitementsPaged.paginated.map((t: any) => (
                         <TableRow key={t.id}>
                           <TableCell>{t.date}</TableCell>
                           <TableCell className="text-right">J{t.ageJours}</TableCell>
@@ -2229,6 +2241,7 @@ export default function BandeDetailView() {
                     )}
                   </TableBody>
                 </Table>
+                <DataPagination page={traitementsPaged.page} pageSize={traitementsPaged.pageSize} total={traitementsPaged.total} onPageChange={traitementsPaged.setPage} onPageSizeChange={traitementsPaged.setPageSize} className="border-t" />
               </div>
             </CardContent>
           </Card>
