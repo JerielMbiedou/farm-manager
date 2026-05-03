@@ -178,14 +178,9 @@ export default function Login() {
                   </Button>
                 </form>
               </Form>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border/60" /></div>
-                <div className="relative flex justify-center text-xs"><span className="bg-[#FAFAF7] px-3 text-muted-foreground">ou</span></div>
-              </div>
-              <button type="button" onClick={() => setIsRegistering(true)} className="w-full flex items-center justify-center gap-2 h-11 rounded-md border border-border/80 bg-white text-sm font-medium text-foreground hover:bg-muted/50 transition-colors">
-                <UserPlus className="h-4 w-4" />
-                Creer un nouveau compte
-              </button>
+              <p className="text-center text-xs text-muted-foreground/70 mt-2">
+                La création de compte est réservée à l'administrateur. Contactez-le pour obtenir vos identifiants.
+              </p>
             </div>
           ) : (
             <div className="space-y-6">

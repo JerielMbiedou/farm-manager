@@ -1,11 +1,14 @@
 import { Router } from "express";
 import { db, stockAlimentsTable, stockMedicamentsTable } from "@workspace/db";
-import { eq, sql, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { logFromRequest } from "./activity-log";
+import { requireWriteAccess } from "../lib/middleware";
+import { validateBody } from "../lib/validate";
+import { stockAlimentSchema, stockMedicamentSchema } from "../lib/schemas";
 
 const router = Router();
 
-router.get("/aliments", async (req, res) => {
+router.get("/aliments", async (_req, res) => {
   const rows = await db.select().from(stockAlimentsTable).orderBy(desc(stockAlimentsTable.date));
   const items = rows.map(r => ({
     ...r,
@@ -20,7 +23,8 @@ router.get("/aliments", async (req, res) => {
   res.json({ items, stockActuel, totalEntrees: entrees, totalSorties: sorties });
 });
 
-router.post("/aliments", async (req, res) => {
+router.post("/aliments", validateBody(stockAlimentSchema), async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const { designation, type, quantiteKg, prixUnitaire, fournisseur, date, commentaire } = req.body;
   const [row] = await db.insert(stockAlimentsTable).values({
     designation, type: type || "entree",
@@ -32,12 +36,13 @@ router.post("/aliments", async (req, res) => {
 });
 
 router.delete("/aliments/:id", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const id = parseInt(req.params.id);
   await db.delete(stockAlimentsTable).where(eq(stockAlimentsTable.id, id));
   res.json({ success: true });
 });
 
-router.get("/medicaments", async (req, res) => {
+router.get("/medicaments", async (_req, res) => {
   const rows = await db.select().from(stockMedicamentsTable).orderBy(desc(stockMedicamentsTable.date));
   const items = rows.map(r => ({
     ...r,
@@ -61,7 +66,8 @@ router.get("/medicaments", async (req, res) => {
   res.json({ items, resume: Object.values(grouped), peremptionProche });
 });
 
-router.post("/medicaments", async (req, res) => {
+router.post("/medicaments", validateBody(stockMedicamentSchema), async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const { nom, type, quantite, unite, datePeremption, fournisseur, date, commentaire } = req.body;
   const [row] = await db.insert(stockMedicamentsTable).values({
     nom, type: type || "entree",
@@ -73,6 +79,7 @@ router.post("/medicaments", async (req, res) => {
 });
 
 router.delete("/medicaments/:id", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const id = parseInt(req.params.id);
   await db.delete(stockMedicamentsTable).where(eq(stockMedicamentsTable.id, id));
   res.json({ success: true });

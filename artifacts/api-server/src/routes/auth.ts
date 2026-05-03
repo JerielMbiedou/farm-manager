@@ -48,7 +48,14 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/register", async (req, res) => {
-  const { nom, username, password } = req.body;
+  const sessionUserId = (req.session as any)?.userId;
+  if (!sessionUserId) { res.status(401).json({ error: "Non authentifié" }); return; }
+  const sessionUser = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+  if (!sessionUser[0] || sessionUser[0].role !== "admin") {
+    res.status(403).json({ error: "Création de compte réservée aux administrateurs" });
+    return;
+  }
+  const { nom, username, password, role } = req.body;
   if (!nom || !username || !password) {
     res.status(400).json({ error: "Nom, identifiant et mot de passe requis" });
     return;
@@ -68,12 +75,14 @@ router.post("/register", async (req, res) => {
     return;
   }
 
+  const validRoles = ["admin", "investisseur", "gestionnaire", "lecteur"];
+  const assignedRole = validRoles.includes(role) ? role : "lecteur";
   const hashed = await bcrypt.hash(password, 12);
   const rows = await db.insert(usersTable).values({
     nom,
     username,
     password: hashed,
-    role: "lecteur",
+    role: assignedRole,
   }).returning();
 
   res.status(201).json({ success: true, user: { id: rows[0].id, username: rows[0].username, role: rows[0].role, nom: rows[0].nom } });

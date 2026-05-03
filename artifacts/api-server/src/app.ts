@@ -34,11 +34,6 @@ app.use(
   }),
 );
 
-// ---------------------------------------------------------------------------
-// CORS configurable via FRONTEND_URL (liste séparée par virgules)
-// En dev (FRONTEND_URL absent) : reflète n'importe quelle origine pour faciliter
-// le développement local. En prod : restreint strictement.
-// ---------------------------------------------------------------------------
 const frontendUrl = process.env.FRONTEND_URL?.trim();
 const corsOrigin: cors.CorsOptions["origin"] = frontendUrl
   ? frontendUrl.split(",").map((s) => s.trim()).filter(Boolean)
@@ -69,19 +64,38 @@ app.use(
       httpOnly: true,
       secure: isProduction,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      // strict en prod (recommandé), lax en dev (cross-origin Vite ↔ API)
       sameSite: isProduction ? "strict" : "lax",
     },
   }),
 );
 
+const PUBLIC_API_PATHS = new Set<string>([
+  "/auth/login",
+  "/auth/logout",
+  "/healthz",
+]);
+
+app.use("/api", (req: Request, res: Response, next: NextFunction) => {
+  if (PUBLIC_API_PATHS.has(req.path)) return next();
+  const userId = (req.session as any)?.userId;
+  if (!userId) {
+    return res.status(401).json({ error: "Non authentifié" });
+  }
+  next();
+});
+
 app.use("/api", router);
 
-// ---------------------------------------------------------------------------
-// Servir le frontend Vite buildé en production (mode "tout-en-un")
-// Le bundle esbuild place __dirname à artifacts/api-server/dist/ ;
-// le frontend est buildé dans artifacts/ferme-familiale/dist/public/.
-// ---------------------------------------------------------------------------
+app.use("/api", (err: any, req: Request, res: Response, _next: NextFunction) => {
+  req.log?.error({ err, path: req.path, method: req.method }, "Unhandled API error");
+  if (res.headersSent) return;
+  const status = typeof err?.status === "number" ? err.status : 500;
+  res.status(status).json({
+    error: "Erreur serveur",
+    message: err?.message ?? "Une erreur inattendue est survenue",
+  });
+});
+
 if (isProduction) {
   const frontendDist = path.resolve(
     __dirname,
@@ -92,7 +106,6 @@ if (isProduction) {
     logger.info({ frontendDist }, "Serving frontend from disk");
     app.use(express.static(frontendDist, { index: false, maxAge: "1h" }));
 
-    // Fallback SPA : toute requête GET non-/api/* renvoie index.html
     app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.method !== "GET") return next();
       if (req.path.startsWith("/api/")) return next();

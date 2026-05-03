@@ -27,7 +27,8 @@
     "node-cron": "^4.2.1",
     "pino": "^9",
     "pino-http": "^10",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",

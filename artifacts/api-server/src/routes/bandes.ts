@@ -4,6 +4,15 @@ import { eq, and, sql } from "drizzle-orm";
 import { logFromRequest } from "./activity-log";
 import { getParam, getVaccinationSchedule, REFERENCE_WEIGHT_CURVE } from "../lib/parametres";
 import { ai } from "@workspace/integrations-gemini-ai";
+import { validateBody } from "../lib/validate";
+import {
+  bandeCreateSchema,
+  bandeUpdateSchema,
+  depenseCreateSchema,
+  venteCreateSchema,
+  mortaliteCreateSchema,
+  peseeCreateSchema,
+} from "../lib/schemas";
 
 const router = Router();
 
@@ -157,10 +166,11 @@ router.get("/", async (req, res) => {
   })));
 });
 
-router.post("/", async (req, res) => {
+router.post("/", validateBody(bandeCreateSchema), async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const { nom, dateDeDepart, sujetsDepart, nombreDeces, valeurMaterielFixe, statut } = req.body;
-  const count = await db.select().from(bandesTable);
-  const numero = count.length + 1;
+  const maxRows = await db.select({ max: sql<number>`COALESCE(MAX(${bandesTable.numero}), 0)` }).from(bandesTable);
+  const numero = Number(maxRows[0]?.max ?? 0) + 1;
   const rows = await db.insert(bandesTable).values({
     numero,
     nom,
@@ -320,7 +330,8 @@ router.get("/:id", async (req, res) => {
   res.json(detail);
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", validateBody(bandeUpdateSchema), async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const id = parseInt(req.params.id);
   const { nom, dateDeDepart, sujetsDepart, nombreDeces, valeurMaterielFixe, statut } = req.body;
   const updates: Record<string, unknown> = {};
@@ -347,6 +358,7 @@ router.put("/:id", async (req, res) => {
 });
 
 router.delete("/:id", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const id = parseInt(req.params.id);
   await db.delete(bandesTable).where(eq(bandesTable.id, id));
   await logFromRequest(req, "Suppression bande", `ID: ${id}`);
@@ -368,8 +380,9 @@ router.get("/:id/depenses", async (req, res) => {
   })));
 });
 
-router.post("/:id/depenses", async (req, res) => {
+router.post("/:id/depenses", validateBody(depenseCreateSchema), async (req, res) => {
   const bandeId = parseInt(req.params.id);
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(bandeId, res))) return;
   const { date, designation, categorie, quantite, prixUnitaire } = req.body;
   const dateValue = (typeof date === "string" && ISO_DATE_RE.test(date)) ? date : new Date().toISOString().split("T")[0];
@@ -396,6 +409,7 @@ router.post("/:id/depenses", async (req, res) => {
 });
 
 router.put("/:id/depenses/:depenseId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const depenseId = parseInt(req.params.depenseId);
   const { date, designation, categorie, quantite, prixUnitaire } = req.body;
@@ -421,6 +435,7 @@ router.put("/:id/depenses/:depenseId", async (req, res) => {
 });
 
 router.delete("/:id/depenses/:depenseId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const depenseId = parseInt(req.params.depenseId);
   await db.delete(bandeDepensesTable).where(eq(bandeDepensesTable.id, depenseId));
@@ -441,8 +456,9 @@ router.get("/:id/ventes", async (req, res) => {
   })));
 });
 
-router.post("/:id/ventes", async (req, res) => {
+router.post("/:id/ventes", validateBody(venteCreateSchema), async (req, res) => {
   const bandeId = parseInt(req.params.id);
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(bandeId, res))) return;
   const { date, quantiteVendue, prixUnitaire } = req.body;
   const rows = await db.insert(bandeVentesTable).values({
@@ -464,6 +480,7 @@ router.post("/:id/ventes", async (req, res) => {
 });
 
 router.put("/:id/ventes/:venteId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const venteId = parseInt(req.params.venteId);
   const { date, quantiteVendue, prixUnitaire } = req.body;
@@ -484,6 +501,7 @@ router.put("/:id/ventes/:venteId", async (req, res) => {
 });
 
 router.delete("/:id/ventes/:venteId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const venteId = parseInt(req.params.venteId);
   await db.delete(bandeVentesTable).where(eq(bandeVentesTable.id, venteId));
@@ -527,6 +545,7 @@ router.get("/:id/charges-fixes", async (req, res) => {
 });
 
 router.put("/:id/charges-fixes", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const bandeId = parseInt(req.params.id);
   const { loyer } = req.body;
@@ -572,6 +591,7 @@ router.get("/:id/depenses-vente", async (req, res) => {
 });
 
 router.post("/:id/depenses-vente", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const bandeId = parseInt(req.params.id);
   const { designation, montant } = req.body;
@@ -581,6 +601,7 @@ router.post("/:id/depenses-vente", async (req, res) => {
 });
 
 router.put("/:id/depenses-vente/:depenseId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const depenseId = parseInt(req.params.depenseId);
   const { designation, montant } = req.body;
@@ -590,6 +611,7 @@ router.put("/:id/depenses-vente/:depenseId", async (req, res) => {
 });
 
 router.delete("/:id/depenses-vente/:depenseId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const depenseId = parseInt(req.params.depenseId);
   await db.delete(depensesVenteTable).where(eq(depensesVenteTable.id, depenseId));
@@ -628,16 +650,18 @@ router.get("/:id/mortalite", async (req, res) => {
   res.json(data);
 });
 
-router.post("/:id/mortalite", async (req, res) => {
+router.post("/:id/mortalite", validateBody(mortaliteCreateSchema), async (req, res) => {
   const bandeId = parseInt(req.params.id);
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(bandeId, res))) return;
   const { date, ageJours, decesJour } = req.body;
-  const rows = await db.insert(mortaliteJournaliereTable).values({ bandeId, date, ageJours, decesJour: decesJour ?? 0 }).returning();
-  // Recompute from source of truth to avoid drift
-  const sumRows = await db.select({ total: sql<number>`COALESCE(SUM(${mortaliteJournaliereTable.decesJour}), 0)` }).from(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.bandeId, bandeId));
-  const totalDeces = Number(sumRows[0]?.total ?? 0);
-  await db.update(bandesTable).set({ nombreDeces: totalDeces }).where(eq(bandesTable.id, bandeId));
-  const r = rows[0];
+  const { row: r, totalDeces } = await db.transaction(async (tx) => {
+    const inserted = await tx.insert(mortaliteJournaliereTable).values({ bandeId, date, ageJours, decesJour: decesJour ?? 0 }).returning();
+    const sumRows = await tx.select({ total: sql<number>`COALESCE(SUM(${mortaliteJournaliereTable.decesJour}), 0)` }).from(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.bandeId, bandeId));
+    const total = Number(sumRows[0]?.total ?? 0);
+    await tx.update(bandesTable).set({ nombreDeces: total }).where(eq(bandesTable.id, bandeId));
+    return { row: inserted[0], totalDeces: total };
+  });
 
   // Calcule l'alerte pour la nouvelle entrée
   const bande = (await db.select().from(bandesTable).where(eq(bandesTable.id, bandeId)))[0];
@@ -657,6 +681,7 @@ router.post("/:id/mortalite", async (req, res) => {
 });
 
 router.delete("/:id/mortalite/:mortaliteId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   const mortaliteId = parseInt(req.params.mortaliteId);
   const existing = await db.select().from(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.id, mortaliteId));
@@ -699,8 +724,9 @@ router.get("/:id/pesees", async (req, res) => {
   }));
 });
 
-router.post("/:id/pesees", async (req, res) => {
+router.post("/:id/pesees", validateBody(peseeCreateSchema), async (req, res) => {
   const bandeId = parseInt(req.params.id);
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(bandeId, res))) return;
   const { date, ageJours, poidsMoyenG, poidsMinG, poidsMaxG, objectifPoidsG } = req.body;
   // Si min et max sont fournis mais pas la moyenne, calcule-la
@@ -728,6 +754,7 @@ router.post("/:id/pesees", async (req, res) => {
 });
 
 router.delete("/:id/pesees/:peseeId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   await db.delete(peseesTable).where(eq(peseesTable.id, parseInt(req.params.peseeId)));
   res.json({ success: true });
@@ -768,6 +795,7 @@ router.get("/:id/consommation", async (req, res) => {
 
 router.post("/:id/consommation", async (req, res) => {
   const bandeId = parseInt(req.params.id);
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(bandeId, res))) return;
   const { date, quantiteKg } = req.body;
   const rows = await db.insert(consommationAlimentTable).values({ bandeId, date, quantiteKg: String(quantiteKg) }).returning();
@@ -776,6 +804,7 @@ router.post("/:id/consommation", async (req, res) => {
 });
 
 router.delete("/:id/consommation/:consId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(parseInt(req.params.id), res))) return;
   await db.delete(consommationAlimentTable).where(eq(consommationAlimentTable.id, parseInt(req.params.consId)));
   res.json({ success: true });
@@ -808,6 +837,7 @@ router.get("/:id/vaccinations", async (req, res) => {
 
 router.put("/:id/vaccinations/:vaccId", async (req, res) => {
   const bandeId = parseInt(req.params.id);
+  if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(bandeId, res))) return;
   const vaccId = parseInt(req.params.vaccId);
   const { fait, dateFait, commentaire } = req.body;
@@ -830,6 +860,7 @@ router.put("/:id/vaccinations/:vaccId", async (req, res) => {
 });
 
 router.post("/:id/vaccinations", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const bandeId = parseInt(req.params.id);
   const { jourPrevu, nom, description } = req.body;
   const rows = await db.insert(vaccinationsTable).values({ bandeId, jourPrevu, nom, description: description || null, fait: "non" }).returning();
@@ -850,6 +881,7 @@ router.get("/:id/consommation-eau", async (req, res) => {
 });
 
 router.post("/:id/consommation-eau", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const bandeId = parseInt(req.params.id);
   const { date, ageJours, quantiteLitres } = req.body;
   const rows = await db.insert(consommationEauTable).values({
@@ -863,6 +895,7 @@ router.post("/:id/consommation-eau", async (req, res) => {
 });
 
 router.delete("/:id/consommation-eau/:eauId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const bandeId = parseInt(req.params.id);
   await db.delete(consommationEauTable).where(and(eq(consommationEauTable.id, parseInt(req.params.eauId)), eq(consommationEauTable.bandeId, bandeId)));
   res.json({ success: true });
@@ -878,6 +911,7 @@ router.get("/:id/traitements", async (req, res) => {
 });
 
 router.post("/:id/traitements", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const bandeId = parseInt(req.params.id);
   const { date, ageJours, produit, type, dosage, observations } = req.body;
   const rows = await db.insert(traitementsTable).values({
@@ -892,6 +926,7 @@ router.post("/:id/traitements", async (req, res) => {
 });
 
 router.delete("/:id/traitements/:traitId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const bandeId = parseInt(req.params.id);
   await db.delete(traitementsTable).where(and(eq(traitementsTable.id, parseInt(req.params.traitId)), eq(traitementsTable.bandeId, bandeId)));
   res.json({ success: true });
@@ -906,6 +941,7 @@ router.get("/:id/observations", async (req, res) => {
 });
 
 router.post("/:id/observations", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const bandeId = parseInt(req.params.id);
   const { date, ageJours, contenu } = req.body;
   const rows = await db.insert(observationsJournalTable).values({
@@ -918,12 +954,14 @@ router.post("/:id/observations", async (req, res) => {
 });
 
 router.delete("/:id/observations/:obsId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const bandeId = parseInt(req.params.id);
   await db.delete(observationsJournalTable).where(and(eq(observationsJournalTable.id, parseInt(req.params.obsId)), eq(observationsJournalTable.bandeId, bandeId)));
   res.json({ success: true });
 });
 
 router.post("/:id/parse-fiche", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   try {
     const bandeId = parseInt(req.params.id);
     const bandes = await db.select().from(bandesTable).where(eq(bandesTable.id, bandeId));
@@ -1012,6 +1050,7 @@ Règles:
 });
 
 router.post("/:id/import-fiche", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   try {
     const bandeId = parseInt(req.params.id);
     const { jours } = req.body as { jours: Array<{date: string; ageJours: number; decesJour: number; alimentKg: number; eauLitres: number; poidsMinG?: number | null; poidsMaxG?: number | null; traitement?: string | null}> };
@@ -1090,6 +1129,7 @@ router.get("/:id/actifs", async (req, res) => {
 });
 
 router.post("/:id/actifs", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const bandeId = parseInt(req.params.id);
   const { actifId, fractionUtilisee } = req.body;
   if (!actifId) return res.status(400).json({ message: "actifId requis" });
@@ -1102,6 +1142,7 @@ router.post("/:id/actifs", async (req, res) => {
 });
 
 router.put("/:id/actifs/:allocationId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const allocationId = parseInt(req.params.allocationId);
   const { fractionUtilisee } = req.body;
   const rows = await db.update(bandeActifsTable).set({ fractionUtilisee: String(fractionUtilisee) }).where(eq(bandeActifsTable.id, allocationId)).returning();
@@ -1110,6 +1151,7 @@ router.put("/:id/actifs/:allocationId", async (req, res) => {
 });
 
 router.delete("/:id/actifs/:allocationId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
   const allocationId = parseInt(req.params.allocationId);
   await db.delete(bandeActifsTable).where(eq(bandeActifsTable.id, allocationId));
   res.json({ success: true });

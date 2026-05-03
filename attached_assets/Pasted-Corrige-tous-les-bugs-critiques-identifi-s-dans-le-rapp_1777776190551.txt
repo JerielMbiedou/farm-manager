@@ -1,0 +1,432 @@
+Corrige tous les bugs critiques identifiés dans le rapport
+E2E. Dans l'ordre de priorité exact ci-dessous.
+
+RÈGLE : Vérifier avant de modifier. Rapport final obligatoire.
+
+═══════════════════════════════════════════════════
+P0 — SÉCURITÉ CRITIQUE (obligatoire avant déploiement)
+═══════════════════════════════════════════════════
+
+FIX-001 — Middleware d'authentification global sur /api
+
+PROBLÈME : GET /api/bandes accessible sans authentification.
+Toutes les routes GET sont publiques.
+
+Dans artifacts/api-server/src/app.ts, ajouter APRÈS la
+définition des routes /api/auth et /api/healthz,
+AVANT toutes les autres routes :
+
+  // Middleware auth global — protège tout /api
+  app.use("/api", (req, res, next) => {
+    // Routes publiques exemptées
+    const publicPaths = [
+      "/api/auth/login",
+      "/api/auth/logout",
+      "/api/healthz",
+    ];
+    if (publicPaths.some(p => req.path === p ||
+        req.originalUrl.startsWith(p))) {
+      return next();
+    }
+    // Vérifier la session
+    if (!req.session?.userId) {
+      return res.status(401).json({
+        error: "Non authentifié — connexion requise"
+      });
+    }
+    next();
+  });
+
+Vérifier après : curl sans cookie sur /api/bandes
+→ doit retourner 401.
+
+FIX-002 — requireWriteAccess sur toutes les routes mutantes
+
+PROBLÈME : Un lecteur peut créer/supprimer/modifier
+des bandes et leurs données.
+
+Dans bandes.ts, vérifier que requireWriteAccess()
+est appelé sur :
+- POST /api/bandes (création)
+- PUT /api/bandes/:id (modification)
+- DELETE /api/bandes/:id (suppression)
+- POST /api/bandes/:id/cloture
+- POST /api/bandes/:id/reouvrir
+- POST /api/bandes/:id/depenses
+- PUT /api/bandes/:id/depenses/:depenseId
+- DELETE /api/bandes/:id/depenses/:depenseId
+- POST /api/bandes/:id/ventes
+- PUT /api/bandes/:id/ventes/:venteId
+- DELETE /api/bandes/:id/ventes/:venteId
+- POST /api/bandes/:id/mortalite
+- DELETE /api/bandes/:id/mortalite/:id
+- POST /api/bandes/:id/pesees
+- DELETE /api/bandes/:id/pesees/:id
+- POST /api/bandes/:id/consommation
+- DELETE /api/bandes/:id/consommation/:id
+- POST /api/bandes/:id/consommation-eau
+- DELETE /api/bandes/:id/consommation-eau/:id
+- PUT /api/bandes/:id/vaccinations/:vaccId
+- POST /api/bandes/:id/traitements
+- DELETE /api/bandes/:id/traitements/:id
+- POST /api/bandes/:id/observations
+- DELETE /api/bandes/:id/observations/:id
+- PUT /api/bandes/:id/charges-fixes
+- POST /api/bandes/:id/depenses-vente
+- DELETE /api/bandes/:id/depenses-vente/:id
+- POST /api/bandes/:id/actifs
+- PUT /api/bandes/:id/actifs/:id
+- DELETE /api/bandes/:id/actifs/:id
+- POST /api/bandes/:id/import-fiche
+- POST /api/bandes/:id/parse-fiche
+
+Faire la même vérification dans :
+- chantiers.ts : toutes les routes POST/PUT/DELETE
+- actifs.ts : toutes les routes POST/PUT/DELETE
+- stocks.ts : toutes les routes POST/PUT/DELETE
+- financement.ts : toutes les routes POST/PUT/DELETE
+- parametres.ts : PUT /:cle (admin only)
+- auth.ts : POST /register, PUT /users/:id/role,
+            DELETE /users/:id (admin only)
+
+La fonction requireWriteAccess doit vérifier :
+  if (!["admin", "gestionnaire"].includes(req.session.role)) {
+    return res.status(403).json({
+      error: "Accès en lecture seule — rôle insuffisant"
+    });
+  }
+
+FIX-003 — Error handler global Express (pas de stack trace)
+
+PROBLÈME : Les erreurs 500 exposent les chemins serveur,
+noms de dépendances, SQL interne.
+
+Dans app.ts, ajouter à la toute fin
+(après toutes les routes, avant app.listen) :
+
+  // Handler d'erreurs global — DOIT être le dernier middleware
+  app.use((err: Error, req: Request, res: Response,
+           next: NextFunction) => {
+    // Logger l'erreur complète côté serveur
+    req.log?.error({ err, url: req.url,
+      method: req.method }, "Erreur serveur non gérée");
+
+    // Ne jamais exposer les détails au client
+    const statusCode = (err as any).status
+                    || (err as any).statusCode
+                    || 500;
+    res.status(statusCode).json({
+      error: statusCode === 500
+        ? "Erreur interne du serveur"
+        : err.message,
+    });
+  });
+
+Importer NextFunction depuis express si pas déjà fait.
+
+Vérifier : envoyer une requête malformée
+→ doit retourner {"error":"Erreur interne du serveur"}
+sans stack trace.
+
+FIX-004 — Validation Zod sur toutes les routes d'écriture
+
+PROBLÈME : Mauvais champs ou valeurs négatives acceptés
+→ HTTP 500 au lieu de HTTP 400.
+
+Créer un middleware de validation dans
+artifacts/api-server/src/lib/validate.ts :
+
+  import { ZodSchema, ZodError } from "zod";
+  import { Request, Response, NextFunction } from "express";
+
+  export function validateBody(schema: ZodSchema) {
+    return (req: Request, res: Response, next: NextFunction) => {
+      try {
+        req.body = schema.parse(req.body);
+        next();
+      } catch (err) {
+        if (err instanceof ZodError) {
+          return res.status(400).json({
+            error: "Données invalides",
+            details: err.errors.map(e => ({
+              champ: e.path.join("."),
+              message: e.message,
+            })),
+          });
+        }
+        next(err);
+      }
+    };
+  }
+
+Créer les schémas Zod dans
+artifacts/api-server/src/lib/schemas.ts :
+
+  import { z } from "zod";
+
+  // Schémas communs
+  const positif = z.number().min(0,
+    "La valeur doit être positive ou nulle");
+  const positifStrict = z.number().min(1,
+    "La valeur doit être strictement positive");
+  const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/,
+    "Format date invalide (YYYY-MM-DD)");
+
+  export const depenseSchema = z.object({
+    designation: z.string().min(1, "Désignation requise"),
+    categorie: z.string().min(1, "Catégorie requise"),
+    quantite: positifStrict,
+    prixUnitaire: positif,
+    date: dateStr.optional(),
+    commentaire: z.string().optional(),
+  });
+
+  export const venteSchema = z.object({
+    date: dateStr,
+    quantiteVendue: positifStrict,
+    prixUnitaire: positif,
+    poidsVifMoyen: positif.optional(),
+  });
+
+  export const mortaliteSchema = z.object({
+    date: dateStr,
+    ageJours: z.number().int().min(0),
+    decesJour: z.number().int().min(0),
+  });
+
+  export const peseeSchema = z.object({
+    date: dateStr,
+    ageJours: z.number().int().min(0),
+    poidsMoyenG: positif,
+    poidsMinG: positif.optional().nullable(),
+    poidsMaxG: positif.optional().nullable(),
+  });
+
+  export const consommationAlimentSchema = z.object({
+    date: dateStr,
+    ageJours: z.number().int().min(0),
+    quantiteKg: positif,
+    typeAliment: z.string().optional(),
+  });
+
+  export const consommationEauSchema = z.object({
+    date: dateStr,
+    ageJours: z.number().int().min(0),
+    quantiteLitres: positif,
+  });
+
+  export const observationSchema = z.object({
+    date: dateStr,
+    ageJours: z.number().int().min(0),
+    contenu: z.string().min(1, "Observation ne peut pas être vide"),
+  });
+
+  export const traitementSchema = z.object({
+    date: dateStr,
+    ageJours: z.number().int().min(0),
+    produit: z.string().min(1),
+    type: z.enum(["traitement","vaccin",
+                  "complement","preventif"]),
+    dosage: z.string().optional(),
+    observations: z.string().optional(),
+  });
+
+  export const bandeSchema = z.object({
+    nom: z.string().min(1, "Nom requis"),
+    dateDeDepart: dateStr,
+    sujetsDepart: positifStrict,
+    prixPoussin: positif.optional(),
+    fournisseurPoussin: z.string().optional(),
+    race: z.string().optional(),
+    valeurMaterielFixe: positif.optional(),
+  });
+
+  export const financementSchema = z.object({
+    nom: z.string().min(1),
+    montant: positifStrict,
+    date: dateStr,
+    type: z.enum(["apport", "pret"]).default("apport"),
+    tauxInteret: positif.optional(),
+    dateRemboursementPrevue: dateStr.optional(),
+  });
+
+  export const remboursementSchema = z.object({
+    investisseurNom: z.string().min(1),
+    montant: positifStrict,
+    date: dateStr,
+    commentaire: z.string().optional(),
+  });
+
+  export const chantierSchema = z.object({
+    nom: z.string().min(1),
+    description: z.string().optional(),
+    dateDebut: dateStr.optional(),
+  });
+
+  export const chantierDepenseSchema = z.object({
+    designation: z.string().min(1),
+    quantite: positifStrict,
+    prixUnitaire: positif,
+    categorie: z.string().min(1),
+    date: dateStr.optional(),
+    commentaire: z.string().optional(),
+  });
+
+  export const stockAlimentSchema = z.object({
+    designation: z.string().min(1),
+    type: z.enum(["entree", "sortie"]),
+    quantiteKg: positif,
+    prixUnitaire: positif.optional(),
+    fournisseur: z.string().optional(),
+    date: dateStr.optional(),
+    commentaire: z.string().optional(),
+  });
+
+  export const stockMedicamentSchema = z.object({
+    nom: z.string().min(1),
+    type: z.enum(["entree", "sortie"]),
+    quantite: positif,
+    unite: z.string().optional(),
+    datePeremption: dateStr.optional(),
+    fournisseur: z.string().optional(),
+    date: dateStr.optional(),
+    commentaire: z.string().optional(),
+  });
+
+Appliquer validateBody() sur chaque route POST/PUT
+en important le schéma correspondant :
+
+  // Exemple dans bandes.ts :
+  import { validateBody } from "../lib/validate";
+  import { depenseSchema, mortaliteSchema, ... }
+    from "../lib/schemas";
+
+  router.post("/:id/depenses",
+    requireWriteAccess,
+    validateBody(depenseSchema),
+    async (req, res) => { ... }
+  );
+
+═══════════════════════════════════════════════════
+P1 — QUALITÉ DONNÉES
+═══════════════════════════════════════════════════
+
+FIX-005 — Backfill des 48 dépenses sans date
+
+Exécuter directement sur la DB :
+  UPDATE bande_depenses
+  SET date = b.date_de_depart
+  FROM bandes b
+  WHERE bande_depenses.bande_id = b.id
+  AND bande_depenses.date IS NULL;
+
+Vérifier :
+  SELECT COUNT(*) FROM bande_depenses WHERE date IS NULL;
+  → doit retourner 0
+
+FIX-006 — Corriger l'algorithme de numéro de bande
+
+Dans bandes.ts route POST /, remplacer :
+  const numero = (await db.select()
+    .from(bandesTable)).length + 1;
+
+Par :
+  const maxNumero = await db
+    .select({ max: sql`MAX(numero)` })
+    .from(bandesTable);
+  const numero = (maxNumero[0]?.max ?? 0) + 1;
+
+Ainsi même après suppression d'une bande,
+le prochain numéro est toujours unique.
+
+═══════════════════════════════════════════════════
+P1 — ROBUSTESSE
+═══════════════════════════════════════════════════
+
+FIX-007 — Transactions DB sur opérations multi-tables
+
+Dans bandes.ts, wraper dans db.transaction() :
+
+a) Route POST /:id/mortalite
+   (insert mortalité + update nombreDeces sur bande)
+
+b) Route POST /:id/ventes
+   (insert vente + recalcul agrégats si applicable)
+
+c) Route POST /:id/cloture
+   (update statut + dateCloture + calculs finaux)
+
+Exemple :
+  await db.transaction(async (tx) => {
+    await tx.insert(mortaliteJournaliereTable)
+      .values({ ... });
+    await tx.update(bandesTable)
+      .set({ nombreDeces: sql`nombre_deces + ${decesJour}` })
+      .where(eq(bandesTable.id, bandeId));
+  });
+
+═══════════════════════════════════════════════════
+VÉRIFICATION FINALE
+═══════════════════════════════════════════════════
+
+Après toutes les corrections, re-exécuter les tests
+critiques :
+
+V1 — Auth sans cookie
+  curl http://localhost:80/api/bandes
+  → Attendu : 401
+
+V2 — Lecteur lecture
+  curl -b lect.cookie http://localhost:80/api/bandes
+  → Attendu : 200 (lecture autorisée)
+
+V3 — Lecteur écriture
+  curl -b lect.cookie -X POST /api/bandes
+    -d '{"nom":"X","sujetsDepart":10,"dateDeDepart":"2026-05-03"}'
+  → Attendu : 403
+
+V4 — Valeurs négatives
+  curl -b admin.cookie -X POST /api/bandes/4/depenses
+    -d '{"quantite":-5,"prixUnitaire":1000,
+         "designation":"test","categorie":"aliments"}'
+  → Attendu : 400
+
+V5 — Champ manquant
+  curl -b admin.cookie -X POST /api/bandes/4/mortalite
+    -d '{"nombre":5}'
+  → Attendu : 400 avec message explicite (pas 500)
+
+V6 — Erreur 500 sans stack
+  Provoquer une erreur intentionnelle
+  → Attendu : {"error":"Erreur interne du serveur"}
+  → Pas de stack trace, pas de chemin serveur
+
+V7 — Backfill dates
+  SELECT COUNT(*) FROM bande_depenses WHERE date IS NULL;
+  → Attendu : 0
+
+V8 — Numéro bande unique
+  Créer une bande, la supprimer, en créer une autre
+  → Le nouveau numéro doit être supérieur au max existant
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL OBLIGATOIRE
+═══════════════════════════════════════════════════
+
+## RAPPORT CORRECTIONS SÉCURITÉ — [date]
+
+### ✅ CORRECTIONS APPLIQUÉES
+Pour chaque FIX : fichier, lignes, ce qui a changé
+
+### 🧪 RÉSULTATS VÉRIFICATIONS V1-V8
+Pour chaque test : résultat obtenu vs attendu
+
+### 📊 ÉTAT DB
+- Dépenses sans date : [avant] → [après]
+- Numéro bande : algorithme corrigé ✓
+
+### 🚀 VERDICT
+L'app est-elle maintenant prête pour Render ?
+OUI / NON avec justification
+
+Si OUI : lancer git push origin main
