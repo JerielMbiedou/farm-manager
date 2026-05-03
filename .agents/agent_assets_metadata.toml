@@ -1,5 +1,10 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "bvFxfTGR13opMyye7z2cF"
+uri = "file://artifacts/ferme-familiale/public/images/logo-ferme-mbiedou.png"
+type = "image"
+title = "ferme mbiedou poultry logo"
 
 [[outputs]]
 id = "Mowr9Gm2HQI7qePNul_fA"
@@ -78,3 +83,9 @@ id = "RjrKHXTd3sE2raF2x8Zlv"
 uri = "file://exports/prod-legacy-backup-2026-05-02-2125.sql.txt"
 type = "text"
 title = "Sauvegarde SQL en .txt (renommez en .sql pour psql)"
+
+[[outputs]]
+id = "TfZE95XBpvL0jcs2HqJoA"
+uri = "file://artifacts/ferme-familiale/public/images/logo-ferme-mbiedou.png"
+type = "image"
+title = "Logo Ferme Mbiedou"
