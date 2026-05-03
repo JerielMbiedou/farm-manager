@@ -125,3 +125,9 @@ id = "5y2naWA2wsrn4D7gMuQp4"
 uri = "file://artifacts/ferme-familiale/public/images/logo-variant-3-african-modern.png"
 type = "image"
 title = "Variante 3 — Africain moderne (soleil + Bamiléké)"
+
+[[outputs]]
+id = "gLZg0gNzVtOofEdsYZ0Wg"
+uri = "file://.local/reports/E2E_RAPPORT_2026-05-03.md"
+type = "text"
+title = "Rapport E2E Ferme Mbiedou — 2026-05-03"

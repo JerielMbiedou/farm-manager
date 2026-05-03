@@ -1,0 +1,430 @@
+Effectue des tests end-to-end complets sur toute l'application.
+L'objectif est de trouver tous les bugs, problèmes et
+incohérences avant la migration vers Render.
+
+Ne corrige rien encore. Documente tout ce que tu trouves.
+
+═══════════════════════════════════════════════════
+MÉTHODE DE TEST
+═══════════════════════════════════════════════════
+
+Pour chaque test :
+1. Appeler l'endpoint API directement via curl/fetch
+2. Vérifier la réponse (status code, données retournées)
+3. Vérifier la cohérence avec la DB (via Drizzle)
+4. Noter tout écart, erreur ou comportement inattendu
+
+═══════════════════════════════════════════════════
+BLOC 1 — AUTHENTIFICATION
+═══════════════════════════════════════════════════
+
+T1.1 — Login avec credentials valides
+  POST /api/auth/login { username: "admin", password: "..." }
+  → Attendu : 200 + cookie de session
+
+T1.2 — Login avec mauvais mot de passe
+  POST /api/auth/login { username: "admin", password: "faux" }
+  → Attendu : 401 avec message explicite
+
+T1.3 — Accès route protégée sans session
+  GET /api/bandes (sans cookie)
+  → Attendu : 401
+
+T1.4 — Accès route admin avec rôle gestionnaire
+  Connecter en tant que gestionnaire
+  GET /api/users
+  → Attendu : 403
+
+T1.5 — Accès route écriture avec rôle lecteur
+  Connecter en tant que lecteur
+  POST /api/bandes
+  → Attendu : 403
+
+T1.6 — GET /api/auth/me
+  → Attendu : profil utilisateur courant
+
+═══════════════════════════════════════════════════
+BLOC 2 — DASHBOARD
+═══════════════════════════════════════════════════
+
+T2.1 — GET /api/dashboard/summary
+  → Vérifier :
+    - soldeCourant cohérent avec la DB
+    - totalFinancement = sum(financement.montant)
+    - totalDepenseConstruction inclut chantierDepenses
+    - bandes actives = count(bandes WHERE statut='active')
+    - alertes présentes si seuils dépassés
+
+T2.2 — GET /api/dashboard/historique-caisse
+  → Vérifier :
+    - Toutes les sources incluses (chantiers + bandes + financement)
+    - Ordre chronologique correct
+    - Soldes cumulés cohérents
+    - cashflowMensuel calculé correctement
+
+T2.3 — GET /api/dashboard/comparaison-bandes
+  → Vérifier :
+    - Toutes les bandes présentes
+    - IC calculé correctement
+    - Durée = dateCloture - dateDeDepart (pas ageJours mortalité)
+
+T2.4 — GET /api/dashboard/finances
+  → Vérifier cohérence des totaux
+
+═══════════════════════════════════════════════════
+BLOC 3 — BANDES
+═══════════════════════════════════════════════════
+
+T3.1 — GET /api/bandes
+  → Liste complète, vérifier statuts
+
+T3.2 — GET /api/bandes/:id (pour chaque bande existante)
+  → Vérifier pour chaque bande :
+    - sujetsVivants = sujetsDepart - nombreDeces - vendus
+    - coutParSujetDepart = coutTotal / sujetsDepart
+    - beneficeNet = recettes - coutTotal
+    - chargesFixesTotal = loyer + depreciation + imprevus
+    - depreciation calculée par bande (pas par année)
+    - IC = kgAliment / kgPoidsGagne
+    - ageActuelJours correct
+
+T3.3 — Créer une bande de test
+  POST /api/bandes { nom: "Test E2E", ... }
+  → Attendu : 201 + bande créée avec vaccinations auto-générées
+
+T3.4 — Vérifier vaccinations auto-générées
+  GET /api/bandes/:id/vaccinations
+  → Attendu : calendrier vaccinal complet selon parametres
+
+T3.5 — Saisir une mortalité
+  POST /api/bandes/:id/mortalite
+  { decesJour: 5, date: today, ageJours: calculé }
+  → Vérifier : nombreDeces mis à jour sur la bande
+  → Vérifier : alerte si taux > seuil
+
+T3.6 — Saisir une consommation aliment
+  POST /api/bandes/:id/consommation
+  { quantiteKg: 50, date: today, ageJours: calculé }
+  → Vérifier : sync stock si activée
+  → Vérifier : IC recalculé
+
+T3.7 — Saisir une consommation eau
+  POST /api/bandes/:id/consommation-eau
+  → Vérifier : données persistées
+
+T3.8 — Saisir une pesée
+  POST /api/bandes/:id/pesees
+  { poidsMoyenG: 1500, poidsMinG: 1200, poidsMaxG: 1800, ... }
+  → Vérifier : poidsMin/Max persistés
+  → Vérifier : CV calculé
+
+T3.9 — Saisir une dépense avec date
+  POST /api/bandes/:id/depenses
+  { designation: "Test", categorie: "aliments",
+    quantite: 10, prixUnitaire: 5000, date: "2026-04-15" }
+  → Vérifier : date conservée (pas remplacée par dateDeDepart)
+  → Vérifier : apparaît dans historique-caisse à la bonne date
+
+T3.10 — Saisir une vente
+  POST /api/bandes/:id/ventes
+  { date: today, quantiteVendue: 100, prixUnitaire: 3500 }
+  → Vérifier : recettes mises à jour
+  → Vérifier : sujetsVivants diminué
+
+T3.11 — Marquer une vaccination comme faite
+  PUT /api/bandes/:id/vaccinations/:vaccId
+  { fait: "oui", dateFait: today }
+  → Vérifier : statut mis à jour
+
+T3.12 — Tentative d'écriture sur bande terminée
+  Prendre une bande avec statut "terminee"
+  POST /api/bandes/:id/depenses { ... }
+  → Attendu : 409 (bande verrouillée)
+
+T3.13 — Clôture d'une bande test
+  POST /api/bandes/:id/cloture
+  → Vérifier : statut = "terminee"
+  → Vérifier : dateCloture renseignée
+  → Vérifier : plus d'écriture possible (T3.12)
+
+T3.14 — Réouverture de la bande test
+  POST /api/bandes/:id/reouvrir
+  → Vérifier : statut = "active"
+
+T3.15 — Suppression de la bande test
+  DELETE /api/bandes/:id
+  → Vérifier : toutes les sous-tables supprimées (CASCADE)
+  → Vérifier : aucun orphelin en DB
+
+═══════════════════════════════════════════════════
+BLOC 4 — FINANCES
+═══════════════════════════════════════════════════
+
+T4.1 — GET /api/financement
+  → Vérifier : soldes par investisseur corrects
+  → total investi = sum(montants)
+
+T4.2 — Ajouter un financement test
+  POST /api/financement { nom: "Test", montant: 100000, ... }
+  → Vérifier : soldeCourant dashboard mis à jour
+
+T4.3 — Remboursement valide
+  POST /api/financement/remboursements
+  { investisseurNom: "Test", montant: 50000 }
+  → Attendu : 200 + solde mis à jour
+
+T4.4 — Remboursement excessif (bug guard)
+  POST /api/financement/remboursements
+  { investisseurNom: "Test", montant: 999999999 }
+  → Attendu : 400 "dépasse le solde restant"
+
+T4.5 — Nettoyage test financement
+  DELETE financement test + remboursement test
+
+═══════════════════════════════════════════════════
+BLOC 5 — INFRASTRUCTURE & ACTIFS
+═══════════════════════════════════════════════════
+
+T5.1 — GET /api/chantiers
+  → Liste + vérifier statuts
+
+T5.2 — GET /api/actifs
+  → Pour chaque actif vérifier :
+    amortissementParBande = valeur × taux%
+    nbBandesUtilisees = count clôturées
+    valeurResiduelle = valeur - (amort × nbBandes)
+    → PAS de calcul basé sur des années
+
+T5.3 — Créer chantier test + lot + dépense + devis
+  POST /api/chantiers { nom: "Test E2E" }
+  POST /api/chantiers/:id/lots { nom: "Lot test" }
+  POST /api/chantiers/:id/depenses { ... }
+  → Vérifier : ces dépenses apparaissent dans historique-caisse
+
+T5.4 — Clôture chantier avec type d'actif
+  POST /api/chantiers/:id/cloture
+  { valeurActif: 500000, typeActif: "materiel" }
+  → Vérifier : actif créé avec type "materiel" (pas "batiment")
+  → Vérifier : taux d'amortissement correct
+
+T5.5 — Suppression chantier test
+  DELETE /api/chantiers/:id
+  → Vérifier : lots + dépenses + devis supprimés (pas d'orphelins)
+
+T5.6 — Allocations actifs sur bande
+  POST /api/bandes/:id/actifs
+  { actifId: X, fractionUtilisee: 1 }
+  → Vérifier : chargesFixesTotal de la bande mis à jour
+  → Vérifier : valeurPerdueMateriel = valeur × taux% × fraction
+
+═══════════════════════════════════════════════════
+BLOC 6 — STOCKS
+═══════════════════════════════════════════════════
+
+T6.1 — GET /api/stocks/aliments
+  → Vérifier : soldes cohérents (entrées - sorties)
+
+T6.2 — Ajouter entrée stock
+  POST /api/stocks/aliments
+  { designation: "Test aliment", type: "entree",
+    quantiteKg: 100, prixUnitaire: 350 }
+
+T6.3 — Ajouter sortie stock (consommation bande)
+  Si sync_stock_consommation = true :
+  POST /api/bandes/:id/consommation { quantiteKg: 10 }
+  → Vérifier : sortie auto créée dans stock_aliments
+
+T6.4 — Stock médicaments péremption
+  GET /api/stocks/medicaments
+  → Vérifier : alertes péremption < 30 jours présentes
+
+T6.5 — Nettoyage stocks test
+
+═══════════════════════════════════════════════════
+BLOC 7 — PARAMÈTRES
+═══════════════════════════════════════════════════
+
+T7.1 — GET /api/parametres
+  → Vérifier : toutes les catégories présentes
+    (alertes, phases, branding, backup, stock, systeme)
+
+T7.2 — Modifier un paramètre
+  PUT /api/parametres/seuil_alerte_solde_caisse
+  { valeur: "200000" }
+  → Vérifier : valeur mise à jour
+
+T7.3 — Vérifier les phases
+  GET /api/parametres?categorie=phases
+  → Vérifier : phase_demarrage_min/max, croissance, finition
+    toutes présentes
+
+T7.4 — Vérifier le branding
+  GET /api/parametres?categorie=branding
+  → Vérifier : ferme_nom, ferme_adresse, etc. présents
+
+T7.5 — Vérifier les paramètres backup
+  GET /api/parametres?categorie=systeme
+  → Vérifier : backup_heure, backup_retention_jours présents
+
+═══════════════════════════════════════════════════
+BLOC 8 — OCR FICHE
+═══════════════════════════════════════════════════
+
+T8.1 — Vérifier la route OCR
+  POST /api/bandes/:id/parse-fiche (avec image test)
+  → Si GEMINI_API_KEY présente : tester avec une vraie image
+  → Vérifier : eau parsée ET persistée (bug précédemment corrigé)
+  → Vérifier : poidsMin/Max parsés ET persistés
+
+T8.2 — Vérifier la route import-fiche
+  POST /api/bandes/:id/import-fiche (avec données parsées)
+  → Vérifier : mortalité insérée
+  → Vérifier : aliment inséré
+  → Vérifier : eau insérée (pas juste mortalité + aliment)
+  → Vérifier : pesées avec poidsMin/Max insérées
+
+═══════════════════════════════════════════════════
+BLOC 9 — INTÉGRITÉ DES DONNÉES EN DB
+═══════════════════════════════════════════════════
+
+T9.1 — Vérifier orphelins potentiels
+  Exécuter ces requêtes SQL directement :
+
+  -- Mortalités sans bande
+  SELECT COUNT(*) FROM mortalite_journaliere m
+  LEFT JOIN bandes b ON m.bande_id = b.id
+  WHERE b.id IS NULL;
+
+  -- Vaccinations sans bande
+  SELECT COUNT(*) FROM vaccinations v
+  LEFT JOIN bandes b ON v.bande_id = b.id
+  WHERE b.id IS NULL;
+
+  -- Actifs sans chantier (si chantier_id renseigné)
+  SELECT COUNT(*) FROM actifs a
+  WHERE a.chantier_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM chantiers c WHERE c.id = a.chantier_id
+  );
+
+  -- Dépenses sans bande
+  SELECT COUNT(*) FROM bande_depenses bd
+  LEFT JOIN bandes b ON bd.bande_id = b.id
+  WHERE b.id IS NULL;
+
+  → Tous doivent retourner 0
+
+T9.2 — Vérifier cohérence sujets vivants
+  Pour chaque bande active :
+  SELECT b.sujets_depart, b.nombre_deces,
+    (SELECT COALESCE(SUM(quantite_vendue), 0)
+     FROM bande_ventes WHERE bande_id = b.id) as vendus,
+    b.sujets_depart - b.nombre_deces -
+    (SELECT COALESCE(SUM(quantite_vendue), 0)
+     FROM bande_ventes WHERE bande_id = b.id) as calcule
+  FROM bandes b WHERE b.statut = 'active';
+  → calcule doit correspondre à ce qu'affiche l'UI
+
+T9.3 — Vérifier cohérence financière
+  -- Total financement
+  SELECT SUM(montant) FROM financement;
+  -- Total remboursements
+  SELECT SUM(montant) FROM remboursements;
+  -- Dépenses chantiers (nouveau système)
+  SELECT SUM(quantite * prix_unitaire)
+  FROM chantier_depenses;
+  -- Vérifier que ces chiffres correspondent au dashboard
+
+T9.4 — Vérifier dépenses sans date
+  SELECT COUNT(*) FROM bande_depenses WHERE date IS NULL;
+  → Idéalement 0 (ou noter le nombre pour backfill)
+
+T9.5 — Vérifier index dupliqué session
+  SELECT indexname FROM pg_indexes
+  WHERE tablename = 'session'
+  ORDER BY indexname;
+  → Ne doit pas y avoir 2 index sur expire
+
+T9.6 — Vérifier FK vaccinations
+  SELECT COUNT(*) FROM vaccinations v
+  WHERE NOT EXISTS (
+    SELECT 1 FROM bandes b WHERE b.id = v.bande_id
+  );
+  → Doit retourner 0
+
+═══════════════════════════════════════════════════
+BLOC 10 — PERFORMANCE ET EDGE CASES
+═══════════════════════════════════════════════════
+
+T10.1 — Requêtes lentes potentielles
+  Mesurer le temps de réponse de :
+  - GET /api/dashboard/summary
+  - GET /api/dashboard/historique-caisse
+  - GET /api/bandes/:id (bande avec le plus de données)
+  → Signaler si > 2 secondes
+
+T10.2 — Bande avec 0 dépenses
+  GET /api/bandes/:id pour une bande sans dépenses
+  → Vérifier : pas de division par zéro, valeurs à 0
+
+T10.3 — Bande avec 0 pesées
+  GET /api/bandes/:id pour une bande sans pesées
+  → Vérifier : IC = null (pas NaN ou erreur)
+  → Vérifier : GMQ = null (pas erreur)
+
+T10.4 — Bande avec 0 ventes
+  → beneficeNet = -coutTotal (négatif normal)
+  → Pas d'erreur de division
+
+T10.5 — Valeurs nulles dans les calculs
+  Vérifier que parseFloat(null) et parseFloat(undefined)
+  sont gérés (retournent 0 ou null, pas NaN)
+
+T10.6 — Backup automatique
+  POST /api/backups/trigger
+  → Vérifier : fichier créé dans exports/backups/
+  → Vérifier : toutes les tables incluses
+  → Vérifier : users sans passwords
+
+T10.7 — Healthcheck
+  GET /api/healthz
+  → Attendu : 200 {"status":"ok"}
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL OBLIGATOIRE
+═══════════════════════════════════════════════════
+
+## RAPPORT E2E — Ferme Mbiedou
+## [date + heure]
+
+### 🟢 TESTS PASSÉS (X/Y)
+Liste des tests OK avec réponse reçue
+
+### 🔴 BUGS CRITIQUES TROUVÉS
+Pour chaque bug :
+  - Test : T[X.Y]
+  - Endpoint : METHOD /api/...
+  - Attendu : [résultat attendu]
+  - Obtenu : [résultat réel]
+  - DB brute : [valeur en base]
+  - Impact : [ce que ça casse pour l'utilisateur]
+  - Correction suggérée
+
+### 🟡 ANOMALIES NON BLOQUANTES
+Même format, impact mineur
+
+### 🔵 POINTS D'ATTENTION
+Performances, edge cases, données à surveiller
+
+### 📊 INTÉGRITÉ DB
+  - Orphelins trouvés : X (par table)
+  - Dépenses sans date : X
+  - Cohérence sujets vivants : OK/KO
+  - Index dupliqués : OK/KO
+
+### ✅ VERDICT FINAL
+L'app est-elle prête pour la migration vers Render ?
+OUI / NON — avec justification
+
+Si NON : liste des corrections bloquantes à faire
+avant la migration.
