@@ -1,0 +1,607 @@
+```
+Effectue des tests end-to-end complets sur tous les
+workflows de l'application. Teste chaque fonctionnalité
+de bout en bout comme le ferait un vrai utilisateur.
+
+Ne modifie rien. Rapport uniquement.
+
+COMPTES DE TEST :
+- admin / admin123 (rôle admin)
+- gestionnaire / gest123 (rôle gestionnaire)
+- lecteur / lect123 (rôle lecteur)
+- papa / papa123 (rôle investisseur)
+
+═══════════════════════════════════════════════════
+WORKFLOW 1 — AUTHENTIFICATION
+═══════════════════════════════════════════════════
+
+W1.1 — Connexion valide
+  POST /api/auth/login { username: "admin", password: "admin123" }
+  → 200 + cookie session posé
+
+W1.2 — Mauvais mot de passe
+  POST /api/auth/login { username: "admin", password: "faux" }
+  → 401 + message explicite (pas de stack trace)
+
+W1.3 — Accès sans session
+  GET /api/bandes (sans cookie)
+  → 401 (pas 200)
+
+W1.4 — Lecteur tente d'écrire
+  POST /api/bandes (cookie lecteur)
+  → 403
+
+W1.5 — Lecteur peut lire
+  GET /api/bandes (cookie lecteur)
+  → 200
+
+W1.6 — Gestionnaire tente d'accéder admin
+  GET /api/users (cookie gestionnaire)
+  → 403
+
+W1.7 — Redirect si déjà connecté
+  GET / avec session active
+  → redirect vers /dashboard
+
+W1.8 — Logout
+  POST /api/auth/logout
+  → 200 + cookie invalidé
+  → GET /api/bandes après logout → 401
+
+═══════════════════════════════════════════════════
+WORKFLOW 2 — CRÉATION ET GESTION D'UNE BANDE
+═══════════════════════════════════════════════════
+
+W2.1 — Créer une bande de test
+  POST /api/bandes {
+    nom: "Bande E2E Test",
+    dateDeDepart: [aujourd'hui],
+    sujetsDepart: 1000,
+    prixPoussin: 600,
+    race: "COBB 500"
+  }
+  → 201 + bande créée
+  → Vérifier : vaccinations auto-générées (GET /:id/vaccinations)
+  → Vérifier : numero = MAX existant + 1
+
+W2.2 — Modifier la bande
+  PUT /api/bandes/:id { sujetsDepart: 1100 }
+  → 200 + modification persistée
+
+W2.3 — Tentative d'écriture sur bande terminée
+  Clôturer d'abord, puis tenter POST /:id/depenses
+  → 409 (bande verrouillée)
+
+W2.4 — Réouverture
+  POST /api/bandes/:id/reouvrir
+  → 200 + statut active
+  → Écriture possible à nouveau
+
+W2.5 — Suppression et vérification cascade
+  DELETE /api/bandes/:idTest
+  → 200
+  → Vérifier aucun orphelin :
+    SELECT COUNT(*) FROM bande_depenses
+    WHERE bande_id = :idTest → 0
+    SELECT COUNT(*) FROM vaccinations
+    WHERE bande_id = :idTest → 0
+
+═══════════════════════════════════════════════════
+WORKFLOW 3 — JOURNAL DU JOUR (saisie quotidienne)
+═══════════════════════════════════════════════════
+
+W3.1 — Saisir mortalité
+  POST /api/bandes/:id/mortalite {
+    date: aujourd'hui,
+    ageJours: [calculé],
+    decesJour: 3
+  }
+  → 201
+  → Vérifier : nombreDeces mis à jour sur la bande
+  → Vérifier : alerte si taux > seuil
+
+W3.2 — Saisir consommation aliment
+  POST /api/bandes/:id/consommation {
+    date: aujourd'hui,
+    ageJours: [calculé],
+    quantiteKg: 48,
+    typeAliment: "croissance"
+  }
+  → 201
+  → Vérifier : IC recalculé dans GET /:id
+
+W3.3 — Saisir consommation eau
+  POST /api/bandes/:id/consommation-eau {
+    date: aujourd'hui,
+    ageJours: [calculé],
+    quantiteLitres: 120
+  }
+  → 201 + données persistées
+
+W3.4 — Saisir observation
+  POST /api/bandes/:id/observations {
+    date: aujourd'hui,
+    ageJours: [calculé],
+    contenu: "Comportement normal. Aucun signe de maladie."
+  }
+  → 201
+
+W3.5 — Vérifier les 4 saisies dans les onglets
+  GET /api/bandes/:id/mortalite → contient la ligne
+  GET /api/bandes/:id/consommation → contient la ligne
+  GET /api/bandes/:id/consommation-eau → contient la ligne
+  GET /api/bandes/:id/observations → contient la ligne
+
+W3.6 — Valeurs négatives rejetées
+  POST /api/bandes/:id/mortalite { decesJour: -1 }
+  → 400
+
+W3.7 — Champ manquant
+  POST /api/bandes/:id/mortalite { date: aujourd'hui }
+  (sans decesJour ni ageJours)
+  → 400 avec message explicite (pas 500)
+
+═══════════════════════════════════════════════════
+WORKFLOW 4 — DÉPENSES DE PRODUCTION
+═══════════════════════════════════════════════════
+
+W4.1 — Ajouter une dépense avec date
+  POST /api/bandes/:id/depenses {
+    designation: "Aliment croissance",
+    categorie: "aliments",
+    quantite: 10,
+    prixUnitaire: 7500,
+    date: "2026-04-15"
+  }
+  → 201
+  → Vérifier : date conservée (pas remplacée par dateDeDepart)
+
+W4.2 — Vérifier dans historique-caisse
+  GET /api/dashboard/historique-caisse
+  → La dépense apparaît à la date 2026-04-15
+  → Pas à la date de départ de la bande
+
+W4.3 — Dépense sans date (défaut aujourd'hui)
+  POST /api/bandes/:id/depenses {
+    designation: "Test sans date",
+    categorie: "autre",
+    quantite: 1,
+    prixUnitaire: 1000
+  }
+  → 201
+  → date = aujourd'hui (pas NULL)
+
+W4.4 — Montant négatif rejeté
+  POST /api/bandes/:id/depenses {
+    quantite: -5, prixUnitaire: 1000,
+    designation: "test", categorie: "aliments"
+  }
+  → 400
+
+W4.5 — Modifier une dépense
+  PUT /api/bandes/:id/depenses/:depId { prixUnitaire: 8000 }
+  → 200 + date originale préservée
+
+W4.6 — Supprimer la dépense test
+  DELETE /api/bandes/:id/depenses/:depId → 200
+
+═══════════════════════════════════════════════════
+WORKFLOW 5 — VENTES
+═══════════════════════════════════════════════════
+
+W5.1 — Enregistrer une vente
+  POST /api/bandes/:id/ventes {
+    date: aujourd'hui,
+    quantiteVendue: 100,
+    prixUnitaire: 3500
+  }
+  → 201
+  → Vérifier : recettes mises à jour dans GET /:id
+
+W5.2 — Vente avec poids
+  POST /api/bandes/:id/ventes {
+    date: aujourd'hui,
+    quantiteVendue: 50,
+    prixUnitaire: 3800,
+    poidsVifMoyen: 2.1
+  }
+  → 201 + poidsVifMoyen persisté
+
+W5.3 — Quantité négative rejetée
+  POST /api/bandes/:id/ventes { quantiteVendue: -10 }
+  → 400
+
+W5.4 — Supprimer ventes test
+  DELETE /api/bandes/:id/ventes/:venteId → 200
+
+═══════════════════════════════════════════════════
+WORKFLOW 6 — PESÉES
+═══════════════════════════════════════════════════
+
+W6.1 — Saisir une pesée avec min/max
+  POST /api/bandes/:id/pesees {
+    date: aujourd'hui,
+    ageJours: [calculé],
+    poidsMoyenG: 1500,
+    poidsMinG: 1200,
+    poidsMaxG: 1800
+  }
+  → 201
+  → Vérifier : poidsMinG et poidsMaxG persistés
+
+W6.2 — Vérifier CV calculé
+  GET /api/bandes/:id/pesees
+  → CV = (1800-1200)/1500 * 100 = 40%
+
+W6.3 — Courbe de référence
+  GET /api/bandes/reference-poids
+  → Retourne courbe COBB 500 ou courbe configurée
+
+═══════════════════════════════════════════════════
+WORKFLOW 7 — VACCINATIONS
+═══════════════════════════════════════════════════
+
+W7.1 — Vaccinations auto-créées à la création de bande
+  GET /api/bandes/:id/vaccinations
+  → Au moins 3 vaccinations planifiées
+
+W7.2 — Marquer une vaccination comme faite
+  PUT /api/bandes/:id/vaccinations/:vaccId {
+    fait: "oui",
+    dateFait: aujourd'hui,
+    commentaire: "Administré dans l'eau"
+  }
+  → 200 + statut mis à jour
+
+W7.3 — Anti-IDOR : marquer vaccin d'une autre bande
+  PUT /api/bandes/:autreId/vaccinations/:vaccIdDeCetteBande
+  → 404 ou 403
+
+W7.4 — Marquer depuis le dashboard (bouton 1 clic)
+  Vérifier que la route accepte une requête minimaliste :
+  PUT /api/bandes/:id/vaccinations/:vaccId {
+    fait: "oui", dateFait: aujourd'hui
+  }
+  → 200
+
+═══════════════════════════════════════════════════
+WORKFLOW 8 — CLÔTURE DE BANDE
+═══════════════════════════════════════════════════
+
+W8.1 — Clôture avec sujets non comptabilisés
+  POST /api/bandes/:idTest/cloture
+  (bande avec sujetsDepart=1000, 0 décès, 0 ventes)
+  → 200 + warning "1000 sujets non comptabilisés"
+
+W8.2 — Vérifier warning affiché
+  La réponse contient-elle le champ warning ?
+  → Oui si sujetsRestants !== 0
+
+W8.3 — Bande clôturée = verrouillée
+  POST /api/bandes/:idTest/mortalite { decesJour: 1 }
+  → 409
+
+W8.4 — Réouverture
+  POST /api/bandes/:idTest/reouvrir → 200
+
+═══════════════════════════════════════════════════
+WORKFLOW 9 — DASHBOARD ET KPIs
+═══════════════════════════════════════════════════
+
+W9.1 — Résumé dashboard
+  GET /api/dashboard/summary
+  → Vérifier présence de :
+    soldeCourant, totalFinancement,
+    totalDepenseConstruction (inclut chantierDepenses),
+    bandesActives, alertes
+
+W9.2 — Cohérence financière
+  soldeCourant =
+    totalFinancement
+    - totalDepenseConstruction (chantiers + legacy)
+    - totalDepensesBandes
+    + totalRecettes
+  → Vérifier que la formule est correcte
+
+W9.3 — Historique caisse complet
+  GET /api/dashboard/historique-caisse
+  → Inclut dépenses chantierDepensesTable ✓
+  → Inclut dépenses bandes ✓
+  → Inclut financements (entrées) ✓
+  → Ordre chronologique correct ✓
+
+W9.4 — Comparaison bandes
+  GET /api/dashboard/comparaison-bandes
+  → durée = dateCloture - dateDeDepart
+    (pas ageJours mortalité)
+
+W9.5 — KPIs bande active enrichis
+  GET /api/dashboard/summary
+  → Pour chaque bande active, vérifier :
+    ageActuelJours, icActuel, gmq,
+    joursAvantAbattage, mortDernieres24h
+
+═══════════════════════════════════════════════════
+WORKFLOW 10 — FINANCEMENT
+═══════════════════════════════════════════════════
+
+W10.1 — Ajouter financement
+  POST /api/financement {
+    nom: "Test E2E",
+    montant: 500000,
+    date: aujourd'hui,
+    type: "apport"
+  }
+  → 201 + soldeCourant dashboard augmenté
+
+W10.2 — Remboursement valide
+  POST /api/financement/remboursements {
+    investisseurNom: "Test E2E",
+    montant: 100000,
+    date: aujourd'hui
+  }
+  → 200
+
+W10.3 — Remboursement excessif
+  POST /api/financement/remboursements {
+    investisseurNom: "Test E2E",
+    montant: 999999999
+  }
+  → 400 "dépasse le solde restant"
+
+W10.4 — Nettoyage
+  DELETE financement test + remboursement test
+
+═══════════════════════════════════════════════════
+WORKFLOW 11 — INFRASTRUCTURE & ACTIFS
+═══════════════════════════════════════════════════
+
+W11.1 — Créer chantier + lot + dépense
+  POST /api/chantiers { nom: "Chantier E2E" }
+  POST /api/chantiers/:id/lots { nom: "Lot test" }
+  POST /api/chantiers/:id/depenses {
+    designation: "Sac de ciment",
+    quantite: 10, prixUnitaire: 5200,
+    categorie: "materiaux",
+    date: "2026-03-01"
+  }
+  → Vérifier : dépense visible dans historique-caisse
+    à la date 2026-03-01
+
+W11.2 — Clôture avec type d'actif
+  POST /api/chantiers/:id/cloture {
+    valeurActif: 52000,
+    typeActif: "materiel"
+  }
+  → Actif créé avec type="materiel" (pas "batiment")
+
+W11.3 — Amortissement par bande
+  GET /api/actifs
+  → Pour chaque actif :
+    amortissementParBande = valeur × taux%
+    (pas de calcul annuel)
+    valeurResiduelle = valeur - (amort × nbBandes)
+
+W11.4 — Allocation actif à une bande
+  POST /api/bandes/:id/actifs {
+    actifId: :actifId,
+    fractionUtilisee: 1
+  }
+  → Vérifier : chargesFixesTotal mis à jour dans GET /:id
+  → chargesFixesTotal inclut amortissement actif
+
+W11.5 — Suppression chantier (cascade)
+  DELETE /api/chantiers/:idTest
+  → 200
+  → Vérifier : lots + dépenses + devis supprimés
+
+═══════════════════════════════════════════════════
+WORKFLOW 12 — STOCKS
+═══════════════════════════════════════════════════
+
+W12.1 — Entrée stock aliment avec suggestion
+  POST /api/stocks/aliments {
+    designation: "Aliment démarrage",
+    type: "entree",
+    quantiteKg: 200,
+    prixUnitaire: 9400,
+    date: aujourd'hui
+  }
+  → 201
+
+W12.2 — Sortie stock aliment
+  POST /api/stocks/aliments {
+    designation: "Aliment démarrage",
+    type: "sortie",
+    quantiteKg: 50,
+    date: aujourd'hui
+  }
+  → 201
+
+W12.3 — Vérifier solde stock
+  GET /api/stocks/aliments
+  → Stock net = 200 - 50 = 150 kg
+
+W12.4 — Sync stock ↔ consommation bande
+  Si sync_stock_consommation = "true" :
+  POST /api/bandes/:id/consommation { quantiteKg: 30 }
+  → Vérifier : sortie automatique créée dans stock_aliments
+
+W12.5 — Route suggestions aliments
+  GET /api/stocks/aliments/suggestions
+  → Retourne liste avec designation + prixMoyen
+
+W12.6 — Route suggestions médicaments
+  GET /api/stocks/medicaments/suggestions
+  → Retourne liste avec nom + unite
+
+═══════════════════════════════════════════════════
+WORKFLOW 13 — OCR FICHE PAPIER
+═══════════════════════════════════════════════════
+
+W13.1 — Route parse-fiche sans image
+  POST /api/bandes/:id/parse-fiche (sans fichier)
+  → 400 "Aucune image fournie" (pas 500)
+
+W13.2 — Route import-fiche avec données
+  POST /api/bandes/:id/import-fiche {
+    rows: [{
+      date: aujourd'hui,
+      ageJours: 14,
+      decesJour: 2,
+      alimentKg: 45,
+      eauLitres: 110,
+      poidsMoyenG: 750,
+      poidsMinG: 600,
+      poidsMaxG: 900
+    }]
+  }
+  → Vérifier : mortalité insérée ✓
+  → Vérifier : aliment inséré ✓
+  → Vérifier : eau insérée ✓ (bug précédemment corrigé)
+  → Vérifier : pesée avec poidsMin/Max insérée ✓
+
+═══════════════════════════════════════════════════
+WORKFLOW 14 — PARAMÈTRES
+═══════════════════════════════════════════════════
+
+W14.1 — Lire tous les paramètres
+  GET /api/parametres
+  → Catégories présentes :
+    alertes, phases, branding, backup, stock, actifs
+
+W14.2 — Phases configurables
+  GET /api/parametres?categorie=phases
+  → phase_demarrage_min, phase_demarrage_max,
+    phase_croissance_min, phase_croissance_max,
+    phase_finition_min, phase_finition_max,
+    duree_bande_cible
+
+W14.3 — Modifier un paramètre
+  PUT /api/parametres/seuil_alerte_solde_caisse
+  { valeur: "150000" }
+  → 200
+  → GET /api/parametres → valeur = "150000"
+
+W14.4 — Lecteur ne peut pas modifier
+  PUT /api/parametres/seuil_... (cookie lecteur)
+  → 403
+
+W14.5 — Branding dans les paramètres
+  GET /api/parametres?categorie=branding
+  → ferme_nom présent
+
+═══════════════════════════════════════════════════
+WORKFLOW 15 — SÉCURITÉ GLOBALE
+═══════════════════════════════════════════════════
+
+W15.1 — Pas de stack trace sur erreur 500
+  Envoyer une requête intentionnellement malformée
+  qui devrait causer une erreur interne
+  → Réponse : { "error": "Erreur interne du serveur" }
+  → Pas de chemin serveur, pas de SQL exposé
+
+W15.2 — Injection SQL bloquée
+  GET /api/bandes/1;DROP TABLE bandes;--
+  → 404 (Drizzle utilise des requêtes paramétrées)
+
+W15.3 — RBAC complet
+  Pour chaque rôle, vérifier accès lecture/écriture :
+
+  Admin → tout accessible ✓
+  Gestionnaire → lecture + écriture bandes/stocks ✓
+  Gestionnaire → pas accès /api/users ✓
+  Lecteur → lecture seule partout ✓
+  Lecteur → POST /api/bandes → 403 ✓
+  Investisseur → lecture finances uniquement ✓
+
+W15.4 — Session expirée
+  Utiliser un cookie de session expiré/invalide
+  → 401 (pas 500)
+
+═══════════════════════════════════════════════════
+WORKFLOW 16 — INTÉGRITÉ DB FINALE
+═══════════════════════════════════════════════════
+
+W16.1 — Zéro orphelins
+  SELECT COUNT(*) FROM mortalite_journaliere m
+  LEFT JOIN bandes b ON m.bande_id = b.id
+  WHERE b.id IS NULL → 0
+
+  SELECT COUNT(*) FROM vaccinations v
+  LEFT JOIN bandes b ON v.bande_id = b.id
+  WHERE b.id IS NULL → 0
+
+W16.2 — Zéro dépenses sans date
+  SELECT COUNT(*) FROM bande_depenses
+  WHERE date IS NULL → 0
+
+W16.3 — Cohérence sujets
+  Pour chaque bande :
+  sujetsDepart - nombreDeces - totalVendus
+  = sujetsVivants affiché dans l'UI
+
+W16.4 — Séquences correctes
+  Créer une bande, noter son id et numero
+  Supprimer, recréer → nouveau id et numero
+  > anciens (pas de réutilisation)
+
+W16.5 — Backup fonctionnel
+  POST /api/backups/trigger (admin)
+  → { success: true, filename: "...", size: ... }
+  → Fichier créé dans exports/backups/
+  → Ne contient pas les mots de passe users
+
+═══════════════════════════════════════════════════
+FORMAT DU RAPPORT FINAL
+═══════════════════════════════════════════════════
+
+## RAPPORT E2E COMPLET — Ferme Mbiedou
+## [date + heure]
+
+### 📊 RÉSUMÉ
+  Total tests : X
+  ✅ Passés : X
+  ❌ Échoués : X
+  ⚠️ Partiels : X
+
+### ✅ WORKFLOWS COMPLETS (tous les tests passent)
+  W1 Authentification : X/X ✅
+  W2 Gestion bandes : X/X ✅
+  ... etc
+
+### ❌ BUGS TROUVÉS
+Pour chaque bug :
+  Test : W[X.Y]
+  Endpoint : METHOD /api/...
+  Attendu : [résultat attendu]
+  Obtenu : [résultat réel]
+  Sévérité : CRITIQUE / IMPORTANT / MINEUR
+  Correction suggérée
+
+### ⚠️ PARTIELS
+  Ce qui fonctionne vs ce qui manque
+
+### 🔒 SÉCURITÉ
+  Auth globale : ✅/❌
+  RBAC complet : ✅/❌
+  Pas de stack trace : ✅/❌
+  Valeurs négatives rejetées : ✅/❌
+
+### 💾 INTÉGRITÉ DB
+  Orphelins : 0 ✅ / X ❌
+  Dépenses sans date : 0 ✅ / X ❌
+  Cohérence sujets : ✅/❌
+
+### 🚀 VERDICT FINAL
+  L'app est-elle prête pour Render ?
+  OUI / NON
+
+  Si NON :
+  Corrections BLOQUANTES (à faire avant deploy) :
+  1. ...
+  2. ...
+
+  Corrections non bloquantes (peuvent attendre) :
+  1. ...
+```
