@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, peseesTable, consommationAlimentTable, vaccinationsTable, consommationEauTable, traitementsTable, observationsJournalTable, bandeActifsTable, actifsTable, stockAlimentsTable, usersTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, chargesFixesPersonnaliseesTable, depensesVenteTable, mortaliteJournaliereTable, peseesTable, consommationAlimentTable, vaccinationsTable, consommationEauTable, traitementsTable, observationsJournalTable, bandeActifsTable, actifsTable, stockAlimentsTable, usersTable } from "@workspace/db";
+import { eq, and, asc, sql } from "drizzle-orm";
 import { logFromRequest } from "./activity-log";
 import { getParam, getParamStr, getVaccinationSchedule, REFERENCE_WEIGHT_CURVE } from "../lib/parametres";
 import { ai } from "@workspace/integrations-gemini-ai";
@@ -12,6 +12,8 @@ import {
   venteCreateSchema,
   mortaliteCreateSchema,
   peseeCreateSchema,
+  chargeFixeCustomCreateSchema,
+  chargeFixeCustomUpdateSchema,
 } from "../lib/schemas";
 
 const router = Router();
@@ -68,7 +70,18 @@ async function getBandeDetail(id: number) {
   const valeurPerdueMateriel = valeurMateriel * (tauxDepreciation / 100);
   const imprevus = totalDepenses * (tauxImprevus / 100);
   const loyer = chargesRows.length > 0 ? parseFloat(chargesRows[0].loyer) : 0;
-  const chargesFixesTotal = valeurPerdueMateriel + imprevus + loyer;
+
+  const chargesCustom = await db
+    .select()
+    .from(chargesFixesPersonnaliseesTable)
+    .where(eq(chargesFixesPersonnaliseesTable.bandeId, id))
+    .orderBy(asc(chargesFixesPersonnaliseesTable.createdAt));
+  const totalChargesCustom = chargesCustom.reduce(
+    (s, c) => s + parseFloat(c.montant ?? "0"),
+    0,
+  );
+
+  const chargesFixesTotal = valeurPerdueMateriel + imprevus + loyer + totalChargesCustom;
 
   const sujetsRestants = bande.sujetsDepart - nombreDeces - totalVendus;
   const totalDepensesVente = depensesVente.reduce((s, d) => s + parseFloat(d.montant), 0);
@@ -97,6 +110,8 @@ async function getBandeDetail(id: number) {
     totalDepenses,
     totalRecettes,
     chargesFixesTotal,
+    chargesCustom,
+    totalChargesCustom,
     beneficeNet,
     beneficeNetSansCharges,
     coutParSujet,
@@ -1233,6 +1248,103 @@ router.delete("/:id/actifs/:allocationId", async (req, res) => {
   if (!(await requireWriteAccess(req, res))) return;
   const allocationId = parseInt(req.params.allocationId);
   await db.delete(bandeActifsTable).where(eq(bandeActifsTable.id, allocationId));
+  res.json({ success: true });
+});
+
+// ─── Charges fixes personnalisées (par bande) ─────────────────────────
+router.get("/:id/charges-fixes-custom", async (req, res) => {
+  const bandeId = parseInt(req.params.id);
+  if (Number.isNaN(bandeId)) { res.status(400).json({ message: "ID invalide" }); return; }
+  const charges = await db
+    .select()
+    .from(chargesFixesPersonnaliseesTable)
+    .where(eq(chargesFixesPersonnaliseesTable.bandeId, bandeId))
+    .orderBy(asc(chargesFixesPersonnaliseesTable.createdAt));
+  const total = charges.reduce((s, c) => s + parseFloat(c.montant ?? "0"), 0);
+  res.json({
+    charges: charges.map(c => ({
+      id: c.id,
+      bandeId: c.bandeId,
+      designation: c.designation,
+      montant: parseFloat(c.montant),
+      categorie: c.categorie,
+      commentaire: c.commentaire,
+      createdAt: c.createdAt,
+    })),
+    total,
+  });
+});
+
+router.post("/:id/charges-fixes-custom", validateBody(chargeFixeCustomCreateSchema), async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
+  const bandeId = parseInt(String(req.params.id));
+  if (Number.isNaN(bandeId)) { res.status(400).json({ message: "ID invalide" }); return; }
+  if (!(await assertBandeWritable(bandeId, res))) return;
+  const { designation, montant, categorie, commentaire } = req.body as {
+    designation: string; montant: number; categorie?: string; commentaire?: string;
+  };
+  const inserted = await db.insert(chargesFixesPersonnaliseesTable).values({
+    bandeId,
+    designation: normalizeDesignation(designation),
+    montant: String(montant),
+    categorie: categorie ?? "autre",
+    commentaire: commentaire ?? null,
+  }).returning();
+  const c = inserted[0];
+  await logFromRequest(req, "charge_fixe_custom_create", `${c.designation} (${c.montant} FCFA) — bande ${bandeId}`);
+  res.status(201).json({
+    id: c.id,
+    bandeId: c.bandeId,
+    designation: c.designation,
+    montant: parseFloat(c.montant),
+    categorie: c.categorie,
+    commentaire: c.commentaire,
+    createdAt: c.createdAt,
+  });
+});
+
+router.put("/:id/charges-fixes-custom/:chargeId", validateBody(chargeFixeCustomUpdateSchema), async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
+  const bandeId = parseInt(String(req.params.id));
+  const chargeId = parseInt(String(req.params.chargeId));
+  if (Number.isNaN(bandeId) || Number.isNaN(chargeId)) { res.status(400).json({ message: "ID invalide" }); return; }
+  if (!(await assertBandeWritable(bandeId, res))) return;
+  const existing = await db.select().from(chargesFixesPersonnaliseesTable).where(eq(chargesFixesPersonnaliseesTable.id, chargeId));
+  if (existing.length === 0 || existing[0].bandeId !== bandeId) {
+    res.status(404).json({ message: "Charge introuvable pour cette bande" }); return;
+  }
+  const body = req.body as { designation?: string; montant?: number; categorie?: string; commentaire?: string };
+  const patch: Record<string, unknown> = {};
+  if (body.designation !== undefined) patch.designation = normalizeDesignation(body.designation);
+  if (body.montant !== undefined) patch.montant = String(body.montant);
+  if (body.categorie !== undefined) patch.categorie = body.categorie;
+  if (body.commentaire !== undefined) patch.commentaire = body.commentaire;
+  const updated = await db.update(chargesFixesPersonnaliseesTable).set(patch).where(eq(chargesFixesPersonnaliseesTable.id, chargeId)).returning();
+  const c = updated[0];
+  await logFromRequest(req, "charge_fixe_custom_update", `${c.designation} (${c.montant} FCFA) — bande ${bandeId}`);
+  res.json({
+    id: c.id,
+    bandeId: c.bandeId,
+    designation: c.designation,
+    montant: parseFloat(c.montant),
+    categorie: c.categorie,
+    commentaire: c.commentaire,
+    createdAt: c.createdAt,
+  });
+});
+
+router.delete("/:id/charges-fixes-custom/:chargeId", async (req, res) => {
+  if (!(await requireWriteAccess(req, res))) return;
+  const bandeId = parseInt(String(req.params.id));
+  const chargeId = parseInt(String(req.params.chargeId));
+  if (Number.isNaN(bandeId) || Number.isNaN(chargeId)) { res.status(400).json({ message: "ID invalide" }); return; }
+  if (!(await assertBandeWritable(bandeId, res))) return;
+  const existing = await db.select().from(chargesFixesPersonnaliseesTable).where(eq(chargesFixesPersonnaliseesTable.id, chargeId));
+  if (existing.length === 0 || existing[0].bandeId !== bandeId) {
+    res.status(404).json({ message: "Charge introuvable pour cette bande" }); return;
+  }
+  await db.delete(chargesFixesPersonnaliseesTable).where(eq(chargesFixesPersonnaliseesTable.id, chargeId));
+  await logFromRequest(req, "charge_fixe_custom_delete", `${existing[0].designation} — bande ${bandeId}`);
   res.json({ success: true });
 });
 

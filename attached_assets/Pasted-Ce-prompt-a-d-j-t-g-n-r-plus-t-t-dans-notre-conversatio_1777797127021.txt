@@ -1,0 +1,320 @@
+Ce prompt a déjà été généré plus tôt dans notre conversation — c'est exactement le **BLOC 5** du prompt "Bugs E2E + Charges fixes personnalisées". 
+
+Colle simplement ce prompt dans Claude Code :
+
+```
+Implémente la gestion des charges fixes personnalisées
+par bande (coûts fixes non liés à un actif amortissable).
+
+VÉRIFICATION D'ABORD :
+- La table charges_fixes_personnalisees existe-t-elle ?
+- Y a-t-il des routes CRUD pour cette table ?
+- L'onglet Charges de /bandes/:id affiche-t-il
+  une section pour ces charges ?
+
+═══════════════════════════════════════════════════
+BLOC 1 — SCHÉMA DB
+═══════════════════════════════════════════════════
+
+Dans lib/db/src/schema/bandes.ts, ajouter si absente :
+
+  export const chargesFixesPersonnaliseesTable =
+    pgTable("charges_fixes_personnalisees", {
+      id: serial("id").primaryKey(),
+      bandeId: integer("bande_id")
+        .notNull()
+        .references(() => bandesTable.id,
+          { onDelete: "cascade" }),
+      designation: varchar("designation", { length: 255 })
+        .notNull(),
+      montant: numeric("montant", {
+        precision: 12, scale: 2
+      }).notNull(),
+      categorie: varchar("categorie", { length: 100 })
+        .default("autre"),
+      commentaire: text("commentaire"),
+      createdAt: timestamp("created_at")
+        .defaultNow().notNull(),
+    });
+
+Générer et appliquer la migration Drizzle.
+
+═══════════════════════════════════════════════════
+BLOC 2 — ROUTES API CRUD
+═══════════════════════════════════════════════════
+
+Dans bandes.ts, ajouter :
+
+GET /api/bandes/:id/charges-fixes-custom
+  → Liste toutes les charges + total
+
+  const charges = await db
+    .select()
+    .from(chargesFixesPersonnaliseesTable)
+    .where(eq(
+      chargesFixesPersonnaliseesTable.bandeId,
+      bandeId
+    ))
+    .orderBy(asc(
+      chargesFixesPersonnaliseesTable.createdAt
+    ));
+
+  const total = charges.reduce(
+    (s, c) => s + parseFloat(c.montant ?? "0"), 0
+  );
+
+  return res.json({ charges, total });
+
+POST /api/bandes/:id/charges-fixes-custom
+  Validation Zod :
+    designation: z.string().min(1)
+    montant: z.number().positive()
+    categorie: z.string().optional()
+    commentaire: z.string().optional()
+
+  Middlewares : requireAuth + requireWriteAccess
+  + assertBandeWritable
+
+  → 201 + charge créée
+
+PUT /api/bandes/:id/charges-fixes-custom/:chargeId
+  Même validation que POST (tous champs optionnels)
+  Vérifier que chargeId appartient bien à bandeId
+  → 200 + charge modifiée
+
+DELETE /api/bandes/:id/charges-fixes-custom/:chargeId
+  Vérifier que chargeId appartient bien à bandeId
+  → 200 { success: true }
+
+═══════════════════════════════════════════════════
+BLOC 3 — INTÉGRATION DANS chargesFixesTotal
+═══════════════════════════════════════════════════
+
+Dans getBandeDetail() / GET /:id, ajouter :
+
+  const chargesCustom = await db
+    .select()
+    .from(chargesFixesPersonnaliseesTable)
+    .where(eq(
+      chargesFixesPersonnaliseesTable.bandeId,
+      bande.id
+    ));
+
+  const totalChargesCustom = chargesCustom.reduce(
+    (s, c) => s + parseFloat(c.montant ?? "0"), 0
+  );
+
+  // Total final
+  const chargesFixesTotal = loyer
+    + valeurPerdueMateriel
+    + imprevus
+    + totalChargesCustom;
+
+Retourner dans la réponse :
+  chargesCustom,
+  totalChargesCustom,
+  chargesFixesTotal  (mis à jour)
+
+═══════════════════════════════════════════════════
+BLOC 4 — UI DANS /BANDES/:ID ONGLET CHARGES
+═══════════════════════════════════════════════════
+
+Dans bandes/[id].tsx, onglet Charges fixes,
+ajouter une section après "Dépréciation & Actifs" :
+
+┌─────────────────────────────────────────────────┐
+│ CHARGES FIXES SUPPLÉMENTAIRES                   │
+│                          [+ Ajouter]            │
+│                                                  │
+│ Désignation      Catégorie    Montant    Actions │
+│ ─────────────────────────────────────────────   │
+│ Électricité      Énergie      45 000     ✏️ 🗑️  │
+│ Vide sanitaire   Nettoyage    25 000     ✏️ 🗑️  │
+│ Gardiennage      Gardiennage  60 000     ✏️ 🗑️  │
+│ ─────────────────────────────────────────────   │
+│ Total                        130 000 FCFA        │
+└─────────────────────────────────────────────────┘
+
+Bouton [+ Ajouter une charge fixe] ouvre un Dialog :
+
+  <Dialog>
+    <DialogHeader>
+      <DialogTitle>
+        Ajouter une charge fixe
+      </DialogTitle>
+      <DialogDescription>
+        Coûts fixes de cette bande non liés à un
+        actif amortissable (énergie, eau, assurance,
+        gardiennage, vide sanitaire, etc.)
+      </DialogDescription>
+    </DialogHeader>
+
+    <form className="space-y-4">
+
+      -- Désignation (Combobox avec suggestions)
+      <FormField name="designation">
+        <FormLabel>
+          Désignation
+          <span className="text-red-500 ml-1">*</span>
+        </FormLabel>
+        <DesignationCombobox
+          suggestions={[
+            "Loyer mensuel",
+            "Électricité",
+            "Abonnement eau",
+            "Assurance cheptel",
+            "Cotisation vétérinaire",
+            "Frais administratifs",
+            "Transport poussins",
+            "Vide sanitaire",
+            "Désinfection bâtiment",
+            "Gardiennage",
+            "Chauffage",
+            "Taxe municipale",
+          ]}
+          placeholder="Ex: Électricité, Gardiennage..."
+        />
+      </FormField>
+
+      -- Montant
+      <FormField name="montant">
+        <FormLabel>
+          Montant (FCFA)
+          <span className="text-red-500 ml-1">*</span>
+        </FormLabel>
+        <Input type="number" min={1}
+          placeholder="Ex: 45000" />
+      </FormField>
+
+      -- Catégorie
+      <FormField name="categorie">
+        <FormLabel>Catégorie</FormLabel>
+        <Select>
+          <SelectItem value="loyer">Loyer</SelectItem>
+          <SelectItem value="energie">
+            Énergie (électricité, gaz, bois)
+          </SelectItem>
+          <SelectItem value="eau">Eau</SelectItem>
+          <SelectItem value="assurance">
+            Assurance
+          </SelectItem>
+          <SelectItem value="veterinaire">
+            Vétérinaire (forfait)
+          </SelectItem>
+          <SelectItem value="administratif">
+            Administratif & taxes
+          </SelectItem>
+          <SelectItem value="transport">
+            Transport & logistique
+          </SelectItem>
+          <SelectItem value="nettoyage">
+            Nettoyage & vide sanitaire
+          </SelectItem>
+          <SelectItem value="gardiennage">
+            Gardiennage & sécurité
+          </SelectItem>
+          <SelectItem value="autre">Autre</SelectItem>
+        </Select>
+      </FormField>
+
+      -- Commentaire (optionnel)
+      <FormField name="commentaire">
+        <FormLabel>
+          Commentaire
+          <span className="text-muted-foreground
+                            text-xs ml-2">
+            (optionnel)
+          </span>
+        </FormLabel>
+        <Textarea rows={2}
+          placeholder="Précision sur cette charge..." />
+      </FormField>
+
+      <Button type="submit" className="w-full">
+        Ajouter la charge
+      </Button>
+    </form>
+  </Dialog>
+
+Chaque ligne du tableau :
+- Bouton ✏️ → ouvre Dialog pré-rempli pour modifier
+- Bouton 🗑️ → AlertDialog de confirmation avant suppression
+
+═══════════════════════════════════════════════════
+BLOC 5 — RÉCAPITULATIF FINAL CHARGES
+═══════════════════════════════════════════════════
+
+En bas de l'onglet Charges, afficher :
+
+  ┌───────────────────────────┬────────────────────┐
+  │ Loyer                     │ X FCFA             │
+  │ Amortissement actifs      │ X FCFA             │
+  │ Imprévus (5%)             │ X FCFA             │
+  │ Charges supplémentaires   │ X FCFA             │
+  ├───────────────────────────┼────────────────────┤
+  │ TOTAL CHARGES FIXES       │ X FCFA (rouge/gras)│
+  └───────────────────────────┴────────────────────┘
+
+  Note sous le tableau :
+  "Ces charges fixes sont incluses dans le coût
+  de production total et le coût par sujet."
+
+═══════════════════════════════════════════════════
+VÉRIFICATIONS
+═══════════════════════════════════════════════════
+
+V1 — Créer une charge
+  POST /api/bandes/:id/charges-fixes-custom
+  { designation: "Électricité", montant: 45000,
+    categorie: "energie" }
+  → 201 ✓
+
+V2 — Incluse dans chargesFixesTotal
+  GET /api/bandes/:id
+  → chargesFixesTotal augmenté de 45 000 ✓
+  → chargesCustom = [{...}] ✓
+
+V3 — Montant négatif rejeté
+  { montant: -1000 } → 400 ✓
+
+V4 — Cascade DELETE
+  DELETE /api/bandes/:id
+  → charges_fixes_personnalisees supprimées ✓
+
+V5 — Bande terminée verrouillée
+  POST charges sur bande clôturée → 409 ✓
+
+V6 — UI complète
+  Ouvrir onglet Charges d'une bande active
+  → Section "Charges supplémentaires" visible ✓
+  → Bouton "+ Ajouter" fonctionnel ✓
+  → Récapitulatif final mis à jour ✓
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL
+═══════════════════════════════════════════════════
+
+## RAPPORT — Charges fixes personnalisées
+## [date]
+
+### ✅ Implémenté
+- Migration : charges_fixes_personnalisees ✓
+- Routes CRUD : GET/POST/PUT/DELETE ✓
+- Intégration chargesFixesTotal ✓
+- Dialog ajout/édition avec combobox ✓
+- Tableau avec actions ✓
+- Récapitulatif final ✓
+
+### 📊 Impact financier
+Avant : chargesFixesTotal = loyer + amort + imprévus
+Après : chargesFixesTotal = loyer + amort + imprévus
+        + charges personnalisées
+
+### 🧪 Tests V1-V6 : résultats
+
+### 🚀
+git add -A
+git commit -m "feat: charges fixes personnalisées
+  par bande (électricité, eau, gardiennage, etc.)"
+git push origin main
+```

@@ -601,7 +601,8 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
   const totalAmortissementActifs = allocations.reduce((s: number, a: BandeActifAllocation) => s + a.amortissement, 0);
   const loyerLegacy = chargesFixes?.loyer || 0;
   const imprevus = chargesFixes?.imprévus || 0;
-  const totalCharges = totalAmortissementActifs + loyerLegacy + imprevus;
+  const totalChargesCustom = (detail as any)?.totalChargesCustom || 0;
+  const chargesFixesTotalServer = (detail as any)?.chargesFixesTotal || 0;
 
   const actifsDejaAlloues = new Set(allocations.map((a: BandeActifAllocation) => a.actifId));
   const actifsDispo = actifsDisponibles.filter((a: any) => !actifsDejaAlloues.has(a.id));
@@ -690,35 +691,288 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
         </CardContent>
       </Card>
 
+      <ChargesFixesCustomCard bandeId={bandeId} isReadOnly={isReadOnly} />
+
       <Card className="bg-muted/30">
         <CardHeader><CardTitle className="text-lg">Récapitulatif charges fixes</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex justify-between items-center py-2 border-b">
-            <span className="text-muted-foreground">Amortissement actifs</span>
-            <span className="font-medium">{formatFCFA(totalAmortissementActifs)}</span>
-          </div>
           {loyerLegacy > 0 && (
             <div className="flex justify-between items-center py-2 border-b">
-              <span className="text-muted-foreground">Autres charges fixes (loyer hérité)</span>
+              <span className="text-muted-foreground">Loyer (hérité)</span>
               <span className="font-medium">{formatFCFA(loyerLegacy)}</span>
             </div>
           )}
           <div className="flex justify-between items-center py-2 border-b">
+            <span className="text-muted-foreground">Amortissement actifs / matériel</span>
+            <span className="font-medium">{formatFCFA(totalAmortissementActifs)}</span>
+          </div>
+          <div className="flex justify-between items-center py-2 border-b">
             <span className="text-muted-foreground">Imprévus (5% des dépenses)</span>
             <span className="font-medium">{formatFCFA(imprevus)}</span>
           </div>
-          <div className="flex justify-between items-center pt-2 font-bold text-base">
-            <span>Total Charges Fixes</span>
-            <span className="text-destructive">{formatFCFA(chargesFixes?.total || 0)}</span>
+          <div className="flex justify-between items-center py-2 border-b">
+            <span className="text-muted-foreground">Charges supplémentaires</span>
+            <span className="font-medium">{formatFCFA(totalChargesCustom)}</span>
           </div>
-          {totalAmortissementActifs > 0 && (
-            <p className="text-xs text-muted-foreground italic pt-1">
-              Note : Le total affiché dans le récapitulatif vient du calcul du serveur (basé sur loyer + matériel). L'amortissement actifs sera intégré dans un prochain calcul unifié.
-            </p>
-          )}
+          <div className="flex justify-between items-center pt-2 font-bold text-base">
+            <span>TOTAL CHARGES FIXES</span>
+            <span className="text-destructive">{formatFCFA(chargesFixesTotalServer)}</span>
+          </div>
+          <p className="text-xs text-muted-foreground italic pt-1">
+            Ces charges fixes sont incluses dans le coût de production total et le coût par sujet.
+          </p>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+const CHARGE_FIXE_CATEGORIES = [
+  { value: "loyer", label: "Loyer" },
+  { value: "energie", label: "Énergie (électricité, gaz, bois)" },
+  { value: "eau", label: "Eau" },
+  { value: "assurance", label: "Assurance" },
+  { value: "veterinaire", label: "Vétérinaire (forfait)" },
+  { value: "administratif", label: "Administratif & taxes" },
+  { value: "transport", label: "Transport & logistique" },
+  { value: "nettoyage", label: "Nettoyage & vide sanitaire" },
+  { value: "gardiennage", label: "Gardiennage & sécurité" },
+  { value: "autre", label: "Autre" },
+] as const;
+
+const CHARGE_FIXE_DESIGNATION_SUGGESTIONS = [
+  "Loyer mensuel", "Électricité", "Abonnement eau", "Assurance cheptel",
+  "Cotisation vétérinaire", "Frais administratifs", "Transport poussins",
+  "Vide sanitaire", "Désinfection bâtiment", "Gardiennage",
+  "Chauffage", "Taxe municipale",
+];
+
+type ChargeCustom = {
+  id: number;
+  bandeId: number;
+  designation: string;
+  montant: number;
+  categorie: string | null;
+  commentaire: string | null;
+};
+
+function ChargesFixesCustomCard({ bandeId, isReadOnly }: { bandeId: number; isReadOnly: boolean }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<ChargeCustom | null>(null);
+  const [designation, setDesignation] = useState("");
+  const [montant, setMontant] = useState("");
+  const [categorie, setCategorie] = useState("autre");
+  const [commentaire, setCommentaire] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const base = import.meta.env.BASE_URL || "/";
+
+  const { data, isLoading } = useQuery<{ charges: ChargeCustom[]; total: number }>({
+    queryKey: ["/api/bandes", bandeId, "charges-fixes-custom"],
+    queryFn: async () => {
+      const res = await fetch(`${base}api/bandes/${bandeId}/charges-fixes-custom`, { credentials: "include" });
+      if (!res.ok) return { charges: [], total: 0 };
+      return res.json();
+    },
+  });
+
+  const charges = data?.charges ?? [];
+  const total = data?.total ?? 0;
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["/api/bandes", bandeId, "charges-fixes-custom"] });
+    qc.invalidateQueries({ queryKey: getGetBandeQueryKey(bandeId) });
+  };
+
+  const resetForm = () => {
+    setEditing(null);
+    setDesignation("");
+    setMontant("");
+    setCategorie("autre");
+    setCommentaire("");
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setDialogOpen(true);
+  };
+
+  const openEdit = (c: ChargeCustom) => {
+    setEditing(c);
+    setDesignation(c.designation);
+    setMontant(String(c.montant));
+    setCategorie(c.categorie || "autre");
+    setCommentaire(c.commentaire || "");
+    setDialogOpen(true);
+  };
+
+  async function submit() {
+    if (!designation.trim()) { toast({ title: "Désignation requise", variant: "destructive" }); return; }
+    const m = parseFloat(montant);
+    if (!Number.isFinite(m) || m <= 0) { toast({ title: "Montant invalide", variant: "destructive" }); return; }
+    setSubmitting(true);
+    try {
+      const url = editing
+        ? `${base}api/bandes/${bandeId}/charges-fixes-custom/${editing.id}`
+        : `${base}api/bandes/${bandeId}/charges-fixes-custom`;
+      const res = await fetch(url, {
+        method: editing ? "PUT" : "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ designation: designation.trim(), montant: m, categorie, commentaire: commentaire.trim() || undefined }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Erreur");
+      }
+      toast({ title: editing ? "Charge modifiée" : "Charge ajoutée" });
+      invalidate();
+      setDialogOpen(false);
+      resetForm();
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function remove(c: ChargeCustom) {
+    const ok = await confirmAction({
+      title: "Supprimer cette charge ?",
+      description: `« ${c.designation} » (${formatFCFA(c.montant)}) — cette action est irréversible.`,
+      confirmText: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      const res = await fetch(`${base}api/bandes/${bandeId}/charges-fixes-custom/${c.id}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error((await res.json()).message || "Erreur");
+      toast({ title: "Charge supprimée" });
+      invalidate();
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e.message, variant: "destructive" });
+    }
+  }
+
+  const categorieLabel = (v: string | null) =>
+    CHARGE_FIXE_CATEGORIES.find(c => c.value === (v || "autre"))?.label || (v || "Autre");
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">Charges fixes supplémentaires</CardTitle>
+          {!isReadOnly && (
+            <Button size="sm" variant="outline" onClick={openCreate}>
+              <Plus className="h-4 w-4 mr-1" />Ajouter
+            </Button>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Coûts fixes de cette bande non liés à un actif amortissable (énergie, eau, assurance, gardiennage, vide sanitaire, etc.)
+        </p>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="text-sm text-muted-foreground py-4">Chargement…</div>
+        ) : charges.length === 0 ? (
+          <div className="text-center py-6 text-sm text-muted-foreground">
+            Aucune charge supplémentaire pour cette bande
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Désignation</TableHead>
+                <TableHead>Catégorie</TableHead>
+                <TableHead className="text-right">Montant</TableHead>
+                {!isReadOnly && <TableHead className="w-[100px]">Actions</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {charges.map(c => (
+                <TableRow key={c.id}>
+                  <TableCell>
+                    <div className="font-medium">{c.designation}</div>
+                    {c.commentaire && <div className="text-xs text-muted-foreground">{c.commentaire}</div>}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{categorieLabel(c.categorie)}</TableCell>
+                  <TableCell className="text-right font-medium">{formatFCFA(c.montant)}</TableCell>
+                  {!isReadOnly && (
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => remove(c)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+            <TableFooter>
+              <TableRow>
+                <TableCell colSpan={2} className="font-semibold">Total</TableCell>
+                <TableCell className="text-right font-bold">{formatFCFA(total)}</TableCell>
+                {!isReadOnly && <TableCell />}
+              </TableRow>
+            </TableFooter>
+          </Table>
+        )}
+
+        <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) resetForm(); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editing ? "Modifier la charge fixe" : "Ajouter une charge fixe"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Désignation<span className="text-red-500 ml-1">*</span>
+                </label>
+                <DesignationCombobox
+                  value={designation}
+                  onChange={setDesignation}
+                  suggestions={CHARGE_FIXE_DESIGNATION_SUGGESTIONS}
+                  placeholder="Ex: Électricité, Gardiennage…"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Montant (FCFA)<span className="text-red-500 ml-1">*</span>
+                </label>
+                <Input type="number" min={1} placeholder="Ex: 45000" value={montant} onChange={e => setMontant(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Catégorie</label>
+                <Select value={categorie} onValueChange={setCategorie}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CHARGE_FIXE_CATEGORIES.map(c => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Commentaire <span className="text-muted-foreground text-xs">(optionnel)</span>
+                </label>
+                <Textarea rows={2} placeholder="Précision sur cette charge…" value={commentaire} onChange={e => setCommentaire(e.target.value)} />
+              </div>
+              <Button className="w-full" onClick={submit} disabled={submitting}>
+                {submitting ? "…" : editing ? "Enregistrer" : "Ajouter la charge"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
   );
 }
 

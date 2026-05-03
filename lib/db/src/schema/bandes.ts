@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, numeric, text, date, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, numeric, text, varchar, date, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -73,6 +73,26 @@ export type BandeVente = typeof bandeVentesTable.$inferSelect;
 export const insertChargesFixeSchema = createInsertSchema(chargesFixesTable).omit({ id: true });
 export type InsertChargesFixe = z.infer<typeof insertChargesFixeSchema>;
 export type ChargesFixe = typeof chargesFixesTable.$inferSelect;
+
+export const chargesFixesPersonnaliseesTable = pgTable(
+  "charges_fixes_personnalisees",
+  {
+    id: serial("id").primaryKey(),
+    bandeId: integer("bande_id")
+      .notNull()
+      .references(() => bandesTable.id, { onDelete: "cascade" }),
+    designation: varchar("designation", { length: 255 }).notNull(),
+    montant: numeric("montant", { precision: 12, scale: 2 }).notNull(),
+    categorie: varchar("categorie", { length: 100 }).default("autre"),
+    commentaire: text("commentaire"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("charges_fixes_personnalisees_bande_id_idx").on(t.bandeId)],
+);
+
+export const insertChargeFixePersonnaliseeSchema = createInsertSchema(chargesFixesPersonnaliseesTable).omit({ id: true, createdAt: true });
+export type InsertChargeFixePersonnalisee = z.infer<typeof insertChargeFixePersonnaliseeSchema>;
+export type ChargeFixePersonnalisee = typeof chargesFixesPersonnaliseesTable.$inferSelect;
 
 export const insertDepenseVenteSchema = createInsertSchema(depensesVenteTable).omit({ id: true });
 export type InsertDepenseVente = z.infer<typeof insertDepenseVenteSchema>;

@@ -39,6 +39,20 @@ export const depenseCreateSchema = z.object({
   prixUnitaire: positiveNumber,
 });
 
+export const chargeFixeCustomCreateSchema = z.object({
+  designation: z.string().min(1, "Désignation requise").max(255),
+  montant: z.coerce.number().positive("Le montant doit être > 0"),
+  categorie: optionalString(100),
+  commentaire: optionalString(2000),
+});
+
+export const chargeFixeCustomUpdateSchema = z.object({
+  designation: z.string().min(1).max(255).optional(),
+  montant: z.coerce.number().positive("Le montant doit être > 0").optional(),
+  categorie: optionalString(100),
+  commentaire: optionalString(2000),
+});
+
 export const venteCreateSchema = z.object({
   date: ISO_DATE,
   quantiteVendue: z.coerce.number().int().positive("Quantité vendue doit être > 0"),
