@@ -33,6 +33,12 @@ The project is structured as a pnpm workspace monorepo. Each package in the work
 - **Build System:** esbuild for CJS bundles.
 - **Charting:** Recharts for data visualization in various dashboards and simulations.
 - **PDF/Excel Export:** `jspdf` + `jspdf-autotable` for PDF, `xlsx` for Excel exports.
+- **Routing (frontend):** wouter v3. Protected routes are wrapped with a stable
+  `makeProtectedRoute(Page)` helper that returns a memoizable component used as
+  `<Route path="/x" component={WrappedRoute} />`. Do **not** pass inline arrow
+  components (`component={() => ...}`) or use `<Route><Children/></Route>` for
+  protected routes — both caused mount/render issues that made `/dashboard`
+  appear blank in the past.
 
 **Monorepo Structure:**
 

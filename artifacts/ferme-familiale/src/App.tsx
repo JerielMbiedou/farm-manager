@@ -97,51 +97,54 @@ function Protected({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Stable wrapper used as <Route component={...}> to avoid remounts caused by
+ *  inline arrow components, while keeping the page component as a prop. */
+function makeProtectedRoute(Page: React.ComponentType) {
+  const Wrapped = () => (
+    <Protected>
+      <Layout>
+        <Page />
+      </Layout>
+    </Protected>
+  );
+  Wrapped.displayName = `Protected(${Page.displayName || Page.name || "Page"})`;
+  return Wrapped;
+}
+
+const DashboardRoute = makeProtectedRoute(Dashboard);
+const FinancementRoute = makeProtectedRoute(Financement);
+const InfrastructureRoute = makeProtectedRoute(Infrastructure);
+const BandesRoute = makeProtectedRoute(Bandes);
+const BandeDetailRoute = makeProtectedRoute(BandeDetailView);
+const HistoriqueCaisseRoute = makeProtectedRoute(HistoriqueCaisse);
+const ComparaisonBandesRoute = makeProtectedRoute(ComparaisonBandes);
+const ActivityLogRoute = makeProtectedRoute(ActivityLog);
+const UtilisateursRoute = makeProtectedRoute(Utilisateurs);
+const ParametresRoute = makeProtectedRoute(Parametres);
+const StocksRoute = makeProtectedRoute(Stocks);
+const SimulationRoute = makeProtectedRoute(Simulation);
+const TresorerieRoute = makeProtectedRoute(Tresorerie);
+const PlanificationRoute = makeProtectedRoute(Planification);
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={HomeRoute} />
       <Route path="/login" component={Login} />
-      <Route path="/dashboard/" component={() => { const [, set] = useLocation(); useEffect(() => set("/dashboard"), [set]); return null; }} />
-      
-      <Route path="/dashboard">
-        <Protected><Layout><Dashboard /></Layout></Protected>
-      </Route>
-      <Route path="/financement">
-        <Protected><Layout><Financement /></Layout></Protected>
-      </Route>
-      <Route path="/infrastructure">
-        <Protected><Layout><Infrastructure /></Layout></Protected>
-      </Route>
-      <Route path="/bandes" component={() => <Protected><Layout><Bandes /></Layout></Protected>} />
-      <Route path="/bandes/:id" component={() => <Protected><Layout><BandeDetailView /></Layout></Protected>} />
-      <Route path="/historique-caisse">
-        <Protected><Layout><HistoriqueCaisse /></Layout></Protected>
-      </Route>
-      <Route path="/comparaison-bandes">
-        <Protected><Layout><ComparaisonBandes /></Layout></Protected>
-      </Route>
-      <Route path="/activity-log">
-        <Protected><Layout><ActivityLog /></Layout></Protected>
-      </Route>
-      <Route path="/utilisateurs">
-        <Protected><Layout><Utilisateurs /></Layout></Protected>
-      </Route>
-      <Route path="/parametres">
-        <Protected><Layout><Parametres /></Layout></Protected>
-      </Route>
-      <Route path="/stocks">
-        <Protected><Layout><Stocks /></Layout></Protected>
-      </Route>
-      <Route path="/simulation">
-        <Protected><Layout><Simulation /></Layout></Protected>
-      </Route>
-      <Route path="/tresorerie">
-        <Protected><Layout><Tresorerie /></Layout></Protected>
-      </Route>
-      <Route path="/planification">
-        <Protected><Layout><Planification /></Layout></Protected>
-      </Route>
+      <Route path="/dashboard" component={DashboardRoute} />
+      <Route path="/financement" component={FinancementRoute} />
+      <Route path="/infrastructure" component={InfrastructureRoute} />
+      <Route path="/bandes" component={BandesRoute} />
+      <Route path="/bandes/:id" component={BandeDetailRoute} />
+      <Route path="/historique-caisse" component={HistoriqueCaisseRoute} />
+      <Route path="/comparaison-bandes" component={ComparaisonBandesRoute} />
+      <Route path="/activity-log" component={ActivityLogRoute} />
+      <Route path="/utilisateurs" component={UtilisateursRoute} />
+      <Route path="/parametres" component={ParametresRoute} />
+      <Route path="/stocks" component={StocksRoute} />
+      <Route path="/simulation" component={SimulationRoute} />
+      <Route path="/tresorerie" component={TresorerieRoute} />
+      <Route path="/planification" component={PlanificationRoute} />
       
       <Route component={NotFound} />
     </Switch>
