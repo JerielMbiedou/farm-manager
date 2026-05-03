@@ -9,6 +9,7 @@ import { useListBandes } from "@workspace/api-client-react";
 import { formatFCFA } from "@/lib/format";
 import { Calendar, Plus, ChevronLeft, ChevronRight, Bird, Package } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { useSortable } from "@/lib/use-sortable";
 
 interface PlannedBande {
   id: string;
@@ -184,41 +185,7 @@ export default function Planification() {
               <CardTitle className="text-xl font-serif flex items-center gap-2"><Bird className="h-5 w-5" /> Bandes planifiées</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30">
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Début</TableHead>
-                    <TableHead className="text-right">Sujets</TableHead>
-                    <TableHead className="text-right">Durée</TableHead>
-                    <TableHead className="text-right">Fin estimée</TableHead>
-                    <TableHead className="text-right w-20">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {plans.map(p => {
-                    const fin = new Date(p.dateDebut);
-                    fin.setDate(fin.getDate() + p.dureeJours);
-                    return (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.couleur }} />
-                            {p.nom}
-                          </div>
-                        </TableCell>
-                        <TableCell>{new Date(p.dateDebut).toLocaleDateString("fr-FR")}</TableCell>
-                        <TableCell className="text-right">{p.sujets}</TableCell>
-                        <TableCell className="text-right">{p.dureeJours} j</TableCell>
-                        <TableCell className="text-right">{fin.toLocaleDateString("fr-FR")}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleRemovePlan(p.id)}>Retirer</Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <PlansTable plans={plans} onRemove={handleRemovePlan} />
             </CardContent>
           </Card>
 
@@ -286,5 +253,50 @@ export default function Planification() {
         </Card>
       )}
     </div>
+  );
+}
+
+// BLOC 7 — Tableau des bandes planifiées avec tri colonne
+type PlanRow = PlannedBande & { finEstimee: string };
+function PlansTable({ plans, onRemove }: { plans: PlannedBande[]; onRemove: (id: string) => void }) {
+  const enriched: PlanRow[] = plans.map(p => {
+    const fin = new Date(p.dateDebut);
+    fin.setDate(fin.getDate() + p.dureeJours);
+    return { ...p, finEstimee: fin.toISOString().slice(0, 10) };
+  });
+  const { sorted, toggleSort, sortIcon } = useSortable<PlanRow>(enriched, "dateDebut", "asc");
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow className="bg-muted/30">
+          <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("nom")}>Nom <span className="text-xs text-muted-foreground">{sortIcon("nom")}</span></TableHead>
+          <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("dateDebut")}>Début <span className="text-xs text-muted-foreground">{sortIcon("dateDebut")}</span></TableHead>
+          <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("sujets")}>Sujets <span className="text-xs text-muted-foreground">{sortIcon("sujets")}</span></TableHead>
+          <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("dureeJours")}>Durée <span className="text-xs text-muted-foreground">{sortIcon("dureeJours")}</span></TableHead>
+          <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("finEstimee")}>Fin estimée <span className="text-xs text-muted-foreground">{sortIcon("finEstimee")}</span></TableHead>
+          <TableHead className="text-right w-20">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sorted.map(p => (
+          <TableRow key={p.id} data-testid={`plan-row-${p.id}`}>
+            <TableCell className="font-medium">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.couleur }} />
+                {p.nom}
+              </div>
+            </TableCell>
+            <TableCell>{new Date(p.dateDebut).toLocaleDateString("fr-FR")}</TableCell>
+            <TableCell className="text-right">{p.sujets}</TableCell>
+            <TableCell className="text-right">{p.dureeJours} j</TableCell>
+            <TableCell className="text-right">{new Date(p.finEstimee).toLocaleDateString("fr-FR")}</TableCell>
+            <TableCell className="text-right">
+              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => onRemove(p.id)}>Retirer</Button>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

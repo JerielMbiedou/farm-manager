@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Shield, Users } from "lucide-react";
+import { useSortable } from "@/lib/use-sortable";
+import { DataPagination } from "@/components/data-pagination";
 
 type UserInfo = {
   id: number;
@@ -34,6 +36,10 @@ export default function Utilisateurs() {
   const { toast } = useToast();
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  // BLOC 7 — Tri + pagination
+  const { sorted, toggleSort, sortIcon } = useSortable<UserInfo>(users, "nom", "asc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const baseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.origin}/api`;
 
@@ -122,15 +128,15 @@ export default function Utilisateurs() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30">
-                <TableHead>Nom</TableHead>
-                <TableHead>Identifiant</TableHead>
-                <TableHead>Rôle</TableHead>
-                <TableHead>Inscription</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("nom")}>Nom <span className="text-xs text-muted-foreground">{sortIcon("nom")}</span></TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("username")}>Identifiant <span className="text-xs text-muted-foreground">{sortIcon("username")}</span></TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("role")}>Rôle <span className="text-xs text-muted-foreground">{sortIcon("role")}</span></TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("createdAt")}>Inscription <span className="text-xs text-muted-foreground">{sortIcon("createdAt")}</span></TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map(u => {
+              {sorted.slice((page - 1) * pageSize, page * pageSize).map(u => {
                 const roleInfo = getRoleInfo(u.role);
                 const isCurrentUser = u.id === currentUser?.id;
                 return (
@@ -171,6 +177,14 @@ export default function Utilisateurs() {
               })}
             </TableBody>
           </Table>
+          <DataPagination
+            page={page}
+            pageSize={pageSize}
+            total={sorted.length}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            className="border-t"
+          />
         </CardContent>
       </Card>
 

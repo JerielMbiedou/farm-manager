@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ClipboardList, Loader2, Check } from "lucide-react";
+import { offlineFetch } from "@/lib/offline-fetch";
 
 interface DayEntry {
   mortalite: string;
@@ -45,39 +46,43 @@ export default function SaisieRapide() {
 
     setEntries(prev => ({ ...prev, [bande.id]: { ...getEntry(bande.id), saving: true } }));
     const errors: string[] = [];
+    let queuedCount = 0;
 
-    try {
-      if (entry.mortalite && Number(entry.mortalite) >= 0) {
-        const r = await fetch(`${base}api/bandes/${bande.id}/mortalite`, {
-          method: "POST", credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date: today, ageJours, decesJour: Number(entry.mortalite) }),
-        });
-        if (!r.ok) errors.push("mortalité");
-      }
-      if (entry.alimentKg && Number(entry.alimentKg) > 0) {
-        const r = await fetch(`${base}api/bandes/${bande.id}/consommation`, {
-          method: "POST", credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date: today, quantiteKg: Number(entry.alimentKg), typeAliment: "Standard" }),
-        });
-        if (!r.ok) errors.push("aliment");
-      }
-      if (entry.eauLitres && Number(entry.eauLitres) > 0) {
-        const r = await fetch(`${base}api/bandes/${bande.id}/consommation-eau`, {
-          method: "POST", credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date: today, ageJours, quantiteLitres: Number(entry.eauLitres) }),
-        });
-        if (!r.ok) errors.push("eau");
-      }
-    } catch {
-      errors.push("erreur réseau");
+    if (entry.mortalite && Number(entry.mortalite) >= 0) {
+      const r = await offlineFetch(`${base}api/bandes/${bande.id}/mortalite`, {
+        method: "POST",
+        body: { date: today, ageJours, decesJour: Number(entry.mortalite) },
+        label: `Mortalité ${bande.nom} J${ageJours}`,
+      });
+      if (r.queued) queuedCount++;
+      else if (!r.ok) errors.push("mortalité");
+    }
+    if (entry.alimentKg && Number(entry.alimentKg) > 0) {
+      const r = await offlineFetch(`${base}api/bandes/${bande.id}/consommation`, {
+        method: "POST",
+        body: { date: today, quantiteKg: Number(entry.alimentKg), typeAliment: "Standard" },
+        label: `Aliment ${bande.nom} J${ageJours}`,
+      });
+      if (r.queued) queuedCount++;
+      else if (!r.ok) errors.push("aliment");
+    }
+    if (entry.eauLitres && Number(entry.eauLitres) > 0) {
+      const r = await offlineFetch(`${base}api/bandes/${bande.id}/consommation-eau`, {
+        method: "POST",
+        body: { date: today, ageJours, quantiteLitres: Number(entry.eauLitres) },
+        label: `Eau ${bande.nom} J${ageJours}`,
+      });
+      if (r.queued) queuedCount++;
+      else if (!r.ok) errors.push("eau");
     }
 
     if (errors.length > 0) {
       toast({ title: `Erreur : ${errors.join(", ")}`, variant: "destructive" });
       setEntries(prev => ({ ...prev, [bande.id]: { ...getEntry(bande.id), saving: false } }));
+    } else if (queuedCount > 0) {
+      // BLOC 10 — au moins une saisie a été mise en file pour synchro ultérieure
+      toast({ title: `Hors-ligne : ${queuedCount} saisie(s) enregistrée(s) localement`, description: "Synchronisation automatique au retour de connexion." });
+      setEntries(prev => ({ ...prev, [bande.id]: { mortalite: "", alimentKg: "", eauLitres: "", saving: false, saved: true } }));
     } else {
       toast({ title: `Données J${ageJours} enregistrées pour ${bande.nom}` });
       setEntries(prev => ({ ...prev, [bande.id]: { mortalite: "", alimentKg: "", eauLitres: "", saving: false, saved: true } }));

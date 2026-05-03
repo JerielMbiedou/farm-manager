@@ -18,6 +18,8 @@ import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, ArrowDownRight } from "lucide-react";
 import { format } from "date-fns";
+import { useSortable } from "@/lib/use-sortable";
+import { DataPagination } from "@/components/data-pagination";
 
 const financementSchema = z.object({
   nom: z.string().min(2, "Le nom est requis"),
@@ -232,6 +234,18 @@ export default function Financement() {
             )}
           </div>
 
+          <FinancementsTable
+            rows={financements ?? []}
+            isReadOnly={isReadOnly}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+          {/*
+            BLOC 7 — Le tableau des financements est externalisé (cf. <FinancementsTable/> en bas du fichier)
+            pour bénéficier du tri et de la pagination via useSortable + DataPagination.
+            Le bloc historique ci-dessous n'est plus utilisé mais conservé en commentaire pour audit :
+          */}
+          {false && (
           <div className="bg-card border rounded-lg shadow-sm overflow-hidden">
             <Table>
               <TableHeader>
@@ -286,6 +300,11 @@ export default function Financement() {
                 </TableRow>
               </TableFooter>
             </Table>
+          </div>
+          )}
+
+          <div className="text-right text-sm font-bold text-primary px-2">
+            Total investi : {formatFCFA(totalInvesti)}
           </div>
         </TabsContent>
 
@@ -392,6 +411,94 @@ export default function Financement() {
           </div>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// BLOC 7 — Tableau financements avec tri colonne + pagination
+type FinancementRow = {
+  id: number;
+  nom: string;
+  date: string;
+  type: string;
+  tauxInteret?: number | string | null;
+  dateRemboursementPrevue?: string | null;
+  montant: number | string;
+};
+function FinancementsTable({
+  rows,
+  isReadOnly,
+  onEdit,
+  onDelete,
+}: {
+  rows: FinancementRow[];
+  isReadOnly: boolean;
+  onEdit: (item: any) => void;
+  onDelete: (id: number) => void;
+}) {
+  const { sorted, toggleSort, sortIcon } = useSortable<FinancementRow>(rows, "date", "desc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const total = sorted.length;
+  const safePage = Math.min(Math.max(1, page), Math.max(1, Math.ceil(total / pageSize)));
+  const paginated = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  return (
+    <div className="bg-card border rounded-lg shadow-sm overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50">
+            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{sortIcon("date")}</span></TableHead>
+            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("nom")}>Membre <span className="text-xs text-muted-foreground">{sortIcon("nom")}</span></TableHead>
+            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("type")}>Type <span className="text-xs text-muted-foreground">{sortIcon("type")}</span></TableHead>
+            <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("tauxInteret")}>Taux <span className="text-xs text-muted-foreground">{sortIcon("tauxInteret")}</span></TableHead>
+            <TableHead>Échéance</TableHead>
+            <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("montant")}>Montant <span className="text-xs text-muted-foreground">{sortIcon("montant")}</span></TableHead>
+            {!isReadOnly && <TableHead className="text-right">Actions</TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {paginated.length === 0 ? (
+            <TableRow><TableCell colSpan={isReadOnly ? 6 : 7} className="text-center py-8 text-muted-foreground">Aucun financement enregistré.</TableCell></TableRow>
+          ) : (
+            paginated.map((item) => {
+              const isPret = item.type === "pret";
+              return (
+                <TableRow key={item.id} data-testid={`fin-row-${item.id}`}>
+                  <TableCell>{format(new Date(item.date), 'dd/MM/yyyy')}</TableCell>
+                  <TableCell className="font-medium">{item.nom}</TableCell>
+                  <TableCell>
+                    <Badge variant={isPret ? "default" : "secondary"} className={isPret ? "bg-blue-100 text-blue-800 border-blue-200" : ""}>
+                      {isPret ? "Prêt" : "Apport"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right text-sm">{isPret ? `${item.tauxInteret}%` : "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {item.dateRemboursementPrevue ? format(new Date(item.dateRemboursementPrevue), 'dd/MM/yyyy') : "—"}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">{formatFCFA(Number(item.montant))}</TableCell>
+                  {!isReadOnly && (
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => onEdit(item)}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    </TableCell>
+                  )}
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+      <DataPagination
+        page={safePage}
+        pageSize={pageSize}
+        total={total}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        className="border-t"
+      />
     </div>
   );
 }
