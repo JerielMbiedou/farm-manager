@@ -60,7 +60,7 @@ export default function Dashboard() {
   );
   if (error || !summary) return <div className="text-destructive">Erreur de chargement des données.</div>;
 
-  const s = summary as Record<string, unknown>;
+  const s = summary as unknown as Record<string, unknown>;
   const prochainesVaccinations = (s.prochainesVaccinations as ProchaineVacc[]) || [];
   const previsions = s.previsions as { coutProductionEstime: number; beneficeProbable: number; dureeMoyenneJours: number } | null;
   const totalRembourse = (s.totalRembourse as number) || 0;

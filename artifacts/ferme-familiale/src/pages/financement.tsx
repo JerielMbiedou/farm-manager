@@ -20,6 +20,7 @@ import { Plus, Pencil, Trash2, ArrowDownRight } from "lucide-react";
 import { format } from "date-fns";
 import { useSortable } from "@/lib/use-sortable";
 import { DataPagination } from "@/components/data-pagination";
+import { confirmAction } from "@/lib/confirm-dialog";
 
 const financementSchema = z.object({
   nom: z.string().min(2, "Le nom est requis"),
@@ -135,7 +136,13 @@ export default function Financement() {
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm("Voulez-vous vraiment supprimer cet apport ?")) {
+    const ok = await confirmAction({
+      title: "Supprimer ce financement ?",
+      description: "Cet apport ou prêt sera retiré du registre. Cette action est irréversible.",
+      confirmText: "Supprimer",
+      destructive: true,
+    });
+    if (ok) {
       try {
         await deleteFinancement.mutateAsync({ id });
         toast({ title: "Financement supprimé" });
@@ -148,7 +155,13 @@ export default function Financement() {
   };
 
   const handleDeleteRemb = async (id: number) => {
-    if (confirm("Supprimer ce remboursement ?")) {
+    const ok = await confirmAction({
+      title: "Supprimer ce remboursement ?",
+      description: "L'opération sera retirée du registre des remboursements. Cette action est irréversible.",
+      confirmText: "Supprimer",
+      destructive: true,
+    });
+    if (ok) {
       try {
         await deleteRemboursement.mutateAsync({ id });
         toast({ title: "Remboursement supprimé" });

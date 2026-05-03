@@ -16,6 +16,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Wheat, Pill, AlertTriangle, Package, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { useSortable } from "@/lib/use-sortable";
+import { DataPagination } from "@/components/data-pagination";
+import { confirmAction } from "@/lib/confirm-dialog";
 
 const alimentSchema = z.object({
   designation: z.string().min(1, "La désignation est requise"),
@@ -132,6 +135,24 @@ export default function Stocks() {
               )}
             </CardHeader>
             <CardContent>
+              <AlimentsTable
+                items={alimentsData?.items ?? []}
+                isReadOnly={isReadOnly}
+                onDelete={async (id) => {
+                  if (await confirmAction({
+                    title: "Supprimer ce mouvement ?",
+                    description: "Le mouvement de stock aliment sera retiré du registre.",
+                    confirmText: "Supprimer",
+                    destructive: true,
+                  })) {
+                    try {
+                      await deleteAliment.mutateAsync(id);
+                      toast({ title: "Mouvement supprimé" });
+                    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+                  }
+                }}
+              />
+              {false && (
               <div className="border rounded-md overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -163,7 +184,12 @@ export default function Stocks() {
                           {!isReadOnly && (
                             <TableCell className="text-right">
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
-                                if (confirm("Supprimer ce mouvement ?")) {
+                                if (await confirmAction({
+                                  title: "Supprimer ce mouvement ?",
+                                  description: "Le mouvement de stock aliment sera retiré du registre.",
+                                  confirmText: "Supprimer",
+                                  destructive: true,
+                                })) {
                                   try {
                                     await deleteAliment.mutateAsync(item.id);
                                     toast({ title: "Mouvement supprimé" });
@@ -178,6 +204,7 @@ export default function Stocks() {
                   </TableBody>
                 </Table>
               </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -223,6 +250,24 @@ export default function Stocks() {
               )}
             </CardHeader>
             <CardContent>
+              <MedicamentsTable
+                items={medicamentsData?.items ?? []}
+                isReadOnly={isReadOnly}
+                onDelete={async (id) => {
+                  if (await confirmAction({
+                    title: "Supprimer ce mouvement ?",
+                    description: "Le mouvement médicament/vaccin sera retiré du registre.",
+                    confirmText: "Supprimer",
+                    destructive: true,
+                  })) {
+                    try {
+                      await deleteMedicament.mutateAsync(id);
+                      toast({ title: "Mouvement supprimé" });
+                    } catch { toast({ title: "Erreur", variant: "destructive" }); }
+                  }
+                }}
+              />
+              {false && (
               <div className="border rounded-md overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -254,7 +299,12 @@ export default function Stocks() {
                           {!isReadOnly && (
                             <TableCell className="text-right">
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
-                                if (confirm("Supprimer ce mouvement ?")) {
+                                if (await confirmAction({
+                                  title: "Supprimer ce mouvement ?",
+                                  description: "Le mouvement médicament/vaccin sera retiré du registre.",
+                                  confirmText: "Supprimer",
+                                  destructive: true,
+                                })) {
                                   try {
                                     await deleteMedicament.mutateAsync(item.id);
                                     toast({ title: "Mouvement supprimé" });
@@ -269,6 +319,7 @@ export default function Stocks() {
                   </TableBody>
                 </Table>
               </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -375,6 +426,134 @@ export default function Stocks() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// BLOC 7 — Sous-tableaux stocks avec tri colonne + pagination
+type AlimentRow = {
+  id: number;
+  date: string;
+  type: string;
+  designation: string;
+  quantiteKg: number | string;
+  prixUnitaire?: number | string | null;
+  fournisseur?: string | null;
+};
+function AlimentsTable({ items, isReadOnly, onDelete }: { items: AlimentRow[]; isReadOnly: boolean; onDelete: (id: number) => void }) {
+  const { sorted, toggleSort, sortIcon } = useSortable<AlimentRow>(items, "date", "desc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const total = sorted.length;
+  const safePage = Math.min(Math.max(1, page), Math.max(1, Math.ceil(total / pageSize)));
+  const paginated = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+  return (
+    <div className="border rounded-md overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/30">
+            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{sortIcon("date")}</span></TableHead>
+            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("type")}>Type <span className="text-xs text-muted-foreground">{sortIcon("type")}</span></TableHead>
+            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("designation")}>Désignation <span className="text-xs text-muted-foreground">{sortIcon("designation")}</span></TableHead>
+            <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("quantiteKg")}>Quantité (kg) <span className="text-xs text-muted-foreground">{sortIcon("quantiteKg")}</span></TableHead>
+            <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("prixUnitaire")}>Prix U. <span className="text-xs text-muted-foreground">{sortIcon("prixUnitaire")}</span></TableHead>
+            <TableHead>Fournisseur</TableHead>
+            {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {paginated.length === 0 ? (
+            <TableRow><TableCell colSpan={isReadOnly ? 6 : 7} className="text-center py-8 text-muted-foreground">Aucun mouvement enregistré</TableCell></TableRow>
+          ) : (
+            paginated.map((item) => (
+              <TableRow key={item.id} data-testid={`aliment-row-${item.id}`}>
+                <TableCell>{format(new Date(item.date + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
+                <TableCell>
+                  {item.type === "entree" ? (
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-green-100 text-green-800"><ArrowDownCircle className="h-3 w-3" /> Entrée</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-red-100 text-red-800"><ArrowUpCircle className="h-3 w-3" /> Sortie</span>
+                  )}
+                </TableCell>
+                <TableCell className="font-medium">{item.designation}</TableCell>
+                <TableCell className="text-right">{item.quantiteKg}</TableCell>
+                <TableCell className="text-right">{item.prixUnitaire ? formatFCFA(Number(item.prixUnitaire)) : "-"}</TableCell>
+                <TableCell className="text-muted-foreground">{item.fournisseur || "-"}</TableCell>
+                {!isReadOnly && (
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+      <DataPagination page={safePage} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} className="border-t" />
+    </div>
+  );
+}
+
+type MedicamentRow = {
+  id: number;
+  date: string;
+  type: string;
+  nom: string;
+  quantite: number | string;
+  unite: string;
+  datePeremption?: string | null;
+  fournisseur?: string | null;
+};
+function MedicamentsTable({ items, isReadOnly, onDelete }: { items: MedicamentRow[]; isReadOnly: boolean; onDelete: (id: number) => void }) {
+  const { sorted, toggleSort, sortIcon } = useSortable<MedicamentRow>(items, "date", "desc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const total = sorted.length;
+  const safePage = Math.min(Math.max(1, page), Math.max(1, Math.ceil(total / pageSize)));
+  const paginated = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+  return (
+    <div className="border rounded-md overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/30">
+            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{sortIcon("date")}</span></TableHead>
+            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("type")}>Type <span className="text-xs text-muted-foreground">{sortIcon("type")}</span></TableHead>
+            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("nom")}>Produit <span className="text-xs text-muted-foreground">{sortIcon("nom")}</span></TableHead>
+            <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("quantite")}>Quantité <span className="text-xs text-muted-foreground">{sortIcon("quantite")}</span></TableHead>
+            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("datePeremption")}>Péremption <span className="text-xs text-muted-foreground">{sortIcon("datePeremption")}</span></TableHead>
+            <TableHead>Fournisseur</TableHead>
+            {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {paginated.length === 0 ? (
+            <TableRow><TableCell colSpan={isReadOnly ? 6 : 7} className="text-center py-8 text-muted-foreground">Aucun mouvement enregistré</TableCell></TableRow>
+          ) : (
+            paginated.map((item) => (
+              <TableRow key={item.id} data-testid={`medicament-row-${item.id}`}>
+                <TableCell>{format(new Date(item.date + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
+                <TableCell>
+                  {item.type === "entree" ? (
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-green-100 text-green-800"><ArrowDownCircle className="h-3 w-3" /> Entrée</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-red-100 text-red-800"><ArrowUpCircle className="h-3 w-3" /> Sortie</span>
+                  )}
+                </TableCell>
+                <TableCell className="font-medium">{item.nom}</TableCell>
+                <TableCell className="text-right">{item.quantite} {item.unite}</TableCell>
+                <TableCell className="text-muted-foreground">{item.datePeremption || "-"}</TableCell>
+                <TableCell className="text-muted-foreground">{item.fournisseur || "-"}</TableCell>
+                {!isReadOnly && (
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+      <DataPagination page={safePage} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} className="border-t" />
     </div>
   );
 }

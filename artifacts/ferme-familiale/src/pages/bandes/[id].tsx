@@ -59,6 +59,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { confirmAction } from "@/lib/confirm-dialog";
 import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download, Droplets, Pill, BookOpen, ChevronDown, ChevronRight, Search, CheckCircle2, Lock, RotateCcw, FileText } from "lucide-react";
 import { Link } from "wouter";
 import { BandeDetail } from "@workspace/api-client-react";
@@ -1060,7 +1061,12 @@ export default function BandeDetailView() {
   };
 
   const handleDelete = async (id: number, type: 'depense' | 'vente' | 'depenseVente') => {
-    if (!confirm("Voulez-vous vraiment supprimer cet élément ?")) return;
+    if (!(await confirmAction({
+      title: "Supprimer cet élément ?",
+      description: "Cette opération sera retirée du registre. Cette action est irréversible.",
+      confirmText: "Supprimer",
+      destructive: true,
+    }))) return;
     try {
       if (type === 'depense') {
         await deleteDepense.mutateAsync({ id: bandeId, depenseId: id });
@@ -1081,14 +1087,14 @@ export default function BandeDetailView() {
   if (!bande) return <div>Bande introuvable.</div>;
 
   const detail = bande as BandeDetail;
-  const mortaliteItems = (mortaliteData || []) as Array<Record<string, unknown>>;
-  const peseesItems = (peseesData || []) as Array<Record<string, unknown>>;
-  const consResp = (consommationData || {}) as Record<string, unknown>;
+  const mortaliteItems = (mortaliteData || []) as unknown as Array<Record<string, unknown>>;
+  const peseesItems = (peseesData || []) as unknown as Array<Record<string, unknown>>;
+  const consResp = (consommationData || {}) as unknown as Record<string, unknown>;
   const consEntries = (consResp.entries || []) as Array<Record<string, unknown>>;
-  const vaccinItems = (vaccinationsData || []) as Array<Record<string, unknown>>;
-  const eauItems = (eauData || []) as Array<Record<string, unknown>>;
-  const traitementItems = (traitementsData || []) as Array<Record<string, unknown>>;
-  const observationItems = (observationsData || []) as Array<Record<string, unknown>>;
+  const vaccinItems = (vaccinationsData || []) as unknown as Array<Record<string, unknown>>;
+  const eauItems = (eauData || []) as unknown as Array<Record<string, unknown>>;
+  const traitementItems = (traitementsData || []) as unknown as Array<Record<string, unknown>>;
+  const observationItems = (observationsData || []) as unknown as Array<Record<string, unknown>>;
   const refPoids = (referencePoids || []) as Array<{ ageJours: number; poidsG: number }>;
 
   const mortaliteParPhase = phases.map(phase => {
@@ -1709,12 +1715,17 @@ export default function BandeDetailView() {
                           <TableCell className="text-right">{m.decesCumules as number}</TableCell>
                           <TableCell className={`text-right font-medium ${(m.tauxMortalite as number) > 5 ? "text-red-600" : ""}`}>
                             {m.tauxMortalite as number}%
-                            {m.alerteRouge && <span className="ml-1 text-xs text-red-600">ALERTE</span>}
+                            {Boolean(m.alerteRouge) && <span className="ml-1 text-xs text-red-600">ALERTE</span>}
                           </TableCell>
                           {!isReadOnly && (
                             <TableCell className="text-right">
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
-                                if (confirm("Supprimer cette entrée ?")) {
+                                if (await confirmAction({
+                                  title: "Supprimer cette entrée de mortalité ?",
+                                  description: "Le décès enregistré pour cette journée sera retiré du registre. Cette action est irréversible.",
+                                  confirmText: "Supprimer",
+                                  destructive: true,
+                                })) {
                                   try {
                                     await deleteMortalite.mutateAsync({ id: bandeId, mortaliteId: m.id as number });
                                     queryClient.invalidateQueries({ queryKey: getGetBandeMortaliteQueryKey(bandeId) });
@@ -1813,7 +1824,12 @@ export default function BandeDetailView() {
                             {!isReadOnly && (
                               <TableCell className="text-right">
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
-                                  if (confirm("Supprimer cette pesée ?")) {
+                                  if (await confirmAction({
+                                    title: "Supprimer cette pesée ?",
+                                    description: "Cette mesure de poids sera retirée du suivi de croissance.",
+                                    confirmText: "Supprimer",
+                                    destructive: true,
+                                  })) {
                                     try {
                                       await deletePesee.mutateAsync({ id: bandeId, peseeId: p.id as number });
                                       queryClient.invalidateQueries({ queryKey: getGetBandePeseesQueryKey(bandeId) });
@@ -1904,7 +1920,12 @@ export default function BandeDetailView() {
                               {!isReadOnly && (
                                 <TableCell className="text-right">
                                   <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
-                                    if (confirm("Supprimer ?")) {
+                                    if (await confirmAction({
+                                      title: "Supprimer cette consommation ?",
+                                      description: "L'enregistrement de consommation d'aliment sera retiré du registre.",
+                                      confirmText: "Supprimer",
+                                      destructive: true,
+                                    })) {
                                       try {
                                         await deleteConsommation.mutateAsync({ id: bandeId, consId: c.id as number });
                                         queryClient.invalidateQueries({ queryKey: getGetBandeConsommationQueryKey(bandeId) });
@@ -1952,7 +1973,7 @@ export default function BandeDetailView() {
                           <TableCell>
                             <div>
                               <span className="font-medium">{v.nom as string}</span>
-                              {v.description && <span className="block text-xs text-muted-foreground">{v.description as string}</span>}
+                              {Boolean(v.description) && <span className="block text-xs text-muted-foreground">{v.description as string}</span>}
                             </div>
                           </TableCell>
                           <TableCell>{v.datePrevue as string}</TableCell>
@@ -2045,7 +2066,12 @@ export default function BandeDetailView() {
                           {!isReadOnly && (
                             <TableCell className="text-right">
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
-                                if (confirm("Supprimer ?")) {
+                                if (await confirmAction({
+                                  title: "Supprimer cet enregistrement d'eau ?",
+                                  description: "Cette consommation d'eau sera retirée du registre.",
+                                  confirmText: "Supprimer",
+                                  destructive: true,
+                                })) {
                                   try { await deleteEau.mutateAsync(e.id); } catch { toast({ title: "Erreur", variant: "destructive" }); }
                                 }
                               }}><Trash2 className="h-4 w-4" /></Button>
@@ -2100,7 +2126,12 @@ export default function BandeDetailView() {
                           {!isReadOnly && (
                             <TableCell className="text-right">
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
-                                if (confirm("Supprimer ?")) {
+                                if (await confirmAction({
+                                  title: "Supprimer ce traitement ?",
+                                  description: "Le traitement enregistré sera retiré du registre.",
+                                  confirmText: "Supprimer",
+                                  destructive: true,
+                                })) {
                                   try { await deleteTraitement.mutateAsync(t.id); } catch { toast({ title: "Erreur", variant: "destructive" }); }
                                 }
                               }}><Trash2 className="h-4 w-4" /></Button>
@@ -2138,7 +2169,12 @@ export default function BandeDetailView() {
                       </div>
                       {!isReadOnly && (
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={async () => {
-                          if (confirm("Supprimer ?")) {
+                          if (await confirmAction({
+                            title: "Supprimer cette observation ?",
+                            description: "L'observation sera retirée du registre.",
+                            confirmText: "Supprimer",
+                            destructive: true,
+                          })) {
                             try { await deleteObservation.mutateAsync(o.id); } catch { toast({ title: "Erreur", variant: "destructive" }); }
                           }
                         }}><Trash2 className="h-4 w-4" /></Button>

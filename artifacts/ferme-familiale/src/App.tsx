@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { ConfirmDialogHost } from "@/lib/confirm-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { useGetMe } from "@workspace/api-client-react";
@@ -107,6 +108,7 @@ function App() {
           <Router />
         </WouterRouter>
         <Toaster />
+        <ConfirmDialogHost />
       </TooltipProvider>
     </QueryClientProvider>
   );

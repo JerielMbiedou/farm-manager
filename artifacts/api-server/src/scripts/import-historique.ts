@@ -157,7 +157,7 @@ async function main() {
   console.log("=== Import historique Biofarm Valley ===");
 
   const check = await db.execute(sql`SELECT COUNT(*)::int as cnt FROM bandes WHERE numero < 0`);
-  if ((check.rows[0] as Record<string, unknown>).cnt > 0) {
+  if (Number((check.rows[0] as { cnt: number | string }).cnt) > 0) {
     console.log("Données historiques déjà importées. Supprimez les bandes numero < 0 pour réimporter.");
     process.exit(0);
   }

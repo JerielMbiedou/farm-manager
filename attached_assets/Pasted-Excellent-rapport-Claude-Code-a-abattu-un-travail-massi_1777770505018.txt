@@ -1,0 +1,387 @@
+Excellent rapport — Claude Code a abattu un travail massif. Voici mon analyse :
+
+---
+
+## Ce qui est vraiment bien livré
+
+**Les fondations critiques sont en place :**
+- ✅ PWA + offline queue IndexedDB — le plus important pour le terrain
+- ✅ Sécurité bcrypt 12 + mot de passe admin dynamique
+- ✅ Branding paramétrable + phases configurables
+- ✅ Pagination serveur sur caisse et activity-log
+- ✅ Tri + pagination sur utilisateurs, financement, planification
+
+---
+
+## Ce qui reste à finir
+
+Les items non livrés sont clairement identifiés. Voici le prompt pour finaliser :
+
+---
+
+```
+RÈGLE IMPORTANTE : Avant d'implémenter chaque item, vérifie
+d'abord si c'est déjà en place. Si c'est déjà implémenté,
+marque-le ✅ DÉJÀ PRÉSENT et passe au suivant sans rien toucher.
+Si c'est partiellement fait, marque ⚠️ PARTIEL et complète
+seulement ce qui manque. Si c'est absent, marque ❌ ABSENT
+et implémente complètement.
+
+Ne demande pas de confirmation, exécute directement.
+À la fin, génère un rapport complet de tout ce qui a été fait.
+
+═══════════════════════════════════════════════════
+BLOC A — QUICK WINS RESTANTS
+═══════════════════════════════════════════════════
+
+A1 — Astérisque rouge sur champs obligatoires
+Dans TOUS les formulaires de l'app, sur chaque Label
+de champ obligatoire (required dans le schéma Zod) :
+  <Label>Champ <span className="text-red-500">*</span></Label>
+Formulaires concernés : connexion, création bande, dépense,
+vente, mortalité, pesée, vaccination, chantier, financement,
+remboursement, utilisateur, actif, stock, traitement.
+
+A2 — Remplacer tous les window.confirm() par AlertDialog
+Chercher exhaustivement window.confirm() dans tout le projet.
+Pour chaque occurrence, remplacer par AlertDialog shadcn/ui :
+  <AlertDialog>
+    <AlertDialogTrigger asChild>
+      <Button variant="destructive">[action]</Button>
+    </AlertDialogTrigger>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+        <AlertDialogDescription>
+          [description explicite de ce qui sera supprimé]
+          Cette action est irréversible.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>Annuler</AlertDialogCancel>
+        <AlertDialogAction onClick={handleDelete}
+          className="bg-destructive text-destructive-foreground">
+          Supprimer
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+S'inspirer du pattern déjà utilisé dans infrastructure.tsx.
+
+A3 — Remonter les messages d'erreur backend dans les toasts
+Partout où une mutation onError affiche un message générique,
+remplacer par :
+  onError: (error: any) => {
+    const message = error?.response?.data?.error
+                 || error?.response?.data?.message
+                 || error?.message
+                 || "Une erreur est survenue";
+    toast.error(message);
+  }
+Appliquer à TOUTES les mutations react-query du projet.
+
+A4 — Bouton "Tout sauvegarder" dans /parametres
+Dans parametres.tsx, si chaque section a son bouton :
+Ajouter UN bouton sticky en bas de page :
+  <div className="sticky bottom-4 flex justify-end p-4
+                  bg-background/80 backdrop-blur border-t">
+    <Button onClick={handleSaveAll} size="lg">
+      💾 Sauvegarder tous les paramètres
+    </Button>
+  </div>
+Ce bouton déclenche toutes les mutations en parallèle
+(Promise.all) et affiche un toast de confirmation global.
+
+A5 — Onglets /bandes/:id → Sheet drawer sur mobile
+VÉRIFICATION : useIsMobile() est-il déjà utilisé dans
+bandes/[id].tsx pour adapter la navigation ?
+Si non :
+  import { useIsMobile } from "@/hooks/use-mobile";
+  const isMobile = useIsMobile();
+
+Sur mobile (isMobile === true) :
+- Masquer les Tabs actuels
+- Afficher un bouton fixe en bas à droite :
+  <Button
+    className="fixed bottom-6 right-6 z-50 shadow-lg"
+    size="lg"
+    onClick={() => setSheetOpen(true)}>
+    ☰ Navigation
+  </Button>
+- Ce bouton ouvre un Sheet (drawer bottom) avec :
+  📊 Résumé | 💰 Dépenses | 🛒 Ventes | 💀 Mortalité
+  ⚖️ Pesées & IC | 🌾 Aliment | 💧 Eau | 💉 Vaccins
+  🩺 Traitements | 📝 Journal | 🏭 Charges | 🏗️ Actifs
+- Clic sur un item → navigate vers l'onglet + fermer Sheet
+
+Sur desktop : Tabs actuels inchangés.
+
+═══════════════════════════════════════════════════
+BLOC B — TRI ET PAGINATION SUR TABLEAUX RESTANTS
+═══════════════════════════════════════════════════
+
+VÉRIFICATION : le hook useSortableTable et le composant
+TablePagination existent-ils déjà ?
+Si non, les créer d'abord :
+
+Hook src/lib/use-sortable-table.ts :
+  export function useSortableTable<T>(
+    data: T[],
+    pageSize = 50
+  ) {
+    const [sortKey, setSortKey] =
+      useState<keyof T | null>(null);
+    const [sortDir, setSortDir] =
+      useState<"asc" | "desc">("asc");
+    const [page, setPage] = useState(1);
+
+    const sorted = useMemo(() => {
+      if (!sortKey) return data;
+      return [...data].sort((a, b) => {
+        const av = a[sortKey], bv = b[sortKey];
+        const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }, [data, sortKey, sortDir]);
+
+    const paginated = sorted.slice(
+      (page - 1) * pageSize, page * pageSize
+    );
+    const totalPages = Math.ceil(sorted.length / pageSize);
+
+    const toggleSort = (key: keyof T) => {
+      if (sortKey === key) {
+        setSortDir(d => d === "asc" ? "desc" : "asc");
+      } else {
+        setSortKey(key); setSortDir("asc");
+      }
+      setPage(1);
+    };
+
+    return { paginated, sorted, page, setPage,
+             totalPages, sortKey, sortDir, toggleSort };
+  }
+
+Composant src/components/ui/table-pagination.tsx :
+  interface Props {
+    page: number; totalPages: number; total: number;
+    pageSize: number; onPageChange: (p: number) => void;
+  }
+  // Affiche : "X entrées — Page Y / Z"
+  // Boutons ← et → + numéros de pages (max 5 visibles)
+
+Composant src/components/ui/sortable-header.tsx :
+  // TableHead cliquable avec indicateur ↑ ↓ ↕
+
+Appliquer ensuite sur les tableaux suivants :
+
+B1 — /bandes/:id → onglet Dépenses
+  Tri : date, catégorie, désignation, montant
+  Pagination : 50/page
+
+B2 — /bandes/:id → onglet Ventes
+  Tri : date, quantité, prix unitaire, montant
+  Pagination : 30/page
+
+B3 — /bandes/:id → onglet Mortalité
+  Tri : date, âge, décès jour, taux %
+  Pagination : 50/page
+
+B4 — /bandes/:id → onglet Pesées
+  Tri : date, âge, poids moyen, CV%
+  Pas de pagination (peu de lignes)
+
+B5 — /bandes/:id → onglet Vaccins
+  Tri : jour prévu, nom, statut (fait/non fait)
+  Pas de pagination
+
+B6 — /bandes/:id → onglet Traitements
+  Tri : date, produit, type
+  Pagination : 30/page
+
+B7 — /bandes/:id → onglet Observations
+  Tri : date, âge
+  Pagination : 30/page
+
+B8 — /stocks → Mouvements aliments
+  Tri : date, désignation, type (entrée/sortie), quantité
+  Pagination : 50/page
+
+B9 — /stocks → Mouvements médicaments
+  Tri : date, nom, type, quantité, date péremption
+  Pagination : 50/page
+
+B10 — /financement → Remboursements
+  Tri : investisseur, montant, date
+  Pagination : 30/page
+
+B11 — /comparaison-bandes
+  VÉRIFICATION : tri déjà présent ?
+  Si non : tri sur toutes colonnes numériques
+  Ajouter aussi : bouton "Exporter en CSV"
+  qui télécharge le tableau complet
+
+B12 — /infrastructure → Dépenses chantier
+  Pour chaque chantier, dans le tableau de ses dépenses :
+  Tri : date, désignation, catégorie, montant
+  Pagination : 50/page si le tableau dépasse 20 lignes
+
+B13 — /tresorerie
+  Si des tableaux existent dans les onglets :
+  Appliquer tri + pagination avec le même pattern
+
+═══════════════════════════════════════════════════
+BLOC C — JOURNAL DU JOUR UNIFIÉ (Dialog)
+═══════════════════════════════════════════════════
+
+VÉRIFICATION :
+- Le composant saisie-rapide.tsx est-il utilisé dans
+  /dashboard uniquement ou aussi dans /bandes/:id ?
+- Y a-t-il déjà un Dialog "Journal du jour" dans
+  /bandes/:id ?
+→ Compléter selon l'état réel.
+
+C1 — Composant JournalDuJour complet
+Créer ou améliorer src/components/journal-du-jour.tsx :
+
+Dialog modal avec :
+
+HEADER informatif (non éditable) :
+  🐔 [nom bande]
+  📅 [date en français : "Dimanche 3 mai 2026"]
+  ⏱️ Âge : J[calculé depuis dateDeDepart]
+
+SECTION 1 — Mortalité
+  Label : "Décès aujourd'hui *"
+  Input number, min=0, défaut=0, requis
+
+SECTION 2 — Alimentation
+  Label : "Aliment consommé (kg)"
+  Input number, min=0
+  Select type pré-rempli selon âge :
+    ageJours < 14 → "Démarrage"
+    ageJours 14-28 → "Croissance"
+    ageJours > 28 → "Finition"
+
+SECTION 3 — Eau
+  Label : "Eau consommée (litres)"
+  Input number, min=0
+
+SECTION 4 — Observations (optionnel)
+  Textarea : "Traitements, comportement, météo..."
+
+Bouton "✓ Enregistrer la journée" :
+→ Utiliser offlineFetch (déjà créé) pour :
+  - POST /mortalite si deces >= 0
+  - POST /consommation si aliment > 0
+  - POST /consommation-eau si eau > 0
+  - POST /observations si texte non vide
+→ Spinner pendant l'envoi
+→ Si online : toast vert "Journée J[X] enregistrée ✓"
+→ Si offline : toast amber "Saisie enregistrée localement"
+→ Fermeture auto après succès
+
+C2 — Intégrer dans /bandes/:id
+Dans bandes/[id].tsx, ajouter en haut de page
+(avant les onglets) un bouton prominent :
+  "📋 Saisir la journée d'aujourd'hui"
+  variant="default", size="lg", className="w-full sm:w-auto"
+Ouvre JournalDuJour avec la bande courante.
+
+C3 — Intégrer dans /dashboard
+Sur chaque card de bande active, si absent :
+Ajouter un bouton "📋 Saisir" qui ouvre JournalDuJour.
+
+═══════════════════════════════════════════════════
+BLOC D — CORRECTIONS TYPESCRIPT PRÉEXISTANTES
+═══════════════════════════════════════════════════
+
+Le rapport mentionne 7 erreurs TypeScript préexistantes.
+Les corriger maintenant pour avoir un build propre :
+
+D1 — TS7030 dans api-server (handlers sans return)
+Dans chantiers.ts, financement.ts, activity-log.ts :
+Ajouter return explicite sur tous les handlers Express
+qui ne retournent pas :
+  // Avant :
+  res.json(data);
+  // Après :
+  return res.json(data);
+
+D2 — TS2352 dans le frontend
+Dans bandes/[id].tsx, comparaison-bandes.tsx, dashboard.tsx :
+Corriger les cast unknown (as unknown as X) par des
+type guards propres ou des types corrects.
+
+D3 — TS2308 dans api-zod
+Corriger le re-export ambigu dans api-zod/src/index.ts.
+
+D4 — TS2339 dans integrations-gemini-ai
+Corriger le mismatch de type AbortError dans batch/utils.ts.
+
+Objectif : pnpm typecheck doit retourner 0 erreur.
+
+═══════════════════════════════════════════════════
+BLOC E — VÉRIFICATIONS ET TESTS
+═══════════════════════════════════════════════════
+
+E1 — Tester le mode offline complet
+  1. Ouvrir l'app dans le navigateur
+  2. Couper le réseau (DevTools → Network → Offline)
+  3. Saisir une journée via JournalDuJour
+  4. Vérifier le toast amber + badge dans le header
+  5. Rétablir le réseau
+  6. Vérifier la sync automatique + toast de confirmation
+  7. Vérifier que les données apparaissent dans /bandes/:id
+
+E2 — Tester l'installation PWA
+  1. Ouvrir dans Chrome mobile
+  2. Vérifier que le bouton "📱 Installer l'app" apparaît
+  3. Installer et vérifier que l'app s'ouvre en standalone
+
+E3 — Tester les tableaux triés et paginés
+  Pour chaque tableau modifié, vérifier :
+  - Clic sur en-tête → tri asc
+  - Nouveau clic → tri desc
+  - Indicateur visuel ↑↓↕
+  - Pagination correcte (X/Y pages)
+
+E4 — Build complet sans erreur
+  pnpm run build
+  → Doit terminer avec 0 erreur TypeScript et 0 warning
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL OBLIGATOIRE
+═══════════════════════════════════════════════════
+
+## RAPPORT FINAL — Finalisation des blocs restants
+## [date du jour]
+
+### ✅ DÉJÀ PRÉSENT (non modifié)
+
+### ✅ IMPLÉMENTÉ
+Pour chaque item :
+- Fichier(s) modifié(s)
+- Ce qui a changé
+- Lignes concernées
+
+### ⚠️ PARTIELLEMENT FAIT
+
+### ❌ NON FAIT + raison
+
+### 📊 TABLEAUX MIS À JOUR
+Liste complète des tableaux avec tri + pagination
+
+### 🔧 TYPESCRIPT
+- Nombre d'erreurs avant : X
+- Nombre d'erreurs après : Y (objectif : 0)
+
+### 📱 OFFLINE
+- Test offline réussi : oui/non
+- Saisies en attente visibles : oui/non
+- Sync automatique fonctionnelle : oui/non
+
+### ⚠️ POINTS D'ATTENTION
+- Effets de bord potentiels
+- Tests recommandés
+```

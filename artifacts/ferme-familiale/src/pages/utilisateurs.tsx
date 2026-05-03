@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Trash2, Shield, Users } from "lucide-react";
 import { useSortable } from "@/lib/use-sortable";
 import { DataPagination } from "@/components/data-pagination";
+import { confirmAction } from "@/lib/confirm-dialog";
 
 type UserInfo = {
   id: number;
@@ -76,7 +77,13 @@ export default function Utilisateurs() {
   };
 
   const handleDelete = async (userId: number, nom: string) => {
-    if (!confirm(`Supprimer le compte de ${nom} ? Cette action est irréversible.`)) return;
+    const ok = await confirmAction({
+      title: "Supprimer cet utilisateur ?",
+      description: `Le compte de ${nom} sera supprimé définitivement. Cette action est irréversible.`,
+      confirmText: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`${baseUrl}/auth/users/${userId}`, {
         method: "DELETE",

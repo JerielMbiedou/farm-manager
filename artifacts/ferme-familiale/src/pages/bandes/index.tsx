@@ -18,6 +18,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { confirmAction } from "@/lib/confirm-dialog";
 import { Plus, Trash2, ArrowRight, Bird, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -44,7 +45,11 @@ export default function Bandes() {
   const isReadOnly = user?.role === "investisseur" || user?.role === "lecteur";
 
   const handleImportHistorique = async () => {
-    if (!confirm("Importer les données historiques depuis le fichier Excel ? Cela créera les bandes passées avec toutes leurs données.")) return;
+    if (!(await confirmAction({
+      title: "Importer les données historiques ?",
+      description: "Les bandes passées seront créées depuis le fichier Excel avec toutes leurs données associées.",
+      confirmText: "Importer",
+    }))) return;
     setImporting(true);
     try {
       const base = import.meta.env.BASE_URL || "/";
@@ -89,7 +94,12 @@ export default function Bandes() {
   const handleDelete = async (e: React.MouseEvent, id: number) => {
     e.preventDefault();
     e.stopPropagation();
-    if (confirm("Voulez-vous vraiment supprimer cette bande ?")) {
+    if (await confirmAction({
+      title: "Supprimer cette bande ?",
+      description: "La bande et l'ensemble de ses données associées (dépenses, ventes, mortalité, pesées, vaccins, traitements, observations) seront supprimées définitivement.",
+      confirmText: "Supprimer",
+      destructive: true,
+    })) {
       try {
         await deleteBande.mutateAsync({ id });
         toast({ title: "Bande supprimée" });

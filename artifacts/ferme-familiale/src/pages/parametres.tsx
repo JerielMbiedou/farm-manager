@@ -156,6 +156,55 @@ export default function Parametres() {
     }
   }
 
+  // A4 — Sauvegarde de tous les paramètres modifiés en parallèle
+  const [savingAll, setSavingAll] = useState(false);
+  async function handleSaveAll() {
+    const entries = Object.entries(editedValues);
+    if (entries.length === 0) return;
+    setSavingAll(true);
+    try {
+      const results = await Promise.all(entries.map(async ([cle, valeur]) => {
+        try {
+          const res = await fetch(`${baseUrl}/parametres/${cle}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ valeur }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return { cle, updated: await res.json() as Parametre, ok: true as const };
+        } catch (err) {
+          return { cle, ok: false as const, err };
+        }
+      }));
+      const succeeded = results.filter(r => r.ok);
+      const failed = results.filter(r => !r.ok);
+      if (succeeded.length > 0) {
+        setParametres(prev => prev.map(p => {
+          const found = succeeded.find(s => s.cle === p.cle);
+          return found && found.ok ? found.updated : p;
+        }));
+        setEditedValues(prev => {
+          const next = { ...prev };
+          for (const r of succeeded) delete next[r.cle];
+          return next;
+        });
+      }
+      if (failed.length === 0) {
+        toast({ title: `${succeeded.length} paramètre(s) sauvegardé(s)`, description: "Toutes les modifications ont été appliquées." });
+      } else {
+        toast({
+          title: `${succeeded.length} sauvegardé(s), ${failed.length} en échec`,
+          description: `Échec : ${failed.map(f => f.cle).join(", ")}`,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setSavingAll(false);
+    }
+  }
+  const modifiedCount = Object.keys(editedValues).length;
+
   function resetEdit(cle: string) {
     setEditedValues(prev => {
       const next = { ...prev };
@@ -278,6 +327,23 @@ export default function Parametres() {
           </CardContent>
         </Card>
       ))}
+
+      {isAdmin && modifiedCount > 0 && (
+        <div className="sticky bottom-4 z-30 flex justify-end p-3 bg-background/90 backdrop-blur border-t shadow-lg rounded-md">
+          <Button
+            onClick={handleSaveAll}
+            size="lg"
+            disabled={savingAll}
+            data-testid="save-all-parametres"
+            className="gap-2"
+          >
+            <Save className="h-4 w-4" />
+            {savingAll
+              ? `Sauvegarde de ${modifiedCount} paramètre(s)…`
+              : `Sauvegarder tous les paramètres (${modifiedCount})`}
+          </Button>
+        </div>
+      )}
 
       {isAdmin && (
         <Card>
