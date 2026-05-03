@@ -1,0 +1,408 @@
+```
+Prépare le projet pour un déploiement complet et indépendant
+sur Render.com. L'objectif est de couper toute dépendance
+Replit et de produire un build déployable sur Render en
+moins de 10 minutes.
+
+RÈGLE : Vérifier avant de modifier. Ne rien casser
+de ce qui fonctionne actuellement sur Replit.
+
+═══════════════════════════════════════════════════
+ÉTAPE 1 — AUDIT FINAL DES DÉPENDANCES REPLIT
+═══════════════════════════════════════════════════
+
+Avant toute modification, lire et lister exhaustivement :
+
+1. Tous les packages @replit/* encore présents dans
+   package.json de chaque workspace
+2. Toutes les références à REPL_ID, REPLIT_*, REPL_*
+   dans le code source (pas les fichiers .replit)
+3. Toutes les références au proxy Gemini Replit
+   (AI_INTEGRATIONS_GEMINI_BASE_URL, AI_INTEGRATIONS_GEMINI_API_KEY)
+4. Toute URL *.replit.dev ou *.repl.co dans le code
+5. Le contenu exact de vite.config.ts des 2 artifacts
+   pour voir si les plugins @replit/* sont encore là
+6. Le contenu de app.ts (CORS, sessions)
+7. Le contenu de package.json racine (scripts build/start)
+8. Si render.yaml existe déjà et son contenu exact
+
+Afficher ce rapport d'audit AVANT de modifier quoi que
+ce soit.
+
+═══════════════════════════════════════════════════
+ÉTAPE 2 — SUPPRIMER LES DÉPENDANCES REPLIT
+═══════════════════════════════════════════════════
+
+2.1 — Supprimer les packages @replit/*
+Dans artifacts/ferme-familiale/package.json,
+artifacts/mockup-sandbox/package.json,
+et pnpm-workspace.yaml :
+Supprimer toute entrée @replit/* (plugins Vite Replit).
+
+2.2 — Nettoyer vite.config.ts (ferme-familiale)
+Supprimer :
+- Les imports @replit/vite-plugin-*
+- Le bloc conditionnel if (process.env.REPL_ID) {...}
+- Toute référence à REPL_ID ou REPLIT_*
+Garder uniquement les plugins standards (react, etc.)
+
+2.3 — Nettoyer vite.config.ts (mockup-sandbox)
+Même nettoyage que 2.2.
+
+2.4 — Remplacer le proxy Gemini Replit par l'API Google directe
+Dans lib/integrations-gemini-ai/src/client.ts
+et lib/integrations-gemini-ai/src/image/client.ts :
+
+Si le fallback n'est pas encore en place, implémenter :
+  const apiKey = process.env.GEMINI_API_KEY
+              ?? process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
+  const baseUrl = process.env.GEMINI_BASE_URL
+               ?? process.env.AI_INTEGRATIONS_GEMINI_BASE_URL
+               ?? undefined; // undefined = API Google directe
+
+Si baseUrl est undefined, ne pas passer httpOptions.baseUrl
+au SDK (laisse le SDK appeler api.generativeai.google.com).
+
+═══════════════════════════════════════════════════
+ÉTAPE 3 — CONFIGURATION PRODUCTION
+═══════════════════════════════════════════════════
+
+3.1 — CORS configurable par variable d'environnement
+Dans artifacts/api-server/src/app.ts :
+  const allowedOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(",").map(s => s.trim())
+    : ["http://localhost:5173"];
+
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Autoriser les requêtes sans origin (mobile, curl)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin) ||
+          allowedOrigins.includes("*")) {
+        return callback(null, true);
+      }
+      callback(new Error(`Origin ${origin} non autorisée`));
+    },
+    credentials: true,
+  }));
+
+3.2 — Servir le frontend depuis Express en production
+Dans app.ts, ajouter APRÈS les routes API :
+  import path from "path";
+  import { fileURLToPath } from "url";
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+  if (process.env.NODE_ENV === "production") {
+    const frontendDist = path.resolve(
+      __dirname,
+      "../../../artifacts/ferme-familiale/dist"
+    );
+    app.use(express.static(frontendDist));
+    // Fallback SPA (React Router / wouter)
+    app.get("*", (req, res) => {
+      if (!req.path.startsWith("/api")) {
+        res.sendFile(
+          path.join(frontendDist, "index.html"),
+          (err) => {
+            if (err) res.status(404).send("Not found");
+          }
+        );
+      }
+    });
+  }
+
+3.3 — Cookie sameSite strict en production
+Dans la config session de app.ts :
+  cookie: {
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    sameSite: process.env.NODE_ENV === "production"
+      ? "strict" : "lax",
+  }
+
+3.4 — Scripts dans package.json racine
+Vérifier que ces scripts existent, les ajouter si absent :
+  "scripts": {
+    "build": "pnpm -r run build",
+    "build:full": "pnpm --filter @workspace/ferme-familiale build && pnpm --filter @workspace/api-server build",
+    "start": "node artifacts/api-server/dist/index.mjs",
+    "db:migrate": "pnpm --filter @workspace/db push",
+    "db:migrate:force": "pnpm --filter @workspace/db push --force"
+  }
+
+═══════════════════════════════════════════════════
+ÉTAPE 4 — FICHIERS DE DÉPLOIEMENT RENDER
+═══════════════════════════════════════════════════
+
+4.1 — Créer ou mettre à jour render.yaml à la racine
+Contenu exact :
+
+  services:
+    - type: web
+      name: ferme-mbiedou
+      runtime: node
+      region: frankfurt
+      plan: free
+      buildCommand: >
+        npm install -g pnpm &&
+        pnpm install --frozen-lockfile &&
+        pnpm run build:full
+      startCommand: node artifacts/api-server/dist/index.mjs
+      healthCheckPath: /api/healthz
+      envVars:
+        - key: NODE_ENV
+          value: production
+        - key: DATABASE_URL
+          fromDatabase:
+            name: ferme-mbiedou-db
+            property: connectionString
+        - key: SESSION_SECRET
+          generateValue: true
+        - key: FRONTEND_URL
+          sync: false
+        - key: GEMINI_API_KEY
+          sync: false
+        - key: GEMINI_MODEL
+          value: gemini-2.5-flash
+        - key: SEED_DEMO_DATA
+          value: "false"
+
+  databases:
+    - name: ferme-mbiedou-db
+      plan: free
+      region: frankfurt
+      databaseName: ferme_mbiedou
+      user: ferme
+
+4.2 — Créer ou mettre à jour .env.example à la racine
+  # ============================================
+  # CONFIGURATION FERME MBIEDOU
+  # Copier ce fichier en .env et remplir les valeurs
+  # ============================================
+
+  # Base de données PostgreSQL (obligatoire)
+  DATABASE_URL=postgresql://user:password@host:5432/ferme_mbiedou
+
+  # Secret sessions (obligatoire, générer avec : openssl rand -base64 48)
+  SESSION_SECRET=change-this-to-a-long-random-string
+
+  # Environnement
+  NODE_ENV=production
+  PORT=3000
+
+  # URL du frontend pour CORS (obligatoire en prod)
+  # Sur Render : https://ferme-mbiedou.onrender.com
+  FRONTEND_URL=https://your-app.onrender.com
+
+  # Google Gemini pour l'OCR des fiches (optionnel)
+  # Obtenir sur https://aistudio.google.com/apikey (gratuit)
+  GEMINI_API_KEY=your-gemini-api-key-here
+  GEMINI_MODEL=gemini-2.5-flash
+
+  # Mot de passe admin initial (laisser vide = généré automatiquement)
+  INITIAL_ADMIN_PASSWORD=
+
+  # Données de démo au démarrage (false en production)
+  SEED_DEMO_DATA=false
+
+4.3 — Créer DEPLOY.md à la racine
+  # Déploiement — Ferme Mbiedou
+
+  ## Déploiement sur Render (recommandé, gratuit)
+
+  ### Prérequis
+  - Compte Render.com (gratuit)
+  - Repo GitHub public ou privé connecté à Render
+  - Clé API Gemini (gratuite sur aistudio.google.com)
+
+  ### Étapes
+
+  1. Aller sur render.com → "New" → "Blueprint"
+  2. Connecter le repo GitHub farm-manager
+  3. render.yaml sera détecté automatiquement
+     → Il crée : le service web + la base PostgreSQL
+  4. Ajouter les variables manuelles :
+     - FRONTEND_URL = URL de votre app Render
+       (ex: https://ferme-mbiedou.onrender.com)
+     - GEMINI_API_KEY = votre clé Gemini (pour l'OCR)
+  5. Cliquer "Apply" → attendre ~5 minutes
+  6. L'app est live sur votre URL Render
+
+  ### Compte par défaut
+  - Username : admin
+  - Mot de passe : affiché dans les logs Render au 1er démarrage
+  ⚠️ Changer immédiatement dans Paramètres → Utilisateurs
+
+  ### Variables d'environnement sur Render
+  | Variable | Valeur | Auto |
+  |----------|--------|------|
+  | DATABASE_URL | URL PostgreSQL | ✅ Auto |
+  | SESSION_SECRET | Clé aléatoire | ✅ Auto |
+  | NODE_ENV | production | ✅ |
+  | FRONTEND_URL | URL de l'app | ⚠️ Manuel |
+  | GEMINI_API_KEY | Clé Gemini | ⚠️ Manuel |
+  | SEED_DEMO_DATA | false | ✅ |
+
+  ### Après déploiement
+  1. Ouvrir l'URL Render
+  2. Récupérer le mot de passe admin dans les logs
+  3. Se connecter et aller dans Paramètres
+  4. Renseigner l'identité de la ferme (nom, adresse, téléphone)
+  5. Configurer les phases d'élevage si différentes de COBB 500
+
+  ## Déploiement local (Docker)
+
+  ```bash
+  cp .env.example .env
+  # Éditer SESSION_SECRET dans .env
+  docker compose up -d --build
+  # → http://localhost:3000 (voir logs pour le mot de passe)
+  ```
+
+═══════════════════════════════════════════════════
+ÉTAPE 5 — VITE CONFIG PRODUCTION
+═══════════════════════════════════════════════════
+
+5.1 — Configurer le proxy API en développement
+Dans artifacts/ferme-familiale/vite.config.ts :
+  export default defineConfig({
+    plugins: [react()], // plus de plugins @replit/*
+    server: {
+      port: parseInt(process.env.PORT ?? "5173"),
+      proxy: {
+        "/api": {
+          target: process.env.VITE_API_URL
+                  ?? "http://localhost:3000",
+          changeOrigin: true,
+        },
+      },
+    },
+    build: {
+      outDir: "dist",
+    },
+  });
+
+5.2 — Ajouter VITE_API_URL dans .env.example
+  # URL du backend en développement local
+  # (vide en production car Express sert le frontend)
+  VITE_API_URL=http://localhost:3000
+
+═══════════════════════════════════════════════════
+ÉTAPE 6 — VÉRIFICATION BUILD COMPLET
+═══════════════════════════════════════════════════
+
+6.1 — Réinstaller les dépendances sans les packages Replit
+  pnpm install
+
+6.2 — Build complet
+  pnpm run build:full
+→ Doit terminer sans erreur
+→ Vérifier que dist/index.mjs existe dans api-server
+→ Vérifier que dist/ existe dans ferme-familiale
+
+6.3 — Vérifier qu'aucune référence Replit ne subsiste
+  grep -r "replit" artifacts/api-server/dist/ --include="*.mjs" 2>/dev/null | head -20
+  grep -r "replit" artifacts/ferme-familiale/dist/ --include="*.js" 2>/dev/null | head -20
+→ Les deux commandes doivent retourner 0 résultat
+
+6.4 — Vérifier le démarrage du serveur
+  DATABASE_URL=$DATABASE_URL \
+  SESSION_SECRET=test-secret-render \
+  NODE_ENV=production \
+  PORT=3001 \
+  node artifacts/api-server/dist/index.mjs &
+  sleep 3
+  curl -s http://localhost:3001/api/healthz
+→ Doit retourner {"status":"ok"} ou équivalent
+
+6.5 — Vérifier que le frontend est servi
+  curl -s http://localhost:3001/ | head -5
+→ Doit retourner du HTML (index.html de React)
+
+6.6 — Arrêter le serveur de test
+  pkill -f "dist/index.mjs" 2>/dev/null || true
+
+═══════════════════════════════════════════════════
+ÉTAPE 7 — PUSH VERS GITHUB
+═══════════════════════════════════════════════════
+
+7.1 — Vérifier le statut git
+  git status
+  git diff --stat
+
+7.2 — Vérifier que .gitignore exclut bien
+  .env
+  .env.local
+  node_modules/
+  exports/backups/
+  dist/ (optionnel, Render rebuilde de toute façon)
+
+7.3 — Commit et push
+  git add -A
+  git commit -m "feat: déploiement indépendant Render - suppression dépendances Replit"
+  git push origin main
+
+Vérifier que le push a réussi et afficher l'URL du commit.
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL OBLIGATOIRE
+═══════════════════════════════════════════════════
+
+## RAPPORT — Libération Replit + Préparation Render
+## [date du jour]
+
+### 🔍 AUDIT INITIAL
+- Packages @replit/* trouvés et supprimés : [liste]
+- Variables REPLIT_* trouvées et traitées : [liste]
+- Proxy Gemini Replit : [état avant/après]
+- Fichiers config Render créés : [liste]
+
+### ✅ MODIFIÉ
+Pour chaque fichier :
+- Ce qui a changé
+- Pourquoi
+
+### 🏗️ BUILD
+- pnpm build:full : ✅ succès / ❌ erreurs
+- Taille dist/index.mjs : X Mo
+- Taille dist/ frontend : X Mo
+
+### 🔒 VÉRIFICATION ZÉRO REPLIT
+- grep dans dist/ api-server : 0 résultat ✅
+- grep dans dist/ frontend : 0 résultat ✅
+
+### 🌐 TEST SERVEUR
+- GET /api/healthz : ✅ 200
+- GET / (frontend) : ✅ HTML React
+
+### 📤 GITHUB
+- Push réussi : ✅
+- URL du commit : [url]
+
+### 🚀 PROCHAINES ÉTAPES RENDER
+Guide pas à pas pour l'utilisateur :
+
+1. Aller sur render.com → Se connecter
+2. "New" → "Blueprint"
+3. Connecter le repo : github.com/JerielMbiedou/farm-manager
+4. Render détecte render.yaml automatiquement
+5. Il va créer :
+   - Service web "ferme-mbiedou"
+   - Base PostgreSQL "ferme-mbiedou-db"
+6. Ajouter manuellement ces 2 variables :
+   - FRONTEND_URL = [URL qui sera donnée par Render]
+   - GEMINI_API_KEY = [clé depuis aistudio.google.com]
+7. Cliquer "Apply" → attendre ~5 min
+8. Récupérer le mot de passe admin dans les logs
+9. ✅ L'app est live !
+
+### ⚠️ POINTS D'ATTENTION
+- Replit continue de fonctionner (aucune casse)
+- Sur Render plan gratuit : l'app s'endort après
+  15 min d'inactivité (redémarrage ~30 sec)
+- PostgreSQL gratuit Render : 1GB, suffisant pour
+  plusieurs années d'usage d'une ferme familiale
+- Sauvegardes Render : activer depuis le dashboard
+  Render → PostgreSQL → Backups (gratuit)
+```
