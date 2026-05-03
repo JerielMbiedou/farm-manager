@@ -60,6 +60,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { confirmAction } from "@/lib/confirm-dialog";
+import { useSortable } from "@/lib/use-sortable";
 import { Plus, Pencil, Trash2, ArrowLeft, Receipt, ShoppingCart, Info, CheckSquare, Skull, Scale, Wheat, Syringe, Check, Download, Droplets, Pill, BookOpen, ChevronDown, ChevronRight, Search, CheckCircle2, Lock, RotateCcw, FileText } from "lucide-react";
 import { Link } from "wouter";
 import { BandeDetail } from "@workspace/api-client-react";
@@ -1083,10 +1084,7 @@ export default function BandeDetailView() {
     } catch { toast({ title: "Erreur", variant: "destructive" }); }
   };
 
-  if (isLoadingBande) return <div className="min-h-[50vh] flex items-center justify-center text-muted-foreground">Chargement de la bande...</div>;
-  if (!bande) return <div>Bande introuvable.</div>;
-
-  const detail = bande as BandeDetail;
+  // ⚠️ Tous les Hooks doivent être appelés AVANT les early returns conditionnels.
   const mortaliteItems = (mortaliteData || []) as unknown as Array<Record<string, unknown>>;
   const peseesItems = (peseesData || []) as unknown as Array<Record<string, unknown>>;
   const consResp = (consommationData || {}) as unknown as Record<string, unknown>;
@@ -1096,6 +1094,17 @@ export default function BandeDetailView() {
   const traitementItems = (traitementsData || []) as unknown as Array<Record<string, unknown>>;
   const observationItems = (observationsData || []) as unknown as Array<Record<string, unknown>>;
   const refPoids = (referencePoids || []) as Array<{ ageJours: number; poidsG: number }>;
+
+  // BLOC 7 — Tri colonne pour les tableaux internes (mortalité, pesées, eau, traitements)
+  const mortaliteSorted = useSortable(mortaliteItems, "date", "desc");
+  const peseesSorted = useSortable(peseesItems, "date", "desc");
+  const eauSorted = useSortable(eauItems, "date", "desc");
+  const traitementsSorted = useSortable(traitementItems, "date", "desc");
+
+  if (isLoadingBande) return <div className="min-h-[50vh] flex items-center justify-center text-muted-foreground">Chargement de la bande...</div>;
+  if (!bande) return <div>Bande introuvable.</div>;
+
+  const detail = bande as BandeDetail;
 
   const mortaliteParPhase = phases.map(phase => {
     const items = mortaliteItems.filter((m: any) => m.ageJours >= phase.min && m.ageJours <= phase.max);
@@ -1697,17 +1706,19 @@ export default function BandeDetailView() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead>Date</TableHead><TableHead className="text-right">Jour</TableHead>
-                      <TableHead className="text-right">Décès</TableHead><TableHead className="text-right">Cumulés</TableHead>
-                      <TableHead className="text-right">Taux %</TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => mortaliteSorted.toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{mortaliteSorted.sortIcon("date")}</span></TableHead>
+                      <TableHead className="text-right cursor-pointer select-none" onClick={() => mortaliteSorted.toggleSort("ageJours")}>Jour <span className="text-xs text-muted-foreground">{mortaliteSorted.sortIcon("ageJours")}</span></TableHead>
+                      <TableHead className="text-right cursor-pointer select-none" onClick={() => mortaliteSorted.toggleSort("decesJour")}>Décès <span className="text-xs text-muted-foreground">{mortaliteSorted.sortIcon("decesJour")}</span></TableHead>
+                      <TableHead className="text-right cursor-pointer select-none" onClick={() => mortaliteSorted.toggleSort("decesCumules")}>Cumulés <span className="text-xs text-muted-foreground">{mortaliteSorted.sortIcon("decesCumules")}</span></TableHead>
+                      <TableHead className="text-right cursor-pointer select-none" onClick={() => mortaliteSorted.toggleSort("tauxMortalite")}>Taux % <span className="text-xs text-muted-foreground">{mortaliteSorted.sortIcon("tauxMortalite")}</span></TableHead>
                       {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mortaliteItems.length === 0 ? (
+                    {mortaliteSorted.sorted.length === 0 ? (
                       <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Aucune donnée de mortalité</TableCell></TableRow>
                     ) : (
-                      mortaliteItems.map((m) => (
+                      mortaliteSorted.sorted.map((m) => (
                         <TableRow key={m.id as number} className={m.alerteRouge ? "bg-red-50" : ""}>
                           <TableCell>{m.date as string}</TableCell>
                           <TableCell className="text-right">J{m.ageJours as number}</TableCell>
@@ -1790,20 +1801,21 @@ export default function BandeDetailView() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">
-                        <TableHead>Date</TableHead><TableHead className="text-right">Jour</TableHead>
-                        <TableHead className="text-right">Poids (g)</TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => peseesSorted.toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{peseesSorted.sortIcon("date")}</span></TableHead>
+                        <TableHead className="text-right cursor-pointer select-none" onClick={() => peseesSorted.toggleSort("ageJours")}>Jour <span className="text-xs text-muted-foreground">{peseesSorted.sortIcon("ageJours")}</span></TableHead>
+                        <TableHead className="text-right cursor-pointer select-none" onClick={() => peseesSorted.toggleSort("poidsMoyenG")}>Poids (g) <span className="text-xs text-muted-foreground">{peseesSorted.sortIcon("poidsMoyenG")}</span></TableHead>
                         <TableHead className="text-right">Min / Max</TableHead>
-                        <TableHead className="text-right">CV</TableHead>
+                        <TableHead className="text-right cursor-pointer select-none" onClick={() => peseesSorted.toggleSort("cv")}>CV <span className="text-xs text-muted-foreground">{peseesSorted.sortIcon("cv")}</span></TableHead>
                         <TableHead className="text-right">Objectif</TableHead>
-                        <TableHead className="text-right">Écart</TableHead>
+                        <TableHead className="text-right cursor-pointer select-none" onClick={() => peseesSorted.toggleSort("ecart")}>Écart <span className="text-xs text-muted-foreground">{peseesSorted.sortIcon("ecart")}</span></TableHead>
                         {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {peseesItems.length === 0 ? (
+                      {peseesSorted.sorted.length === 0 ? (
                         <TableRow><TableCell colSpan={isReadOnly ? 7 : 8} className="text-center py-8 text-muted-foreground">Aucune pesée enregistrée</TableCell></TableRow>
                       ) : (
-                        peseesItems.map((p) => {
+                        peseesSorted.sorted.map((p) => {
                           const cv = p.cv as number | null;
                           const cvAlerte = cv != null && cv > 10;
                           return (
@@ -2049,16 +2061,17 @@ export default function BandeDetailView() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead>Date</TableHead><TableHead className="text-right">Jour</TableHead>
-                      <TableHead className="text-right">Litres</TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => eauSorted.toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{eauSorted.sortIcon("date")}</span></TableHead>
+                      <TableHead className="text-right cursor-pointer select-none" onClick={() => eauSorted.toggleSort("ageJours")}>Jour <span className="text-xs text-muted-foreground">{eauSorted.sortIcon("ageJours")}</span></TableHead>
+                      <TableHead className="text-right cursor-pointer select-none" onClick={() => eauSorted.toggleSort("quantiteLitres")}>Litres <span className="text-xs text-muted-foreground">{eauSorted.sortIcon("quantiteLitres")}</span></TableHead>
                       {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {eauItems.length === 0 ? (
+                    {eauSorted.sorted.length === 0 ? (
                       <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Aucune donnée de consommation d'eau</TableCell></TableRow>
                     ) : (
-                      eauItems.map((e: any) => (
+                      eauSorted.sorted.map((e: any) => (
                         <TableRow key={e.id}>
                           <TableCell>{e.date}</TableCell>
                           <TableCell className="text-right">J{e.ageJours}</TableCell>
@@ -2098,17 +2111,19 @@ export default function BandeDetailView() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead>Date</TableHead><TableHead className="text-right">Jour</TableHead>
-                      <TableHead>Produit</TableHead><TableHead>Type</TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => traitementsSorted.toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{traitementsSorted.sortIcon("date")}</span></TableHead>
+                      <TableHead className="text-right cursor-pointer select-none" onClick={() => traitementsSorted.toggleSort("ageJours")}>Jour <span className="text-xs text-muted-foreground">{traitementsSorted.sortIcon("ageJours")}</span></TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => traitementsSorted.toggleSort("produit")}>Produit <span className="text-xs text-muted-foreground">{traitementsSorted.sortIcon("produit")}</span></TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => traitementsSorted.toggleSort("type")}>Type <span className="text-xs text-muted-foreground">{traitementsSorted.sortIcon("type")}</span></TableHead>
                       <TableHead>Dosage</TableHead><TableHead>Observations</TableHead>
                       {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {traitementItems.length === 0 ? (
+                    {traitementsSorted.sorted.length === 0 ? (
                       <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Aucun traitement enregistré</TableCell></TableRow>
                     ) : (
-                      traitementItems.map((t: any) => (
+                      traitementsSorted.sorted.map((t: any) => (
                         <TableRow key={t.id}>
                           <TableCell>{t.date}</TableCell>
                           <TableCell className="text-right">J{t.ageJours}</TableCell>
