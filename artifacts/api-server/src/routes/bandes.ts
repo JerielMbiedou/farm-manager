@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, peseesTable, consommationAlimentTable, vaccinationsTable, consommationEauTable, traitementsTable, observationsJournalTable, bandeActifsTable, actifsTable, usersTable } from "@workspace/db";
+import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTable, depensesVenteTable, mortaliteJournaliereTable, peseesTable, consommationAlimentTable, vaccinationsTable, consommationEauTable, traitementsTable, observationsJournalTable, bandeActifsTable, actifsTable, stockAlimentsTable, usersTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { logFromRequest } from "./activity-log";
-import { getParam, getVaccinationSchedule, REFERENCE_WEIGHT_CURVE } from "../lib/parametres";
+import { getParam, getParamStr, getVaccinationSchedule, REFERENCE_WEIGHT_CURVE } from "../lib/parametres";
 import { ai } from "@workspace/integrations-gemini-ai";
 import { validateBody, normalizeDesignation } from "../lib/validate";
 import {
@@ -834,13 +834,51 @@ router.get("/:id/consommation", async (req, res) => {
   });
 });
 
+function typeAlimentToDesignation(type?: string | null): string {
+  const map: Record<string, string> = {
+    demarrage: "Aliment démarrage",
+    croissance: "Aliment croissance",
+    finition: "Aliment finition",
+  };
+  return (type && map[type]) || "Aliment bande";
+}
+
 router.post("/:id/consommation", async (req, res) => {
   const bandeId = parseInt(req.params.id);
   if (!(await requireWriteAccess(req, res))) return;
   if (!(await assertBandeWritable(bandeId, res))) return;
-  const { date, quantiteKg } = req.body;
+  const { date, quantiteKg, typeAliment, designation } = req.body as {
+    date: string; quantiteKg: number; typeAliment?: string; designation?: string;
+  };
   const rows = await db.insert(consommationAlimentTable).values({ bandeId, date, quantiteKg: String(quantiteKg) }).returning();
   const r = rows[0];
+
+  // Synchronisation automatique stock ← consommation bande (non bloquante)
+  try {
+    const syncEnabled = await getParamStr("sync_stock_consommation", "true");
+    if (syncEnabled === "true" && Number(quantiteKg) > 0) {
+      const bande = (await db.select().from(bandesTable).where(eq(bandesTable.id, bandeId)))[0];
+      if (bande) {
+        const desig = designation?.trim() || typeAlimentToDesignation(typeAliment);
+        const start = new Date(`${bande.dateDeDepart}T00:00:00`);
+        const consoDate = new Date(`${date}T00:00:00`);
+        const ageJours = Math.max(0, Math.round((consoDate.getTime() - start.getTime()) / 86400000));
+        await db.insert(stockAlimentsTable).values({
+          designation: desig,
+          type: "sortie",
+          quantiteKg: String(quantiteKg),
+          prixUnitaire: null,
+          fournisseur: null,
+          date,
+          commentaire: `[AUTO] ${bande.nom} J${ageJours}`,
+        });
+        req.log.info({ bandeId, quantiteKg, designation: desig, ageJours }, "Sync stock ← consommation bande");
+      }
+    }
+  } catch (err) {
+    req.log.warn({ err }, "Sync stock échouée — non bloquant");
+  }
+
   res.status(201).json({ id: r.id, bandeId: r.bandeId, date: r.date, quantiteKg: parseFloat(r.quantiteKg) });
 });
 

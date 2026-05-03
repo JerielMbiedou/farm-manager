@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
 import { Settings, Save, RotateCcw, Database, Download, PlayCircle } from "lucide-react";
 
 type Parametre = {
@@ -23,9 +24,12 @@ const CATEGORY_ORDER = [
   "Indice de conversion",
   "Budget construction",
   "Actifs",
+  "Stock",
   "Calendrier vaccinal",
   "Sauvegarde",
 ];
+
+const BOOLEAN_TOGGLE_KEYS = new Set(["sync_stock_consommation"]);
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   "Identité de la ferme": "Nom, contacts et devise affichés dans les en-têtes et les rapports PDF",
@@ -35,6 +39,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   "Indice de conversion": "Bornes pour qualifier l'indice de conversion alimentaire (IC)",
   "Budget construction": "Montants par défaut si aucun devis n'a été saisi",
   "Actifs": "Tout équipement d'une valeur supérieure au seuil devrait être enregistré dans Infrastructure → Actifs (mangeoires, abreuvoirs, balance, etc.) et non en dépense directe.",
+  "Stock": "Synchronisation automatique entre saisies de consommation bande et le stock d'aliment.",
   "Calendrier vaccinal": "Programme de vaccination appliqué automatiquement aux nouvelles bandes",
   "Sauvegarde": "Configuration de la sauvegarde automatique nocturne de la base de données",
 };
@@ -274,6 +279,36 @@ export default function Parametres() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {isAdmin ? (
+                      BOOLEAN_TOGGLE_KEYS.has(p.cle) ? (
+                        <Switch
+                          checked={getDisplayValue(p) === "true"}
+                          disabled={saving === p.cle}
+                          onCheckedChange={async (checked) => {
+                            const newVal = checked ? "true" : "false";
+                            setEditedValues(prev => ({ ...prev, [p.cle]: newVal }));
+                            setSaving(p.cle);
+                            try {
+                              const res = await fetch(`${baseUrl}/parametres/${p.cle}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                credentials: "include",
+                                body: JSON.stringify({ valeur: newVal }),
+                              });
+                              if (res.ok) {
+                                const updated = await res.json();
+                                setParametres(prev => prev.map(x => x.cle === p.cle ? updated : x));
+                                setEditedValues(prev => { const n = { ...prev }; delete n[p.cle]; return n; });
+                                toast({ title: checked ? "Synchronisation activée" : "Synchronisation désactivée" });
+                              } else {
+                                toast({ title: "Erreur", variant: "destructive" });
+                              }
+                            } finally {
+                              setSaving(null);
+                            }
+                          }}
+                          data-testid={`switch-${p.cle}`}
+                        />
+                      ) : (
                       <>
                         <div className="relative">
                           <Input
@@ -315,13 +350,20 @@ export default function Parametres() {
                           </>
                         )}
                       </>
+                      )
                     ) : (
+                      BOOLEAN_TOGGLE_KEYS.has(p.cle) ? (
+                        <div className={`px-3 py-1 rounded-md text-xs font-medium ${p.valeur === "true" ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"}`}>
+                          {p.valeur === "true" ? "Activé" : "Désactivé"}
+                        </div>
+                      ) : (
                       <div className="px-3 py-2 bg-muted rounded-md text-sm font-mono">
                         {p.valeur}
                         {UNIT_LABELS[p.cle] && (
                           <span className="text-muted-foreground ml-1">{UNIT_LABELS[p.cle]}</span>
                         )}
                       </div>
+                      )
                     )}
                   </div>
                 </div>

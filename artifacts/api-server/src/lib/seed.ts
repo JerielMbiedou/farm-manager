@@ -167,6 +167,9 @@ const ALL_PARAMETRES: Array<{ cle: string; valeur: string; description: string; 
 
   // Actifs vs dépenses (BLOC 2 audit 2026-05)
   { cle: "seuil_valeur_actif", valeur: "50000", description: "Valeur minimale (FCFA) pour qu'un achat soit considéré comme un actif amortissable plutôt qu'une dépense directe. En dessous de ce seuil, enregistrer en dépense bande.", categorie: "Actifs" },
+
+  // Stock & Consommation (sync auto)
+  { cle: "sync_stock_consommation", valeur: "true", description: "Décrémenter automatiquement le stock aliment à chaque saisie de consommation bande. Désactiver si vous gérez le stock séparément.", categorie: "Stock" },
 ];
 
 /**

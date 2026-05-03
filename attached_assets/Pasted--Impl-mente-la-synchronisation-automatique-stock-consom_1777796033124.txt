@@ -1,0 +1,279 @@
+```
+Implémente la synchronisation automatique stock ↔
+consommation bande.
+
+VÉRIFICATION D'ABORD :
+- Le paramètre sync_stock_consommation existe-t-il
+  dans la DB (parametres table) ?
+- Y a-t-il déjà une logique de sync dans
+  POST /api/bandes/:id/consommation ?
+- Y a-t-il un toggle dans l'UI pour activer/désactiver ?
+
+═══════════════════════════════════════════════════
+BLOC 1 — BACKEND : LOGIQUE DE SYNC
+═══════════════════════════════════════════════════
+
+1.1 — Ajouter le paramètre dans seedDefaults
+Dans seed.ts ou ensureParametres(), ajouter si absent :
+
+  {
+    cle: "sync_stock_consommation",
+    valeur: "true",
+    description: "Décrémenter automatiquement le stock "
+               + "aliment à chaque saisie de consommation "
+               + "bande. Désactiver si vous gérez le stock "
+               + "séparément.",
+    categorie: "stock"
+  }
+
+1.2 — Implémenter la sync dans POST /consommation
+Dans bandes.ts route POST /:id/consommation,
+APRÈS l'insert dans consommationAlimentTable :
+
+  // Synchronisation automatique avec le stock
+  const syncEnabled = await getParam(
+    "sync_stock_consommation"
+  );
+
+  if (syncEnabled === "true") {
+    try {
+      // Chercher la désignation la plus proche
+      // dans le stock aliments
+      const designation = body.typeAliment
+        ? typeAlimentToDesignation(body.typeAliment)
+        : body.designation ?? "Aliment bande";
+
+      await db.insert(stockAlimentsTable).values({
+        designation,
+        type: "sortie",
+        quantiteKg: String(body.quantiteKg),
+        date: body.date
+           ?? new Date().toISOString().split("T")[0],
+        commentaire: `Auto — ${bande.nom} `
+                   + `J${body.ageJours}`,
+        fournisseur: null,
+        prixUnitaire: null,
+      });
+
+      req.log.info({
+        bandeId: bande.id,
+        quantiteKg: body.quantiteKg,
+        designation,
+      }, "Sync stock ← consommation bande");
+
+    } catch (err) {
+      // Ne pas bloquer la saisie si la sync échoue
+      req.log.warn({ err },
+        "Sync stock échouée — non bloquant"
+      );
+    }
+  }
+
+Fonction helper typeAlimentToDesignation :
+  function typeAlimentToDesignation(
+    type: string
+  ): string {
+    const map: Record<string, string> = {
+      demarrage:  "Aliment démarrage",
+      croissance: "Aliment croissance",
+      finition:   "Aliment finition",
+    };
+    return map[type] ?? "Aliment bande";
+  }
+
+1.3 — Marquer les sorties auto dans le stock
+Les sorties créées automatiquement doivent être
+distinguables des saisies manuelles.
+
+Ajouter si absent dans stockAlimentsTable le champ :
+  source: varchar("source", { length: 50 })
+    .default("manuel")
+  // Valeurs : "manuel" | "auto_bande"
+
+Si migration nécessaire :
+  ALTER TABLE stock_aliments
+  ADD COLUMN source varchar(50) DEFAULT 'manuel';
+
+Pour les sorties auto, passer source: "auto_bande".
+
+Si la migration est trop risquée, utiliser le champ
+commentaire existant comme marqueur :
+  commentaire: `[AUTO] ${bande.nom} J${ageJours}`
+
+Et détecter côté frontend avec :
+  item.commentaire?.startsWith("[AUTO]")
+
+Choisir l'approche la plus simple selon l'état
+actuel du schéma.
+
+═══════════════════════════════════════════════════
+BLOC 2 — UI : ACTIVATION DANS /PARAMETRES
+═══════════════════════════════════════════════════
+
+2.1 — Ajouter le toggle dans la section Stock
+Dans parametres.tsx, dans la section "Stock"
+(ou créer cette section si absente) :
+
+  <Card>
+    <CardHeader>
+      <CardTitle>Stock & Consommation</CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-4">
+
+      <div className="flex items-center
+                      justify-between">
+        <div>
+          <p className="font-medium">
+            Synchronisation automatique
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Quand vous saisissez une consommation
+            d'aliment dans une bande, une sortie
+            est automatiquement créée dans le stock.
+            Désactivez si vous gérez le stock
+            manuellement.
+          </p>
+        </div>
+        <Switch
+          checked={syncEnabled}
+          onCheckedChange={(checked) => {
+            updateParametre(
+              "sync_stock_consommation",
+              checked ? "true" : "false"
+            );
+          }}
+        />
+      </div>
+
+    </CardContent>
+  </Card>
+
+═══════════════════════════════════════════════════
+BLOC 3 — UI : INDICATEUR DANS /BANDES/:ID
+═══════════════════════════════════════════════════
+
+3.1 — Note dans l'onglet Consommation aliment
+Dans bandes/[id].tsx, onglet consommation aliment,
+si sync_stock_consommation = "true" :
+
+  <Alert className="border-green-200 bg-green-50 mb-4">
+    <AlertDescription className="text-green-800 text-sm">
+      ✓ Synchronisation stock activée — chaque saisie
+      de consommation décrémente automatiquement votre
+      stock d'aliment.
+    </AlertDescription>
+  </Alert>
+
+Si sync = "false" :
+
+  <Alert className="border-amber-200 bg-amber-50 mb-4">
+    <AlertDescription className="text-amber-800 text-sm">
+      ℹ️ Synchronisation stock désactivée —
+      pensez à mettre à jour votre stock manuellement.
+      <Button variant="link" className="p-0 h-auto ml-1"
+        onClick={() => navigate("/parametres")}>
+        Activer dans Paramètres →
+      </Button>
+    </AlertDescription>
+  </Alert>
+
+═══════════════════════════════════════════════════
+BLOC 4 — UI : MARQUAGE VISUEL DES SORTIES AUTO
+═══════════════════════════════════════════════════
+
+4.1 — Dans stocks.tsx, tableau mouvements aliments
+Distinguer visuellement les sorties automatiques :
+
+  // Détecter une sortie auto
+  const isAuto = item.source === "auto_bande"
+    || item.commentaire?.startsWith("[AUTO]");
+
+  // Dans la ligne du tableau
+  <TableRow
+    className={isAuto ? "bg-blue-50/30" : ""}>
+    <TableCell>
+      {item.designation}
+      {isAuto && (
+        <Badge variant="outline"
+          className="ml-2 text-xs text-blue-600
+                     border-blue-300">
+          🔄 Auto
+        </Badge>
+      )}
+    </TableCell>
+    <TableCell>
+      {item.commentaire}
+    </TableCell>
+    ...
+  </TableRow>
+
+4.2 — Filtre dans le tableau stocks
+Ajouter un filtre "Source" :
+  Tous | Saisies manuelles | Automatiques (sync bande)
+
+═══════════════════════════════════════════════════
+BLOC 5 — VÉRIFICATIONS
+═══════════════════════════════════════════════════
+
+V1 — Paramètre créé
+  GET /api/parametres
+  → sync_stock_consommation présent avec valeur "true"
+
+V2 — Sync fonctionnelle
+  POST /api/bandes/:id/consommation
+  { quantiteKg: 50, typeAliment: "croissance", ... }
+  → 201 ✓
+  → GET /api/stocks/aliments
+  → Une sortie "Aliment croissance" de 50 kg créée
+    avec commentaire "[AUTO] Bande X J14" ✓
+
+V3 — Sync non bloquante
+  Si stockAlimentsTable est inaccessible ou erreur :
+  → La consommation est quand même enregistrée ✓
+  → Warning dans les logs ✓
+
+V4 — Toggle dans /parametres
+  Désactiver la sync →
+  POST /api/bandes/:id/consommation { quantiteKg: 30 }
+  → Aucune sortie créée dans stock_aliments ✓
+
+V5 — Badge "Auto" dans /stocks
+  Ligne avec commentaire "[AUTO] Bande..." →
+  Badge 🔄 visible ✓
+
+V6 — Note dans onglet consommation bande
+  Si sync activée → banner vert visible ✓
+  Si sync désactivée → banner amber + lien ✓
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL OBLIGATOIRE
+═══════════════════════════════════════════════════
+
+## RAPPORT — Sync Stock ↔ Consommation
+## [date]
+
+### ✅ Implémenté
+- Paramètre sync_stock_consommation seedé
+- Logique sync dans POST /consommation
+- Sorties auto marquées [AUTO] ou source=auto_bande
+- Toggle dans /parametres
+- Banner informatif dans onglet consommation
+- Badge 🔄 dans tableau stocks
+
+### 🧪 Tests
+V1 à V6 : résultats
+
+### ⚠️ Points d'attention
+- La sync est non bloquante : si elle échoue,
+  la consommation est quand même enregistrée
+- Les sorties auto peuvent être supprimées
+  manuellement si erreur
+- Activer/désactiver depuis /parametres
+  sans redémarrer le serveur
+
+### 🚀 Commit et push
+git add -A
+git commit -m "feat: sync automatique stock ↔
+  consommation bande"
+git push origin main
+```

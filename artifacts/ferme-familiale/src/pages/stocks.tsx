@@ -535,16 +535,38 @@ type AlimentRow = {
   quantiteKg: number | string;
   prixUnitaire?: number | string | null;
   fournisseur?: string | null;
+  commentaire?: string | null;
 };
+function isAutoSync(item: AlimentRow): boolean {
+  return typeof item.commentaire === "string" && item.commentaire.startsWith("[AUTO]");
+}
 function AlimentsTable({ items, isReadOnly, onDelete }: { items: AlimentRow[]; isReadOnly: boolean; onDelete: (id: number) => void }) {
-  const { sorted, toggleSort, sortIcon } = useSortable<AlimentRow>(items, "date", "desc");
+  const [sourceFilter, setSourceFilter] = useState<"all" | "manuel" | "auto">("all");
+  const filtered = items.filter((i) => {
+    if (sourceFilter === "auto") return isAutoSync(i);
+    if (sourceFilter === "manuel") return !isAutoSync(i);
+    return true;
+  });
+  const { sorted, toggleSort, sortIcon } = useSortable<AlimentRow>(filtered, "date", "desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const total = sorted.length;
   const safePage = Math.min(Math.max(1, page), Math.max(1, Math.ceil(total / pageSize)));
   const paginated = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
   return (
-    <div className="border rounded-md overflow-hidden">
+    <div className="space-y-2">
+      <div className="flex items-center justify-end gap-2 px-1">
+        <span className="text-xs text-muted-foreground">Source :</span>
+        <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v as any); setPage(1); }}>
+          <SelectTrigger className="w-56 h-8 text-xs" data-testid="filter-source"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous</SelectItem>
+            <SelectItem value="manuel">Saisies manuelles</SelectItem>
+            <SelectItem value="auto">Automatiques (sync bande)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="border rounded-md overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/30">
@@ -561,8 +583,10 @@ function AlimentsTable({ items, isReadOnly, onDelete }: { items: AlimentRow[]; i
           {paginated.length === 0 ? (
             <TableRow><TableCell colSpan={isReadOnly ? 6 : 7} className="text-center py-8 text-muted-foreground">Aucun mouvement enregistré</TableCell></TableRow>
           ) : (
-            paginated.map((item) => (
-              <TableRow key={item.id} data-testid={`aliment-row-${item.id}`}>
+            paginated.map((item) => {
+              const auto = isAutoSync(item);
+              return (
+              <TableRow key={item.id} data-testid={`aliment-row-${item.id}`} className={auto ? "bg-blue-50/40" : ""}>
                 <TableCell>{format(new Date(item.date + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
                 <TableCell>
                   {item.type === "entree" ? (
@@ -571,7 +595,23 @@ function AlimentsTable({ items, isReadOnly, onDelete }: { items: AlimentRow[]; i
                     <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-red-100 text-red-800"><ArrowUpCircle className="h-3 w-3" /> Sortie</span>
                   )}
                 </TableCell>
-                <TableCell className="font-medium">{item.designation}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    <span>{item.designation}</span>
+                    {auto && (
+                      <span
+                        className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-blue-300 text-blue-700 bg-blue-50"
+                        title={item.commentaire || "Sortie créée automatiquement par sync stock ↔ bande"}
+                        data-testid={`auto-badge-${item.id}`}
+                      >
+                        🔄 Auto
+                      </span>
+                    )}
+                  </div>
+                  {auto && item.commentaire && (
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{item.commentaire.replace(/^\[AUTO\]\s*/, "")}</div>
+                  )}
+                </TableCell>
                 <TableCell className="text-right">{item.quantiteKg}</TableCell>
                 <TableCell className="text-right">{item.prixUnitaire != null ? formatFCFA(Number(item.prixUnitaire)) : "-"}</TableCell>
                 <TableCell className="text-muted-foreground">{item.fournisseur || "-"}</TableCell>
@@ -581,11 +621,13 @@ function AlimentsTable({ items, isReadOnly, onDelete }: { items: AlimentRow[]; i
                   </TableCell>
                 )}
               </TableRow>
-            ))
+              );
+            })
           )}
         </TableBody>
       </Table>
       <DataPagination page={safePage} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} className="border-t" />
+      </div>
     </div>
   );
 }

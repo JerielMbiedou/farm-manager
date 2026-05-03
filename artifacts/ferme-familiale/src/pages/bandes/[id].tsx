@@ -146,6 +146,34 @@ const consommationSchema = z.object({
   quantiteKg: z.coerce.number().min(0, "La quantité est requise"),
 });
 
+function SyncStockBanner() {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  useEffect(() => {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.origin}/api`;
+    fetch(`${baseUrl}/parametres`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: Array<{ cle: string; valeur: string }>) => {
+        const p = rows.find(x => x.cle === "sync_stock_consommation");
+        setEnabled(p ? p.valeur === "true" : true);
+      })
+      .catch(() => setEnabled(null));
+  }, []);
+  if (enabled === null) return null;
+  if (enabled) {
+    return (
+      <div className="border border-green-200 bg-green-50 text-green-800 text-sm px-3 py-2 rounded-md" data-testid="sync-banner-on">
+        ✓ Synchronisation stock activée — chaque saisie de consommation décrémente automatiquement votre stock d'aliment.
+      </div>
+    );
+  }
+  return (
+    <div className="border border-amber-200 bg-amber-50 text-amber-800 text-sm px-3 py-2 rounded-md flex items-center gap-2 flex-wrap" data-testid="sync-banner-off">
+      <span>ℹ️ Synchronisation stock désactivée — pensez à mettre à jour votre stock manuellement.</span>
+      <Link href="/parametres" className="underline font-medium">Activer dans Paramètres →</Link>
+    </div>
+  );
+}
+
 const vaccinSchema = z.object({
   jourPrevu: z.coerce.number().min(0, "Le jour est requis"),
   nom: z.string().min(1, "Le nom est requis"),
@@ -2106,6 +2134,7 @@ export default function BandeDetailView() {
                   {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => openDialog("consommation")}><Plus className="w-4 h-4" /> Ajouter</Button>}
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <SyncStockBanner />
                   <div className="grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
                     <div>
                       <span className="text-muted-foreground text-xs block">Total aliment</span>
