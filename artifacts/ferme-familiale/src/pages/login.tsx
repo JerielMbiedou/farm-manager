@@ -8,6 +8,7 @@ import { useLogin, useGetMe } from "@workspace/api-client-react";
 import { getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import logoMbiedou from "@assets/logos/v7_medallion_hen_chicks.png";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -105,6 +106,11 @@ export default function Login() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-black/20" />
         <div className="relative z-10 flex flex-col justify-end p-12 text-white">
           <div className="max-w-lg">
+            <img
+              src={logoMbiedou}
+              alt="Logo Ferme Mbiedou"
+              className="w-20 h-20 rounded-full object-cover mb-5 shadow-lg ring-2 ring-white/40"
+            />
             <h1 className="text-5xl font-bold tracking-tight leading-tight mb-4">
               Ferme Mbiedou
             </h1>
@@ -135,6 +141,11 @@ export default function Login() {
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 bg-[#FAFAF7]">
         <div className="w-full max-w-[420px]">
           <div className="lg:hidden mb-10 text-center">
+            <img
+              src={logoMbiedou}
+              alt="Logo Ferme Mbiedou"
+              className="w-24 h-24 mx-auto mb-3 rounded-full object-cover shadow-md"
+            />
             <h1 className="text-3xl font-bold text-foreground">Ferme Mbiedou</h1>
             <p className="text-muted-foreground mt-1">Plateforme de gestion avicole</p>
           </div>

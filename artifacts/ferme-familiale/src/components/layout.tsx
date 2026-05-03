@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { preloadBrand, getBrandSync } from "@/lib/branding";
 import { OfflineBanner } from "@/components/offline-banner";
+import logoMbiedou from "@assets/logos/v7_medallion_hen_chicks.png";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -145,9 +146,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
       `}>
         <div className="p-5 pb-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-sidebar-primary/20 flex items-center justify-center">
-              <Bird className="h-5 w-5 text-sidebar-primary" />
-            </div>
+            <img
+              src={logoMbiedou}
+              alt="Logo Ferme Mbiedou"
+              className="w-11 h-11 rounded-full object-cover shrink-0 ring-2 ring-sidebar-primary/30"
+            />
             <div>
               <h1 className="text-lg font-bold tracking-tight text-sidebar-primary leading-tight">
                 {fermeNom}
