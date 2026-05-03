@@ -1,0 +1,442 @@
+Effectue un audit complet de la base de données de production.
+Deux objectifs :
+1. Vérifier l'intégrité et la cohérence des données réelles
+2. Analyser les données saisies pour proposer des améliorations
+   concrètes (normalisation, catégories, doublons, etc.)
+
+Ne modifie rien. Rapport uniquement.
+
+═══════════════════════════════════════════════════
+PARTIE 1 — AUDIT INTÉGRITÉ DB PRODUCTION
+═══════════════════════════════════════════════════
+
+Exécuter ces requêtes SQL directement sur la DB de prod
+et reporter les résultats exacts.
+
+1.1 — Vue générale des données
+  SELECT
+    (SELECT COUNT(*) FROM bandes) as nb_bandes,
+    (SELECT COUNT(*) FROM bande_depenses) as nb_depenses,
+    (SELECT COUNT(*) FROM bande_ventes) as nb_ventes,
+    (SELECT COUNT(*) FROM mortalite_journaliere) as nb_mortalite,
+    (SELECT COUNT(*) FROM pesees) as nb_pesees,
+    (SELECT COUNT(*) FROM consommation_aliment) as nb_conso_aliment,
+    (SELECT COUNT(*) FROM consommation_eau) as nb_conso_eau,
+    (SELECT COUNT(*) FROM vaccinations) as nb_vaccinations,
+    (SELECT COUNT(*) FROM traitements) as nb_traitements,
+    (SELECT COUNT(*) FROM observations_journal) as nb_observations,
+    (SELECT COUNT(*) FROM chantier_depenses) as nb_chantier_depenses,
+    (SELECT COUNT(*) FROM financement) as nb_financements,
+    (SELECT COUNT(*) FROM actifs) as nb_actifs,
+    (SELECT COUNT(*) FROM stock_aliments) as nb_stock_aliments,
+    (SELECT COUNT(*) FROM stock_medicaments) as nb_stock_medic;
+
+1.2 — Dépenses sans date (à backfiller)
+  SELECT COUNT(*) as depenses_sans_date
+  FROM bande_depenses WHERE date IS NULL;
+
+  -- Détail par bande
+  SELECT b.nom, COUNT(*) as nb_sans_date
+  FROM bande_depenses bd
+  JOIN bandes b ON bd.bande_id = b.id
+  WHERE bd.date IS NULL
+  GROUP BY b.nom ORDER BY nb_sans_date DESC;
+
+1.3 — Orphelins (intégrité référentielle)
+  -- Mortalités orphelines
+  SELECT COUNT(*) as mortalites_orphelines
+  FROM mortalite_journaliere m
+  LEFT JOIN bandes b ON m.bande_id = b.id
+  WHERE b.id IS NULL;
+
+  -- Vaccinations orphelines
+  SELECT COUNT(*) as vaccinations_orphelines
+  FROM vaccinations v
+  LEFT JOIN bandes b ON v.bande_id = b.id
+  WHERE b.id IS NULL;
+
+  -- Actifs sans chantier valide
+  SELECT COUNT(*) as actifs_orphelins
+  FROM actifs a
+  WHERE a.chantier_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM chantiers c WHERE c.id = a.chantier_id
+  );
+
+1.4 — Cohérence sujets par bande
+  SELECT
+    b.nom,
+    b.statut,
+    b.sujets_depart,
+    b.nombre_deces,
+    COALESCE(SUM(v.quantite_vendue), 0) as total_vendus,
+    b.sujets_depart - b.nombre_deces
+      - COALESCE(SUM(v.quantite_vendue), 0) as sujets_restants_calcule
+  FROM bandes b
+  LEFT JOIN bande_ventes v ON v.bande_id = b.id
+  GROUP BY b.id, b.nom, b.statut,
+           b.sujets_depart, b.nombre_deces
+  ORDER BY b.id;
+
+1.5 — Cohérence financière globale
+  SELECT
+    (SELECT COALESCE(SUM(montant::numeric), 0)
+     FROM financement) as total_finance,
+    (SELECT COALESCE(SUM(montant::numeric), 0)
+     FROM remboursements) as total_rembourse,
+    (SELECT COALESCE(SUM(quantite::numeric * prix_unitaire::numeric), 0)
+     FROM chantier_depenses) as total_chantiers,
+    (SELECT COALESCE(SUM(quantite::numeric * prix_unitaire::numeric), 0)
+     FROM bande_depenses) as total_depenses_bandes,
+    (SELECT COALESCE(SUM(quantite_vendue::numeric * prix_unitaire::numeric), 0)
+     FROM bande_ventes) as total_recettes;
+
+1.6 — Vérifier les montants aberrants
+  -- Dépenses avec montant > 5 000 000 FCFA (potentielle erreur de saisie)
+  SELECT b.nom as bande, bd.designation, bd.categorie,
+         bd.quantite, bd.prix_unitaire,
+         bd.quantite::numeric * bd.prix_unitaire::numeric as montant
+  FROM bande_depenses bd
+  JOIN bandes b ON bd.bande_id = b.id
+  WHERE bd.quantite::numeric * bd.prix_unitaire::numeric > 5000000
+  ORDER BY montant DESC;
+
+  -- Dépenses chantier avec montant > 5 000 000
+  SELECT ch.nom as chantier, cd.designation,
+         cd.quantite::numeric * cd.prix_unitaire::numeric as montant
+  FROM chantier_depenses cd
+  JOIN chantiers ch ON cd.chantier_id = ch.id
+  WHERE cd.quantite::numeric * cd.prix_unitaire::numeric > 5000000
+  ORDER BY montant DESC;
+
+1.7 — Mortalité cumulée vs nombre_deces déclaré
+  SELECT
+    b.nom,
+    b.nombre_deces as declare_sur_bande,
+    COALESCE(SUM(m.deces_jour), 0) as sum_mortalite_journaliere,
+    b.nombre_deces - COALESCE(SUM(m.deces_jour), 0) as ecart
+  FROM bandes b
+  LEFT JOIN mortalite_journaliere m ON m.bande_id = b.id
+  GROUP BY b.id, b.nom, b.nombre_deces
+  HAVING b.nombre_deces != COALESCE(SUM(m.deces_jour), 0)
+  ORDER BY ABS(b.nombre_deces -
+    COALESCE(SUM(m.deces_jour), 0)) DESC;
+
+1.8 — Index dupliqués sur session
+  SELECT indexname, indexdef
+  FROM pg_indexes
+  WHERE tablename = 'session'
+  ORDER BY indexname;
+
+═══════════════════════════════════════════════════
+PARTIE 2 — ANALYSE DES DONNÉES SAISIES
+(pour proposer des améliorations)
+═══════════════════════════════════════════════════
+
+2.1 — Toutes les désignations de dépenses bandes
+(pour détecter les doublons et proposer des catégories)
+
+  SELECT
+    LOWER(TRIM(designation)) as designation_normalisee,
+    designation as designation_originale,
+    categorie,
+    COUNT(*) as nb_occurrences,
+    ROUND(AVG(prix_unitaire::numeric), 0) as prix_moyen,
+    ROUND(MIN(prix_unitaire::numeric), 0) as prix_min,
+    ROUND(MAX(prix_unitaire::numeric), 0) as prix_max,
+    SUM(quantite::numeric * prix_unitaire::numeric) as total_depense
+  FROM bande_depenses
+  WHERE designation IS NOT NULL
+  GROUP BY LOWER(TRIM(designation)), designation, categorie
+  ORDER BY nb_occurrences DESC, total_depense DESC;
+
+2.2 — Doublons de désignations (même chose écrite différemment)
+  -- Exemples : "Parpaings" vs "parpaings" vs "PARPAINGS"
+  -- "Aliment démarrage" vs "aliment demarrage" vs "Aliment Demarrage"
+
+  SELECT
+    LOWER(TRIM(REGEXP_REPLACE(designation,
+      '[^a-zA-ZÀ-ÿ0-9]', '', 'g'))) as cle_normalisee,
+    ARRAY_AGG(DISTINCT designation ORDER BY designation)
+      as variantes,
+    COUNT(DISTINCT designation) as nb_variantes,
+    SUM(quantite::numeric * prix_unitaire::numeric) as total
+  FROM bande_depenses
+  WHERE designation IS NOT NULL
+  GROUP BY LOWER(TRIM(REGEXP_REPLACE(designation,
+    '[^a-zA-ZÀ-ÿ0-9]', '', 'g')))
+  HAVING COUNT(DISTINCT designation) > 1
+  ORDER BY nb_variantes DESC, total DESC;
+
+2.3 — Même analyse pour les dépenses chantier
+  SELECT
+    LOWER(TRIM(designation)) as designation_normalisee,
+    designation as designation_originale,
+    categorie,
+    COUNT(*) as nb_occurrences,
+    ROUND(AVG(prix_unitaire::numeric), 0) as prix_moyen,
+    SUM(quantite::numeric * prix_unitaire::numeric) as total
+  FROM chantier_depenses
+  WHERE designation IS NOT NULL
+  GROUP BY LOWER(TRIM(designation)), designation, categorie
+  ORDER BY nb_occurrences DESC, total DESC;
+
+  -- Doublons chantier
+  SELECT
+    LOWER(TRIM(REGEXP_REPLACE(designation,
+      '[^a-zA-ZÀ-ÿ0-9]', '', 'g'))) as cle_normalisee,
+    ARRAY_AGG(DISTINCT designation ORDER BY designation)
+      as variantes,
+    COUNT(DISTINCT designation) as nb_variantes
+  FROM chantier_depenses
+  WHERE designation IS NOT NULL
+  GROUP BY LOWER(TRIM(REGEXP_REPLACE(designation,
+    '[^a-zA-ZÀ-ÿ0-9]', '', 'g')))
+  HAVING COUNT(DISTINCT designation) > 1
+  ORDER BY nb_variantes DESC;
+
+2.4 — Catégories utilisées en production
+  -- Dépenses bandes
+  SELECT categorie,
+         COUNT(*) as nb_lignes,
+         SUM(quantite::numeric * prix_unitaire::numeric) as total
+  FROM bande_depenses
+  GROUP BY categorie
+  ORDER BY total DESC;
+
+  -- Dépenses chantier
+  SELECT categorie,
+         COUNT(*) as nb_lignes,
+         SUM(quantite::numeric * prix_unitaire::numeric) as total
+  FROM chantier_depenses
+  GROUP BY categorie
+  ORDER BY total DESC;
+
+2.5 — Désignations dans la catégorie "autre" ou "divers"
+(= désignations qui mériteraient leur propre catégorie)
+  SELECT designation, COUNT(*) as nb,
+         SUM(quantite::numeric * prix_unitaire::numeric) as total
+  FROM bande_depenses
+  WHERE LOWER(categorie) IN ('autre', 'autres', 'divers', 'other')
+  GROUP BY designation
+  ORDER BY total DESC;
+
+  SELECT designation, COUNT(*) as nb,
+         SUM(quantite::numeric * prix_unitaire::numeric) as total
+  FROM chantier_depenses
+  WHERE LOWER(categorie) IN ('autre', 'autres', 'divers', 'other')
+  GROUP BY designation
+  ORDER BY total DESC;
+
+2.6 — Fournisseurs saisis (champ texte libre)
+  -- Pour proposer un référentiel fournisseurs
+  SELECT fournisseur,
+         COUNT(*) as nb_achats,
+         SUM(quantite_kg::numeric * prix_unitaire::numeric) as total
+  FROM stock_aliments
+  WHERE fournisseur IS NOT NULL AND fournisseur != ''
+  GROUP BY fournisseur
+  ORDER BY nb_achats DESC;
+
+  SELECT fournisseur,
+         COUNT(*) as nb_achats
+  FROM stock_medicaments
+  WHERE fournisseur IS NOT NULL AND fournisseur != ''
+  GROUP BY fournisseur
+  ORDER BY nb_achats DESC;
+
+2.7 — Médicaments et traitements utilisés
+  -- Pour proposer une liste pré-remplie
+  SELECT produit, type,
+         COUNT(*) as nb_utilisations
+  FROM traitements
+  GROUP BY produit, type
+  ORDER BY nb_utilisations DESC;
+
+  SELECT nom, COUNT(*) as nb_mouvements
+  FROM stock_medicaments
+  GROUP BY nom
+  ORDER BY nb_mouvements DESC;
+
+2.8 — Prix unitaires aberrants par désignation
+  -- Même produit saisi à des prix très différents
+  -- (erreur de saisie probable)
+  SELECT designation, categorie,
+         COUNT(*) as nb,
+         MIN(prix_unitaire::numeric) as prix_min,
+         MAX(prix_unitaire::numeric) as prix_max,
+         ROUND(AVG(prix_unitaire::numeric), 0) as prix_moyen,
+         -- Écart relatif
+         CASE WHEN AVG(prix_unitaire::numeric) > 0
+           THEN ROUND(
+             (MAX(prix_unitaire::numeric) -
+              MIN(prix_unitaire::numeric)) /
+             AVG(prix_unitaire::numeric) * 100, 0)
+           ELSE 0
+         END as ecart_pct
+  FROM bande_depenses
+  WHERE designation IS NOT NULL
+  GROUP BY designation, categorie
+  HAVING COUNT(*) > 1
+     AND MAX(prix_unitaire::numeric) >
+         MIN(prix_unitaire::numeric) * 1.5
+  ORDER BY ecart_pct DESC
+  LIMIT 20;
+
+2.9 — Observations et traitements (texte libre)
+  -- Pour détecter des patterns et proposer des tags
+  SELECT contenu, COUNT(*) as nb,
+         MIN(date::text) as premiere_saisie
+  FROM observations_journal
+  GROUP BY contenu
+  ORDER BY nb DESC
+  LIMIT 30;
+
+2.10 — Vaccinations : taux de complétion
+  SELECT
+    b.nom as bande,
+    COUNT(*) as total_vaccins,
+    COUNT(*) FILTER (WHERE v.fait = 'oui') as faits,
+    COUNT(*) FILTER (WHERE v.fait = 'non') as non_faits,
+    ROUND(COUNT(*) FILTER (WHERE v.fait = 'oui') * 100.0
+      / NULLIF(COUNT(*), 0), 0) as taux_completion_pct
+  FROM vaccinations v
+  JOIN bandes b ON v.bande_id = b.id
+  GROUP BY b.id, b.nom
+  ORDER BY b.id;
+
+═══════════════════════════════════════════════════
+PARTIE 3 — RAPPORT ET RECOMMANDATIONS
+═══════════════════════════════════════════════════
+
+Sur la base des données analysées, produire :
+
+3.1 — Liste des doublons à corriger
+Pour chaque groupe de doublons détecté :
+  Désignation canonique suggérée : [la plus fréquente]
+  Variantes à fusionner : [liste]
+  Requête SQL de correction :
+    UPDATE bande_depenses
+    SET designation = '[canonique]'
+    WHERE LOWER(TRIM(designation)) IN ([variantes]);
+
+3.2 — Nouvelles catégories suggérées
+Basé sur ce qui est catégorisé en "autre/divers",
+proposer des catégories manquantes :
+
+  Pour les dépenses bandes :
+  → Catégories existantes : [liste depuis 2.4]
+  → Catégories suggérées à ajouter : [liste avec justification]
+
+  Pour les dépenses chantier :
+  → Catégories existantes : [liste depuis 2.4]
+  → Catégories suggérées à ajouter : [liste avec justification]
+
+3.3 — Référentiel de désignations suggéré
+Liste des désignations les plus fréquentes par catégorie
+→ ce qui devrait être pré-proposé dans le combobox :
+
+  Catégorie aliments :
+    [liste des aliments les plus utilisés avec prix moyen]
+
+  Catégorie vétérinaire/prophylaxie :
+    [liste des médicaments/vaccins les plus utilisés]
+
+  Catégorie chantier matériaux :
+    [liste des matériaux les plus utilisés avec prix moyen]
+
+  etc.
+
+3.4 — Mécanismes anti-doublons recommandés
+
+Pour chaque type de doublon détecté, proposer
+le mécanisme technique adapté :
+
+  a) Normalisation automatique à la saisie :
+     Appliquer TRIM() + capitalisation de la première lettre
+     côté backend avant l'insert.
+     → Impacte : bande_depenses.designation,
+       chantier_depenses.designation
+
+  b) Suggestions intelligentes dans le combobox :
+     Recherche insensible à la casse et aux accents
+     dans designation-combobox.tsx.
+     Actuellement : filtre exact sur la chaîne.
+     Suggestion : normaliser avant comparaison.
+
+  c) Validation de prix aberrants :
+     Si le prix unitaire d'une désignation connue
+     s'écarte de plus de 50% de la moyenne historique,
+     afficher un avertissement (pas un blocage) :
+     "⚠️ Prix inhabituel pour [désignation] :
+      habituellement autour de X FCFA"
+
+  d) Référentiel de désignations par catégorie :
+     Table designations_reference (designation, categorie,
+     prix_moyen, nb_utilisations) mise à jour
+     automatiquement à chaque saisie.
+     Le combobox la consulte en priorité.
+
+3.5 — Anomalies de prix à investiguer
+Pour chaque désignation avec écart de prix > 50% :
+  [désignation] : min X FCFA / max Y FCFA / moy Z FCFA
+  → Vérifier si erreur de saisie (ex: prix/kg vs prix/sac)
+
+3.6 — Fournisseurs à normaliser
+Liste des variantes du même fournisseur détectées :
+  [variante 1] = [variante 2] ?
+  → Suggérer la création d'un référentiel fournisseurs
+
+═══════════════════════════════════════════════════
+FORMAT DU RAPPORT FINAL
+═══════════════════════════════════════════════════
+
+## AUDIT DB PRODUCTION — Ferme Mbiedou
+## [date]
+
+### 📊 VUE GÉNÉRALE
+[résultats de 1.1]
+
+### 🔴 PROBLÈMES INTÉGRITÉ
+- Orphelins : [résultats 1.3]
+- Dépenses sans date : [résultats 1.2]
+- Écarts mortalité : [résultats 1.7]
+- Montants aberrants : [résultats 1.6]
+
+### 💰 COHÉRENCE FINANCIÈRE
+[résultats 1.4 + 1.5 avec commentaires]
+
+### 🔵 DOUBLONS DÉTECTÉS
+Pour chaque doublon :
+  Groupe : [désignations variantes]
+  Fréquence : [nb occurrences]
+  Impact financier : [total FCFA]
+  Correction SQL : [requête prête à exécuter]
+
+### 📂 CATÉGORIES
+  Catégories actuelles utilisées : [liste]
+  ⚠️ Items dans "autre/divers" qui méritent
+     leur propre catégorie : [liste avec montants]
+  💡 Nouvelles catégories suggérées : [liste]
+
+### 🏷️ RÉFÉRENTIEL DÉSIGNATIONS SUGGÉRÉ
+Par catégorie, les désignations canoniques
+avec prix moyen à pré-remplir dans le combobox.
+
+### ⚠️ PRIX ABERRANTS À VÉRIFIER
+[liste avec détails]
+
+### 🏭 FOURNISSEURS
+Variantes détectées + suggestion de normalisation.
+
+### 🔧 CORRECTIONS SQL PRÊTES À EXÉCUTER
+Toutes les requêtes UPDATE/correction dans l'ordre
+d'application recommandé.
+
+### 💡 RECOMMANDATIONS TECHNIQUES
+Mécanismes à implémenter dans le code pour
+éviter ces problèmes à l'avenir :
+1. Normalisation à la saisie (backend)
+2. Recherche floue dans le combobox (frontend)
+3. Alerte prix inhabituel (frontend)
+4. Table référentiel désignations (DB + API)

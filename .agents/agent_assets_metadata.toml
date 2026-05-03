@@ -131,3 +131,9 @@ id = "gLZg0gNzVtOofEdsYZ0Wg"
 uri = "file://.local/reports/E2E_RAPPORT_2026-05-03.md"
 type = "text"
 title = "Rapport E2E Ferme Mbiedou — 2026-05-03"
+
+[[outputs]]
+id = "3vDFPMMseUiOzhqr_SYtv"
+uri = "file://.local/reports/AUDIT_DB_PROD_2026-05-03.md"
+type = "text"
+title = "Audit base de données production — 03/05/2026"
