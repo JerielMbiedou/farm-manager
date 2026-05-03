@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGetMe } from "@workspace/api-client-react";
+import DesignationCombobox, { type DesignationSuggestion } from "@/components/designation-combobox";
 import { useStockAliments, useCreateStockAliment, useDeleteStockAliment, useStockMedicaments, useCreateStockMedicament, useDeleteStockMedicament } from "@/lib/stocks-api";
 import { formatFCFA } from "@/lib/format";
 import { format } from "date-fns";
@@ -54,16 +55,48 @@ export default function Stocks() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<"aliment" | "medicament">("aliment");
 
+  const [alimentSuggestions, setAlimentSuggestions] = useState<DesignationSuggestion[]>([]);
+  const [medicamentSuggestions, setMedicamentSuggestions] = useState<DesignationSuggestion[]>([]);
+  const [fournisseurSuggestions, setFournisseurSuggestions] = useState<DesignationSuggestion[]>([]);
+
+  useEffect(() => {
+    const base = import.meta.env.BASE_URL || "/";
+    fetch(`${base}api/stocks/aliments/suggestions`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => { if (Array.isArray(data)) setAlimentSuggestions(data); })
+      .catch(() => {});
+    fetch(`${base}api/stocks/medicaments/suggestions`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setMedicamentSuggestions(
+            data.map((d: any) => ({ designation: d.nom, unite: d.unite, frequence: d.frequence }))
+          );
+        }
+      })
+      .catch(() => {});
+    fetch(`${base}api/stocks/fournisseurs/suggestions`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setFournisseurSuggestions(
+            data.map((d: any) => ({ designation: d.fournisseur, frequence: d.frequence }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const isReadOnly = user?.role === "investisseur" || user?.role === "lecteur";
 
   const alimentForm = useForm<z.infer<typeof alimentSchema>>({
     resolver: zodResolver(alimentSchema),
-    defaultValues: { designation: "", type: "entree", quantiteKg: 0, date: new Date().toISOString().split("T")[0], fournisseur: "", commentaire: "" },
+    defaultValues: { designation: "", type: "entree", quantiteKg: 0, prixUnitaire: 0, date: new Date().toISOString().split("T")[0], fournisseur: "", commentaire: "" },
   });
 
   const medicamentForm = useForm<z.infer<typeof medicamentSchema>>({
     resolver: zodResolver(medicamentSchema),
-    defaultValues: { nom: "", type: "entree", quantite: 0, unite: "flacon", date: new Date().toISOString().split("T")[0], fournisseur: "", commentaire: "" },
+    defaultValues: { nom: "", type: "entree", quantite: 0, unite: "flacon", datePeremption: "", date: new Date().toISOString().split("T")[0], fournisseur: "", commentaire: "" },
   });
 
   const onAlimentSubmit = async (values: z.infer<typeof alimentSchema>) => {
@@ -71,7 +104,7 @@ export default function Stocks() {
       await createAliment.mutateAsync(values);
       toast({ title: "Stock aliment enregistré" });
       setDialogOpen(false);
-      alimentForm.reset({ designation: "", type: "entree", quantiteKg: 0, date: new Date().toISOString().split("T")[0], fournisseur: "", commentaire: "" });
+      alimentForm.reset({ designation: "", type: "entree", quantiteKg: 0, prixUnitaire: 0, date: new Date().toISOString().split("T")[0], fournisseur: "", commentaire: "" });
     } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
@@ -80,7 +113,7 @@ export default function Stocks() {
       await createMedicament.mutateAsync(values);
       toast({ title: "Stock médicament enregistré" });
       setDialogOpen(false);
-      medicamentForm.reset({ nom: "", type: "entree", quantite: 0, unite: "flacon", date: new Date().toISOString().split("T")[0], fournisseur: "", commentaire: "" });
+      medicamentForm.reset({ nom: "", type: "entree", quantite: 0, unite: "flacon", datePeremption: "", date: new Date().toISOString().split("T")[0], fournisseur: "", commentaire: "" });
     } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
   };
 
@@ -179,7 +212,7 @@ export default function Stocks() {
                           </TableCell>
                           <TableCell className="font-medium">{item.designation}</TableCell>
                           <TableCell className="text-right">{item.quantiteKg} kg</TableCell>
-                          <TableCell className="text-right">{item.prixUnitaire ? formatFCFA(item.prixUnitaire) : "-"}</TableCell>
+                          <TableCell className="text-right">{item.prixUnitaire != null ? formatFCFA(item.prixUnitaire) : "-"}</TableCell>
                           <TableCell className="text-muted-foreground">{item.fournisseur || "-"}</TableCell>
                           {!isReadOnly && (
                             <TableCell className="text-right">
@@ -348,9 +381,36 @@ export default function Stocks() {
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={alimentForm.control} name="designation" render={({ field }) => (
-                  <FormItem><FormLabel required>Désignation</FormLabel><FormControl><Input placeholder="ex: Aliment démarrage" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
+                <FormField control={alimentForm.control} name="designation" render={({ field }) => {
+                  const norm = (field.value || "").trim().toLowerCase();
+                  const matched = alimentSuggestions.find((s) => s.designation.toLowerCase().trim() === norm);
+                  const prixMoyenConnu = matched?.prixMoyen;
+                  const frequence = matched?.frequence ?? 0;
+                  return (
+                    <FormItem>
+                      <FormLabel required>Désignation</FormLabel>
+                      <FormControl>
+                        <DesignationCombobox
+                          value={field.value}
+                          onChange={field.onChange}
+                          onSelectSuggestion={(s) => {
+                            if (s.prixMoyen && s.prixMoyen > 0) {
+                              alimentForm.setValue("prixUnitaire", Math.round(s.prixMoyen));
+                            }
+                          }}
+                          suggestions={alimentSuggestions}
+                          placeholder="ex: Aliment démarrage, Concentré..."
+                        />
+                      </FormControl>
+                      {prixMoyenConnu && prixMoyenConnu > 0 && frequence > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Prix habituel : {formatFCFA(Math.round(prixMoyenConnu))} (basé sur {frequence} entrée{frequence > 1 ? "s" : ""} précédente{frequence > 1 ? "s" : ""})
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }} />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={alimentForm.control} name="quantiteKg" render={({ field }) => (
                     <FormItem><FormLabel>Quantité (kg)</FormLabel><FormControl><Input type="number" step="0.1" {...field} /></FormControl><FormMessage /></FormItem>
@@ -363,7 +423,18 @@ export default function Stocks() {
                   <FormItem><FormLabel required>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={alimentForm.control} name="fournisseur" render={({ field }) => (
-                  <FormItem><FormLabel>Fournisseur (optionnel)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem>
+                    <FormLabel>Fournisseur (optionnel)</FormLabel>
+                    <FormControl>
+                      <DesignationCombobox
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        suggestions={fournisseurSuggestions}
+                        placeholder="ex: Provendier local"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )} />
                 <Button type="submit" className="w-full" disabled={createAliment.isPending}>Enregistrer</Button>
               </form>
@@ -385,7 +456,21 @@ export default function Stocks() {
                   </FormItem>
                 )} />
                 <FormField control={medicamentForm.control} name="nom" render={({ field }) => (
-                  <FormItem><FormLabel required>Nom du produit</FormLabel><FormControl><Input placeholder="ex: Vaccin Newcastle" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem>
+                    <FormLabel required>Nom du produit</FormLabel>
+                    <FormControl>
+                      <DesignationCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        onSelectSuggestion={(s) => {
+                          if (s.unite) medicamentForm.setValue("unite", s.unite);
+                        }}
+                        suggestions={medicamentSuggestions}
+                        placeholder="ex: Vaccin Newcastle, Vitamines..."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )} />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={medicamentForm.control} name="quantite" render={({ field }) => (
@@ -394,7 +479,7 @@ export default function Stocks() {
                   <FormField control={medicamentForm.control} name="unite" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Unité</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                         <SelectContent>
                           <SelectItem value="flacon">Flacon</SelectItem>
@@ -418,7 +503,18 @@ export default function Stocks() {
                   )} />
                 </div>
                 <FormField control={medicamentForm.control} name="fournisseur" render={({ field }) => (
-                  <FormItem><FormLabel>Fournisseur (optionnel)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem>
+                    <FormLabel>Fournisseur (optionnel)</FormLabel>
+                    <FormControl>
+                      <DesignationCombobox
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        suggestions={fournisseurSuggestions}
+                        placeholder="ex: Vétérinaire Mboa"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )} />
                 <Button type="submit" className="w-full" disabled={createMedicament.isPending}>Enregistrer</Button>
               </form>
@@ -477,7 +573,7 @@ function AlimentsTable({ items, isReadOnly, onDelete }: { items: AlimentRow[]; i
                 </TableCell>
                 <TableCell className="font-medium">{item.designation}</TableCell>
                 <TableCell className="text-right">{item.quantiteKg}</TableCell>
-                <TableCell className="text-right">{item.prixUnitaire ? formatFCFA(Number(item.prixUnitaire)) : "-"}</TableCell>
+                <TableCell className="text-right">{item.prixUnitaire != null ? formatFCFA(Number(item.prixUnitaire)) : "-"}</TableCell>
                 <TableCell className="text-muted-foreground">{item.fournisseur || "-"}</TableCell>
                 {!isReadOnly && (
                   <TableCell className="text-right">

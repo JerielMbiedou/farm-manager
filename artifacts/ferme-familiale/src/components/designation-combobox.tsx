@@ -6,6 +6,7 @@ export type DesignationSuggestion = {
   prixMoyen?: number;
   frequence?: number;
   categorie?: string | null;
+  unite?: string | null;
 };
 
 interface DesignationComboboxProps {

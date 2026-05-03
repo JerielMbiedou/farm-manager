@@ -1,0 +1,263 @@
+Dans les formulaires de saisie du module Stocks
+(aliments et médicaments), ajouter l'autocomplétion
+sur les noms de produits — comme le combobox qui existe
+déjà pour les désignations de dépenses bandes.
+
+VÉRIFICATION D'ABORD :
+- Dans stocks.tsx, les champs "designation" (aliments)
+  et "nom" (médicaments) sont-ils des Input simples
+  ou des Combobox ?
+- Y a-t-il déjà une route API qui retourne les
+  suggestions pour les stocks ?
+→ Implémenter seulement ce qui manque.
+
+═══════════════════════════════════════════════════
+BLOC 1 — SUGGESTIONS ALIMENTS
+═══════════════════════════════════════════════════
+
+1.1 — Route API suggestions aliments
+Dans artifacts/api-server/src/routes/stocks.ts,
+ajouter si absente :
+
+  GET /api/stocks/aliments/suggestions
+
+  Retourne les désignations déjà utilisées
+  avec leur prix moyen et fréquence :
+
+  SELECT
+    designation,
+    ROUND(AVG(prix_unitaire::numeric), 0) as prix_moyen,
+    COUNT(*) as frequence
+  FROM stock_aliments
+  WHERE designation IS NOT NULL
+    AND designation != ''
+  GROUP BY designation
+  ORDER BY frequence DESC, designation
+  LIMIT 100;
+
+  Compléter avec une liste de base si la DB est vide
+  (nouvelle installation) :
+
+  const SUGGESTIONS_ALIMENTS_BASE = [
+    { designation: "Aliment démarrage",
+      prixMoyen: 9400 },
+    { designation: "Aliment croissance",
+      prixMoyen: 7500 },
+    { designation: "Aliment finition",
+      prixMoyen: 9600 },
+    { designation: "Aliment finitions",
+      prixMoyen: 9600 },
+    { designation: "Concentré",
+      prixMoyen: 52000 },
+    { designation: "Complément aliment",
+      prixMoyen: 15000 },
+    { designation: "Son de blé",
+      prixMoyen: 3000 },
+    { designation: "Maïs",
+      prixMoyen: 5000 },
+    { designation: "Tourteau de soja",
+      prixMoyen: 8000 },
+    { designation: "Lait en poudre",
+      prixMoyen: 25000 },
+  ];
+
+  Fusionner les deux listes (DB en priorité).
+
+1.2 — Remplacer Input par Combobox dans stocks.tsx
+Dans le formulaire d'ajout/édition d'aliment,
+remplacer le champ designation (Input simple) par
+le composant DesignationCombobox déjà existant
+(ou créer un StockCombobox sur le même modèle) :
+
+  <FormField
+    control={form.control}
+    name="designation"
+    render={({ field }) => (
+      <FormItem>
+        <FormLabel>
+          Désignation <span className="text-red-500">*</span>
+        </FormLabel>
+        <FormControl>
+          <DesignationCombobox
+            value={field.value}
+            onChange={(val, suggestion) => {
+              field.onChange(val);
+              // Pré-remplir le prix unitaire
+              if (suggestion?.prixMoyen &&
+                  !form.getValues("prixUnitaire")) {
+                form.setValue("prixUnitaire",
+                  suggestion.prixMoyen);
+              }
+            }}
+            suggestions={suggestionsAliments}
+            placeholder="Ex: Aliment démarrage, Concentré..."
+          />
+        </FormControl>
+        <FormMessage />
+      </FormItem>
+    )}
+  />
+
+  Quand une suggestion est sélectionnée :
+  → Pré-remplir prixUnitaire avec prixMoyen
+  → Afficher sous le champ prix :
+    "Prix habituel : X FCFA
+     (basé sur Y entrée(s) précédente(s))"
+
+═══════════════════════════════════════════════════
+BLOC 2 — SUGGESTIONS MÉDICAMENTS
+═══════════════════════════════════════════════════
+
+2.1 — Route API suggestions médicaments
+  GET /api/stocks/medicaments/suggestions
+
+  SELECT
+    nom,
+    unite,
+    COUNT(*) as frequence
+  FROM stock_medicaments
+  WHERE nom IS NOT NULL AND nom != ''
+  GROUP BY nom, unite
+  ORDER BY frequence DESC, nom
+  LIMIT 100;
+
+  Compléter avec une liste de base :
+
+  const SUGGESTIONS_MEDICAMENTS_BASE = [
+    { nom: "Vaccin Newcastle",
+      unite: "flacon" },
+    { nom: "Vaccin Gumboro",
+      unite: "flacon" },
+    { nom: "Vaccin Bronchite infectieuse",
+      unite: "flacon" },
+    { nom: "Vitamines",
+      unite: "kg" },
+    { nom: "Antibiotique",
+      unite: "sachet" },
+    { nom: "Anticoccidien",
+      unite: "kg" },
+    { nom: "Antistress",
+      unite: "sachet" },
+    { nom: "Désinfectant",
+      unite: "litre" },
+    { nom: "Vermifuge",
+      unite: "sachet" },
+    { nom: "Probiotique",
+      unite: "sachet" },
+    { nom: "Électrolytes",
+      unite: "sachet" },
+    { nom: "Hépatique",
+      unite: "litre" },
+    { nom: "Florfénicol",
+      unite: "litre" },
+    { nom: "Amoxicilline",
+      unite: "sachet" },
+  ];
+
+2.2 — Remplacer Input par Combobox pour le nom
+Dans le formulaire médicament, même logique :
+  → Combobox sur le champ "nom"
+  → Quand une suggestion est sélectionnée :
+     Pré-remplir automatiquement le champ "unite"
+     avec l'unité habituelle de ce médicament
+
+2.3 — Autocomplétion sur le champ "fournisseur"
+Dans les deux formulaires (aliments + médicaments),
+le champ fournisseur est un Input libre.
+Le remplacer par un Combobox qui suggère les
+fournisseurs déjà utilisés :
+
+  GET /api/stocks/fournisseurs/suggestions
+  → SELECT DISTINCT fournisseur FROM stock_aliments
+    WHERE fournisseur IS NOT NULL
+    UNION
+    SELECT DISTINCT fournisseur FROM stock_medicaments
+    WHERE fournisseur IS NOT NULL
+    ORDER BY fournisseur;
+
+═══════════════════════════════════════════════════
+BLOC 3 — NORMALISATION À LA SAISIE
+═══════════════════════════════════════════════════
+
+3.1 — Normaliser les noms côté backend
+Dans stocks.ts routes POST/PUT :
+
+  function normalizeDesignation(str: string): string {
+    return str
+      .trim()
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/\s+/g, ' ')
+      .replace(/^./, c => c.toUpperCase());
+  }
+
+  // Appliquer sur designation (aliments) et nom (medic)
+  designation: normalizeDesignation(body.designation)
+  nom: normalizeDesignation(body.nom)
+
+═══════════════════════════════════════════════════
+BLOC 4 — COHÉRENCE AVEC LES DÉPENSES BANDES
+═══════════════════════════════════════════════════
+
+4.1 — Partager les suggestions entre stocks et dépenses
+La route GET /api/bandes/designations-suggestions
+retourne déjà les désignations d'aliments utilisées
+en dépenses bandes (Concentré, Aliment démarrage...).
+
+Ces mêmes désignations devraient apparaître dans
+le combobox des stocks aliments.
+
+Dans GET /api/stocks/aliments/suggestions :
+Merger aussi les désignations depuis bande_depenses
+WHERE categorie IN ('aliments', 'concentre') :
+
+  SELECT designation,
+    ROUND(AVG(prix_unitaire::numeric), 0) as prix_moyen,
+    SUM(COUNT(*)) OVER (PARTITION BY designation) as frequence
+  FROM (
+    SELECT designation, prix_unitaire
+    FROM stock_aliments
+    WHERE designation IS NOT NULL
+    UNION ALL
+    SELECT designation, prix_unitaire
+    FROM bande_depenses
+    WHERE categorie IN ('aliments', 'concentre')
+    AND designation IS NOT NULL
+  ) combined
+  GROUP BY designation
+  ORDER BY frequence DESC;
+
+Ainsi l'éleveur retrouve ses désignations habituelles
+qu'il vient de saisir en dépense ou en stock.
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL
+═══════════════════════════════════════════════════
+
+## RAPPORT — Autocomplétion Stocks
+## [date]
+
+### ✅ Implémenté
+- Routes suggestions aliments/médicaments/fournisseurs
+- Combobox sur designation aliments
+- Combobox sur nom médicaments
+- Combobox sur fournisseur (les deux)
+- Pré-remplissage prix unitaire (aliments)
+- Pré-remplissage unité (médicaments)
+- Normalisation backend
+
+### 🔍 Test
+1. Ouvrir Stocks → Aliments → Nouvelle entrée
+   → Taper "Ali" → suggestions apparaissent
+   → Sélectionner "Aliment démarrage"
+   → Prix pré-rempli automatiquement ✓
+
+2. Ouvrir Stocks → Médicaments → Nouveau
+   → Taper "Vacc" → suggestions apparaissent
+   → Sélectionner "Vaccin Newcastle"
+   → Unité pré-remplie à "flacon" ✓
+
+### ⚠️ Points d'attention
+- Si la DB est vide (nouvelle installation),
+  les suggestions de base sont affichées
+- Les suggestions s'enrichissent automatiquement
+  à chaque nouvelle saisie
