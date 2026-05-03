@@ -1235,6 +1235,8 @@ export default function BandeDetailView() {
   const vaccinationsPaged = usePaged(vaccinationsSorted.sorted);
   const eauPaged = usePaged(eauSorted.sorted);
   const traitementsPaged = usePaged(traitementsSorted.sorted);
+  const peseesPaged = usePaged(peseesSorted.sorted);
+  const consommationPaged = usePaged(consommationSorted.sorted);
 
   if (isLoadingBande) return <div className="min-h-[50vh] flex items-center justify-center text-muted-foreground">Chargement de la bande...</div>;
   if (!bande) return <div>Bande introuvable.</div>;
@@ -2025,7 +2027,7 @@ export default function BandeDetailView() {
                       {peseesSorted.sorted.length === 0 ? (
                         <TableRow><TableCell colSpan={isReadOnly ? 7 : 8} className="text-center py-8 text-muted-foreground">Aucune pesée enregistrée</TableCell></TableRow>
                       ) : (
-                        peseesSorted.sorted.map((p) => {
+                        peseesPaged.paginated.map((p) => {
                           const cv = p.cv as number | null;
                           const cvAlerte = cv != null && cv > 10;
                           return (
@@ -2067,6 +2069,7 @@ export default function BandeDetailView() {
                     </TableBody>
                   </Table>
                 </div>
+                <DataPagination page={peseesPaged.page} pageSize={peseesPaged.pageSize} total={peseesPaged.total} onPageChange={peseesPaged.setPage} onPageSizeChange={peseesPaged.setPageSize} className="border-t" />
               </CardContent>
             </Card>
 
@@ -2136,7 +2139,7 @@ export default function BandeDetailView() {
                         {consommationSorted.sorted.length === 0 ? (
                           <TableRow><TableCell colSpan={3} className="text-center py-6 text-muted-foreground">Aucune consommation</TableCell></TableRow>
                         ) : (
-                          consommationSorted.sorted.map((c) => (
+                          consommationPaged.paginated.map((c) => (
                             <TableRow key={c.id as number}>
                               <TableCell>{c.date as string}</TableCell>
                               <TableCell className="text-right font-medium">{c.quantiteKg as number} kg</TableCell>
@@ -2163,6 +2166,7 @@ export default function BandeDetailView() {
                       </TableBody>
                     </Table>
                   </div>
+                  <DataPagination page={consommationPaged.page} pageSize={consommationPaged.pageSize} total={consommationPaged.total} onPageChange={consommationPaged.setPage} onPageSizeChange={consommationPaged.setPageSize} className="border-t" />
                 </CardContent>
               </Card>
             </div>
