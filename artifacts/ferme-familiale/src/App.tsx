@@ -83,6 +83,20 @@ function HomeRoute() {
   return <Login />;
 }
 
+/** Garde d'authentification : renvoie sur / (page de connexion) si l'utilisateur n'est pas authentifié.
+ *  Évite les pages blanches quand on tape une URL protégée sans session valide. */
+function Protected({ children }: { children: React.ReactNode }) {
+  const { data: user, isLoading, isError } = useGetMe();
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    if (!isLoading && (isError || !user)) {
+      setLocation("/");
+    }
+  }, [user, isLoading, isError, setLocation]);
+  if (isLoading || !user) return null;
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Switch>
@@ -91,42 +105,42 @@ function Router() {
       <Route path="/dashboard/" component={() => { const [, set] = useLocation(); useEffect(() => set("/dashboard"), [set]); return null; }} />
       
       <Route path="/dashboard">
-        <Layout><Dashboard /></Layout>
+        <Protected><Layout><Dashboard /></Layout></Protected>
       </Route>
       <Route path="/financement">
-        <Layout><Financement /></Layout>
+        <Protected><Layout><Financement /></Layout></Protected>
       </Route>
       <Route path="/infrastructure">
-        <Layout><Infrastructure /></Layout>
+        <Protected><Layout><Infrastructure /></Layout></Protected>
       </Route>
-      <Route path="/bandes" component={() => <Layout><Bandes /></Layout>} />
-      <Route path="/bandes/:id" component={() => <Layout><BandeDetailView /></Layout>} />
+      <Route path="/bandes" component={() => <Protected><Layout><Bandes /></Layout></Protected>} />
+      <Route path="/bandes/:id" component={() => <Protected><Layout><BandeDetailView /></Layout></Protected>} />
       <Route path="/historique-caisse">
-        <Layout><HistoriqueCaisse /></Layout>
+        <Protected><Layout><HistoriqueCaisse /></Layout></Protected>
       </Route>
       <Route path="/comparaison-bandes">
-        <Layout><ComparaisonBandes /></Layout>
+        <Protected><Layout><ComparaisonBandes /></Layout></Protected>
       </Route>
       <Route path="/activity-log">
-        <Layout><ActivityLog /></Layout>
+        <Protected><Layout><ActivityLog /></Layout></Protected>
       </Route>
       <Route path="/utilisateurs">
-        <Layout><Utilisateurs /></Layout>
+        <Protected><Layout><Utilisateurs /></Layout></Protected>
       </Route>
       <Route path="/parametres">
-        <Layout><Parametres /></Layout>
+        <Protected><Layout><Parametres /></Layout></Protected>
       </Route>
       <Route path="/stocks">
-        <Layout><Stocks /></Layout>
+        <Protected><Layout><Stocks /></Layout></Protected>
       </Route>
       <Route path="/simulation">
-        <Layout><Simulation /></Layout>
+        <Protected><Layout><Simulation /></Layout></Protected>
       </Route>
       <Route path="/tresorerie">
-        <Layout><Tresorerie /></Layout>
+        <Protected><Layout><Tresorerie /></Layout></Protected>
       </Route>
       <Route path="/planification">
-        <Layout><Planification /></Layout>
+        <Protected><Layout><Planification /></Layout></Protected>
       </Route>
       
       <Route component={NotFound} />
