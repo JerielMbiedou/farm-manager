@@ -48,6 +48,30 @@ uri = "file://attached_assets/logos/v4_corporate_shield.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "wm6__D04m-ni9ujJbLKQy"
+uri = "file://attached_assets/logos/v6_medallion_rooster_market.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "KxDXTevZ4qzakDrzxTu37"
+uri = "file://attached_assets/logos/v5_medallion_chickens.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "OekIZwOhMvGVjn8TCi9B5"
+uri = "file://attached_assets/logos/v7_medallion_hen_chicks.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "7ukUyea2qUjRT3qD9PpL3"
+uri = "file://attached_assets/logos/v8_medallion_farm_scene.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "Mowr9Gm2HQI7qePNul_fA"
 uri = "file://attached_assets/stock_images/poultry_farm_hero_1.jpg"
@@ -215,3 +239,27 @@ id = "s216dpCeZzC7JUC-IPiHw"
 uri = "file://attached_assets/logos/v4_corporate_shield.png"
 type = "image"
 title = "V4 — Bouclier corporate (bleu marine + émeraude)"
+
+[[outputs]]
+id = "zlkpZ7RO6YL0E6mhnVZm_"
+uri = "file://attached_assets/logos/v5_medallion_chickens.png"
+type = "image"
+title = "V5 — Médaillon poulet rôti & produits de ferme"
+
+[[outputs]]
+id = "Z4tQrVDtlkZ0iEcsG5bPv"
+uri = "file://attached_assets/logos/v6_medallion_rooster_market.png"
+type = "image"
+title = "V6 — Coq fier + panier d'œufs + drapeau"
+
+[[outputs]]
+id = "FZwMqhzjCMcTLdF8kgt1Q"
+uri = "file://attached_assets/logos/v7_medallion_hen_chicks.png"
+type = "image"
+title = "V7 — Poule mère & poussins (esprit famille)"
+
+[[outputs]]
+id = "vywdHmZJlmCXM18xtP2dP"
+uri = "file://attached_assets/logos/v8_medallion_farm_scene.png"
+type = "image"
+title = "V8 — Scène de ferme camerounaise complète"
