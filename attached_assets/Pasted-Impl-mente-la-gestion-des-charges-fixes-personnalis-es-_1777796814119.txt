@@ -1,0 +1,94 @@
+Implémente la gestion des charges fixes personnalisées
+par bande (coûts fixes non liés à un actif amortissable).
+
+VÉRIFICATION D'ABORD :
+- La table charges_fixes_personnalisees existe-t-elle ?
+- Y a-t-il des routes CRUD pour cette table ?
+- L'onglet Charges de /bandes/:id affiche-t-il
+  une section pour ces charges ?
+
+═══════════════════════════════════════════════════
+BLOC 1 — SCHÉMA DB
+═══════════════════════════════════════════════════
+
+Dans lib/db/src/schema/bandes.ts, ajouter si absente :
+
+  export const chargesFixesPersonnaliseesTable =
+    pgTable("charges_fixes_personnalisees", {
+      id: serial("id").primaryKey(),
+      bandeId: integer("bande_id")
+        .notNull()
+        .references(() => bandesTable.id,
+          { onDelete: "cascade" }),
+      designation: varchar("designation", { length: 255 })
+        .notNull(),
+      montant: numeric("montant", {
+        precision: 12, scale: 2
+      }).notNull(),
+      categorie: varchar("categorie", { length: 100 })
+        .default("autre"),
+      commentaire: text("commentaire"),
+      createdAt: timestamp("created_at")
+        .defaultNow().notNull(),
+    });
+
+Générer et appliquer la migration Drizzle.
+
+═══════════════════════════════════════════════════
+BLOC 2 — ROUTES API CRUD
+═══════════════════════════════════════════════════
+
+Dans bandes.ts, ajouter :
+
+GET /api/bandes/:id/charges-fixes-custom
+  → Liste toutes les charges + total
+
+  const charges = await db
+    .select()
+    .from(chargesFixesPersonnaliseesTable)
+    .where(eq(
+      chargesFixesPersonnaliseesTable.bandeId,
+      bandeId
+    ))
+    .orderBy(asc(
+      chargesFixesPersonnaliseesTable.createdAt
+    ));
+
+  const total = charges.reduce(
+    (s, c) => s + parseFloat(c.montant ?? "0"), 0
+  );
+
+  return res.json({ charges, total });
+
+POST /api/bandes/:id/charges-fixes-custom
+  Validation Zod :
+    designation: z.string().min(1)
+    montant: z.number().positive()
+    categorie: z.string().optional()
+    commentaire: z.string().optional()
+
+  Middlewares : requireAuth + requireWriteAccess
+  + assertBandeWritable
+
+  → 201 + charge créée
+
+PUT /api/bandes/:id/charges-fixes-custom/:chargeId
+  Même validation que POST (tous champs optionnels)
+  Vérifier que chargeId appartient bien à bandeId
+  → 200 + charge modifiée
+
+DELETE /api/bandes/:id/charges-fixes-custom/:chargeId
+  Vérifier que chargeId appartient bien à bandeId
+  → 200 { success: true }
+
+═══════════════════════════════════════════════════
+BLOC 3 — INTÉGRATION DANS chargesFixesTotal
+═══════════════════════════════════════════════════
+
+Dans getBandeDetail() / GET /:id, ajouter :
+
+  const chargesCustom = await db
+    .select()
+    .from(chargesFixesPersonnaliseesTable)
+    .where(eq(
+      chargesFixesPersonnalis
