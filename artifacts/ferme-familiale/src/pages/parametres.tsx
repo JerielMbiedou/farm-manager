@@ -22,6 +22,7 @@ const CATEGORY_ORDER = [
   "Alertes",
   "Indice de conversion",
   "Budget construction",
+  "Actifs",
   "Calendrier vaccinal",
   "Sauvegarde",
 ];
@@ -33,6 +34,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   "Alertes": "Seuils de déclenchement des alertes sur le tableau de bord et les fiches de bandes",
   "Indice de conversion": "Bornes pour qualifier l'indice de conversion alimentaire (IC)",
   "Budget construction": "Montants par défaut si aucun devis n'a été saisi",
+  "Actifs": "Tout équipement d'une valeur supérieure au seuil devrait être enregistré dans Infrastructure → Actifs (mangeoires, abreuvoirs, balance, etc.) et non en dépense directe.",
   "Calendrier vaccinal": "Programme de vaccination appliqué automatiquement aux nouvelles bandes",
   "Sauvegarde": "Configuration de la sauvegarde automatique nocturne de la base de données",
 };
@@ -48,6 +50,7 @@ const UNIT_LABELS: Record<string, string> = {
   seuil_alerte_solde_caisse: "FCFA",
   budget_batiment_defaut: "FCFA",
   budget_carburant_defaut: "FCFA",
+  seuil_valeur_actif: "FCFA",
   phase_demarrage_min: "j",
   phase_demarrage_max: "j",
   phase_croissance_min: "j",

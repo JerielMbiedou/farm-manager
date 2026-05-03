@@ -15,4 +15,7 @@ export const DepenseDetailleeCategorie = {
   transport: "transport",
   carburant: "carburant",
   divers: "divers",
+  restauration: "restauration",
+  eau: "eau",
+  logistique: "logistique",
 } as const;

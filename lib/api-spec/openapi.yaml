@@ -1123,7 +1123,7 @@ components:
           type: number
         categorie:
           type: string
-          enum: [materiaux, main_oeuvre, transport, carburant, divers]
+          enum: [materiaux, main_oeuvre, transport, carburant, divers, restauration, eau, logistique]
         date:
           type: string
           format: date
@@ -1149,7 +1149,7 @@ components:
           type: number
         categorie:
           type: string
-          enum: [materiaux, main_oeuvre, transport, carburant, divers]
+          enum: [materiaux, main_oeuvre, transport, carburant, divers, restauration, eau, logistique]
         date:
           type: string
           format: date
@@ -1283,7 +1283,7 @@ components:
           type: string
         categorie:
           type: string
-          enum: [poussins, aliments, concentre, prophylaxie, carburant, salaires, transport, main_oeuvre, autre]
+          enum: [poussins, aliments, concentre, prophylaxie, carburant, salaires, transport, main_oeuvre, energie, equipement, nettoyage, autre]
         quantite:
           type: number
         prixUnitaire:
@@ -1306,7 +1306,7 @@ components:
           type: string
         categorie:
           type: string
-          enum: [poussins, aliments, concentre, prophylaxie, carburant, salaires, transport, main_oeuvre, autre]
+          enum: [poussins, aliments, concentre, prophylaxie, carburant, salaires, transport, main_oeuvre, energie, equipement, nettoyage, autre]
         quantite:
           type: number
         prixUnitaire:

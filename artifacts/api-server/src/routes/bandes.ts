@@ -4,7 +4,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { logFromRequest } from "./activity-log";
 import { getParam, getVaccinationSchedule, REFERENCE_WEIGHT_CURVE } from "../lib/parametres";
 import { ai } from "@workspace/integrations-gemini-ai";
-import { validateBody } from "../lib/validate";
+import { validateBody, normalizeDesignation } from "../lib/validate";
 import {
   bandeCreateSchema,
   bandeUpdateSchema,
@@ -117,15 +117,25 @@ router.post("/:id/cloture", async (req, res) => {
   const updated = await db.update(bandesTable)
     .set({ statut: "terminee", dateCloture })
     .where(and(eq(bandesTable.id, id), eq(bandesTable.statut, "active")))
-    .returning({ nom: bandesTable.nom });
+    .returning({ nom: bandesTable.nom, sujetsDepart: bandesTable.sujetsDepart, nombreDeces: bandesTable.nombreDeces });
   if (updated.length === 0) {
     const exists = await db.select({ id: bandesTable.id }).from(bandesTable).where(eq(bandesTable.id, id));
     if (exists.length === 0) return res.status(404).json({ message: "Bande introuvable" });
     return res.status(409).json({ message: "Bande déjà terminée" });
   }
-  await logFromRequest(req, "Clôture bande", `${updated[0].nom} clôturée au ${dateCloture}`);
+  // Cohérence sujets : départ - décès - vendus
+  const ventesRow = await db.select({ sum: sql<number>`COALESCE(SUM(${bandeVentesTable.quantiteVendue}), 0)` }).from(bandeVentesTable).where(eq(bandeVentesTable.bandeId, id));
+  const totalVendus = Number(ventesRow[0]?.sum ?? 0);
+  const sujetsRestants = updated[0].sujetsDepart - updated[0].nombreDeces - totalVendus;
+  let warning: string | null = null;
+  if (sujetsRestants !== 0) {
+    warning = sujetsRestants > 0
+      ? `${sujetsRestants} sujet(s) non comptabilisé(s) (départ ${updated[0].sujetsDepart} − décès ${updated[0].nombreDeces} − vendus ${totalVendus}). Vérifiez les ventes et mortalités.`
+      : `${Math.abs(sujetsRestants)} sujet(s) en excès dans les ventes (départ ${updated[0].sujetsDepart} − décès ${updated[0].nombreDeces} − vendus ${totalVendus}). Vérifiez les saisies.`;
+  }
+  await logFromRequest(req, "Clôture bande", `${updated[0].nom} clôturée au ${dateCloture}${warning ? ` — ${warning}` : ""}`);
   const detail = await getBandeDetail(id);
-  res.json(detail);
+  res.json({ ...detail, warning, coherence: { sujetsDepart: updated[0].sujetsDepart, nombreDeces: updated[0].nombreDeces, totalVendus, sujetsRestants } });
 });
 
 router.post("/:id/reouvrir", async (req, res) => {
@@ -146,9 +156,39 @@ router.post("/:id/reouvrir", async (req, res) => {
 });
 
 router.get("/designations-suggestions", async (_req, res) => {
-  const rows = await db.selectDistinct({ designation: bandeDepensesTable.designation }).from(bandeDepensesTable);
-  const designations = rows.map(r => r.designation).filter(Boolean).sort();
-  res.json(designations);
+  const rows = await db.execute(sql`
+    SELECT
+      designation,
+      categorie,
+      COUNT(*)::int AS frequence,
+      ROUND(AVG(prix_unitaire::numeric), 0)::float AS prix_moyen
+    FROM bande_depenses
+    WHERE designation IS NOT NULL AND TRIM(designation) <> ''
+    GROUP BY designation, categorie
+    ORDER BY frequence DESC, designation ASC
+  `);
+  const aggregated: Array<{ designation: string; categorie: string | null; prixMoyen: number; frequence: number }> =
+    (rows as any).rows.map((r: any) => ({
+      designation: r.designation,
+      categorie: r.categorie ?? null,
+      prixMoyen: Number(r.prix_moyen ?? 0),
+      frequence: Number(r.frequence ?? 0),
+    }));
+
+  const SEED: Array<{ designation: string; categorie: string; prixMoyen: number }> = [
+    { designation: "Désinfectant", categorie: "nettoyage", prixMoyen: 10000 },
+    { designation: "Javel", categorie: "nettoyage", prixMoyen: 2500 },
+    { designation: "Détergent", categorie: "nettoyage", prixMoyen: 2000 },
+    { designation: "Chaux vive", categorie: "nettoyage", prixMoyen: 5000 },
+    { designation: "Savon", categorie: "nettoyage", prixMoyen: 1500 },
+  ];
+  const seen = new Set(aggregated.map(a => a.designation.toLowerCase().trim()));
+  for (const s of SEED) {
+    if (!seen.has(s.designation.toLowerCase().trim())) {
+      aggregated.push({ ...s, frequence: 0 });
+    }
+  }
+  res.json(aggregated);
 });
 
 router.get("/", async (req, res) => {
@@ -386,10 +426,11 @@ router.post("/:id/depenses", validateBody(depenseCreateSchema), async (req, res)
   if (!(await assertBandeWritable(bandeId, res))) return;
   const { date, designation, categorie, quantite, prixUnitaire } = req.body;
   const dateValue = (typeof date === "string" && ISO_DATE_RE.test(date)) ? date : new Date().toISOString().split("T")[0];
+  const designationNorm = normalizeDesignation(designation);
   const rows = await db.insert(bandeDepensesTable).values({
     bandeId,
     date: dateValue,
-    designation,
+    designation: designationNorm,
     categorie,
     quantite: String(quantite),
     prixUnitaire: String(prixUnitaire),
@@ -414,7 +455,7 @@ router.put("/:id/depenses/:depenseId", async (req, res) => {
   const depenseId = parseInt(req.params.depenseId);
   const { date, designation, categorie, quantite, prixUnitaire } = req.body;
   const updates: Record<string, unknown> = {
-    designation,
+    designation: normalizeDesignation(designation),
     categorie,
     quantite: String(quantite),
     prixUnitaire: String(prixUnitaire),

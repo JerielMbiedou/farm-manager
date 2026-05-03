@@ -87,6 +87,9 @@ export const DepenseDetailleeCategorie = {
   transport: "transport",
   carburant: "carburant",
   divers: "divers",
+  restauration: "restauration",
+  eau: "eau",
+  logistique: "logistique",
 } as const;
 
 export interface DepenseDetaillee {
@@ -109,6 +112,9 @@ export const CreateDepenseDetailleeCategorie = {
   transport: "transport",
   carburant: "carburant",
   divers: "divers",
+  restauration: "restauration",
+  eau: "eau",
+  logistique: "logistique",
 } as const;
 
 export interface CreateDepenseDetaillee {
@@ -195,6 +201,9 @@ export const BandeDepenseCategorie = {
   salaires: "salaires",
   transport: "transport",
   main_oeuvre: "main_oeuvre",
+  energie: "energie",
+  equipement: "equipement",
+  nettoyage: "nettoyage",
   autre: "autre",
 } as const;
 
@@ -220,6 +229,9 @@ export const CreateBandeDepenseBodyCategorie = {
   salaires: "salaires",
   transport: "transport",
   main_oeuvre: "main_oeuvre",
+  energie: "energie",
+  equipement: "equipement",
+  nettoyage: "nettoyage",
   autre: "autre",
 } as const;
 

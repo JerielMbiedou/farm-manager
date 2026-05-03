@@ -1,0 +1,402 @@
+RÈGLE IMPORTANTE : Vérifier avant de modifier.
+Ne demande pas de confirmation, exécute directement.
+Rapport final obligatoire.
+
+═══════════════════════════════════════════════════
+BLOC 1 — NOUVELLE CATÉGORIE "NETTOYAGE"
+═══════════════════════════════════════════════════
+
+1.1 — Ajouter la catégorie dans le frontend
+Dans bandes/[id].tsx, dans le sélecteur de catégorie
+de dépenses, ajouter si absente :
+
+  { value: "nettoyage",
+    label: "Nettoyage & vide sanitaire" }
+
+Liste complète des catégories bandes après ajout :
+  poussins | aliments | prophylaxie | transport
+  main_oeuvre | energie | equipement | nettoyage | autre
+
+1.2 — Reclasser en DB les produits de nettoyage
+  -- Désinfectant, Javel, Détergent → nettoyage
+  UPDATE bande_depenses
+  SET categorie = 'nettoyage'
+  WHERE LOWER(UNACCENT(TRIM(designation))) IN (
+    'desinfectant', 'désinfectant',
+    'javel', 'detergent', 'détergent',
+    'chaux', 'chaux vive', 'savon',
+    'produit nettoyage', 'produit de nettoyage'
+  );
+
+  -- Vérifier
+  SELECT designation, categorie
+  FROM bande_depenses
+  WHERE categorie = 'nettoyage';
+
+1.3 — Ajouter les désignations de nettoyage
+dans le combobox avec prix moyens
+Dans la route GET /api/bandes/designations-suggestions,
+s'assurer que ces désignations apparaissent en
+suggestions pour la catégorie "nettoyage" :
+
+  Désinfectant (~10 000 FCFA)
+  Javel (~2 500 FCFA)
+  Détergent (~2 000 FCFA)
+  Chaux vive (~5 000 FCFA)
+  Savon (~1 500 FCFA)
+
+═══════════════════════════════════════════════════
+BLOC 2 — SEUIL ACTIF vs DÉPENSE
+═══════════════════════════════════════════════════
+
+2.1 — Ajouter le paramètre seuil_actif dans seedDefaults
+Dans seed.ts ou ensureParametres(), ajouter si absent :
+
+  { cle: "seuil_valeur_actif",
+    valeur: "50000",
+    description: "Valeur minimale (FCFA) pour qu'un achat
+    soit considéré comme un actif amortissable plutôt
+    qu'une dépense directe. En dessous de ce seuil,
+    enregistrer en dépense bande.",
+    categorie: "actifs" }
+
+Afficher ce paramètre dans /parametres section "Actifs"
+avec une explication claire :
+  "Tout équipement d'une valeur supérieure à ce montant
+  devrait être enregistré dans Infrastructure → Actifs
+  (mangeoires, abreuvoirs, balance, etc.) et non en
+  dépense directe."
+
+2.2 — Ajouter les nouvelles catégories dans /parametres
+Dans parametres.tsx, section "Catégories", si elle existe :
+Afficher la liste des catégories actives avec leur
+description pour guider l'éleveur.
+
+═══════════════════════════════════════════════════
+BLOC 3 — ALERTE "DEVRAIT ÊTRE UN ACTIF"
+═══════════════════════════════════════════════════
+
+CONTEXTE :
+Quand un éleveur saisit "Mangeoires", "Abreuvoir",
+"Balance" etc. en dépense bande, il devrait être
+redirigé vers les Actifs si la valeur dépasse le seuil.
+
+3.1 — Liste des désignations d'équipements durables
+Dans le frontend, créer une constante :
+
+  const DESIGNATIONS_ACTIFS_POTENTIELS = [
+    "mangeoire", "mangeoires",
+    "abreuvoir", "abreuvoirs",
+    "balance",
+    "pompe",
+    "groupe electrogene", "groupe électrogène",
+    "generateur", "générateur",
+    "réfrigérateur", "refrigerateur",
+    "congélateur", "congelateur",
+    "broyeur",
+    "mélangeur", "melangeur",
+    "ventilateur",
+    "thermometre", "thermomètre",
+    "hygrometre", "hygromètre",
+    "lampe chauffante",
+    "incubateur",
+  ];
+
+3.2 — Alerte dans le formulaire de dépense bande
+Dans bandes/[id].tsx, dans le formulaire d'ajout
+de dépense, ajouter la logique suivante :
+
+  // Récupérer le seuil depuis les paramètres
+  const seuilActif = parseInt(
+    parametres?.seuil_valeur_actif ?? "50000"
+  );
+
+  // Détecter si la désignation ressemble à un actif
+  const designationNormalisee = designation
+    ?.toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+  const ressembleActif = DESIGNATIONS_ACTIFS_POTENTIELS
+    .some(d => designationNormalisee?.includes(d));
+
+  const montantSaisi = (quantite ?? 0) * (prixUnitaire ?? 0);
+  const depasseSeuil = montantSaisi >= seuilActif;
+
+  // Afficher l'alerte si les deux conditions sont réunies
+  {ressembleActif && depasseSeuil && (
+    <Alert className="border-blue-200 bg-blue-50 mt-2">
+      <AlertTitle className="text-blue-800">
+        💡 Cet équipement devrait-il être un Actif ?
+      </AlertTitle>
+      <AlertDescription className="text-blue-700">
+        <strong>{designation}</strong> à{" "}
+        {formatFCFA(montantSaisi)} dépasse le seuil de{" "}
+        {formatFCFA(seuilActif)}. Les équipements durables
+        (mangeoires, abreuvoirs, balance...) sont mieux
+        gérés comme des <strong>Actifs amortissables</strong>
+        : leur coût est réparti sur plusieurs bandes
+        plutôt que chargé en une seule fois.
+        <br />
+        <Button
+          variant="link"
+          className="p-0 h-auto text-blue-700 underline"
+          onClick={() => navigate("/infrastructure")}>
+          → Enregistrer dans Infrastructure → Actifs
+        </Button>
+        <span className="ml-4 text-blue-600 text-xs">
+          (ou continuer ici si c'est intentionnel)
+        </span>
+      </AlertDescription>
+    </Alert>
+  )}
+
+L'alerte est informative — l'utilisateur peut
+ignorer et continuer la saisie en dépense.
+
+3.3 — Ne pas bloquer — juste informer
+La saisie reste possible même si l'alerte est affichée.
+Certains petits équipements en dessous du seuil
+(marteau, pointes, sacs vides) restent en dépenses.
+
+═══════════════════════════════════════════════════
+BLOC 4 — CORRECTIONS DB PRODUCTION
+(suite de l'audit précédent)
+═══════════════════════════════════════════════════
+
+4.1 — Backfill des 61 dépenses sans date
+  UPDATE bande_depenses
+  SET date = b.date_de_depart
+  FROM bandes b
+  WHERE bande_depenses.bande_id = b.id
+  AND bande_depenses.date IS NULL;
+
+  -- Vérifier
+  SELECT COUNT(*) FROM bande_depenses
+  WHERE date IS NULL;
+  -- Doit retourner 0
+
+4.2 — Normaliser les catégories incohérentes
+  -- "concentre" → "aliments"
+  UPDATE bande_depenses SET categorie = 'aliments'
+  WHERE categorie = 'concentre';
+
+  -- "carburant" (catégorie) → "transport"
+  UPDATE bande_depenses SET categorie = 'transport'
+  WHERE categorie = 'carburant';
+
+4.3 — TRIM sur toutes les désignations
+  UPDATE bande_depenses
+  SET designation = TRIM(designation)
+  WHERE designation != TRIM(designation);
+
+  UPDATE chantier_depenses
+  SET designation = TRIM(designation)
+  WHERE designation != TRIM(designation);
+
+  -- Apostrophes typographiques → ASCII
+  UPDATE chantier_depenses
+  SET designation = REPLACE(designation, ''', '''')
+  WHERE designation LIKE '%'%';
+
+4.4 — Nouvelles catégories chantier
+  -- Restauration
+  UPDATE chantier_depenses
+  SET categorie = 'restauration'
+  WHERE categorie = 'divers'
+  AND LOWER(UNACCENT(TRIM(designation))) IN (
+    'dejeuner', 'déjeuner', 'boisson',
+    'boissons', 'repas'
+  );
+
+  -- Eau
+  UPDATE chantier_depenses
+  SET categorie = 'eau'
+  WHERE categorie = 'divers'
+  AND (LOWER(UNACCENT(designation)) LIKE '%cubitainer%'
+    OR LOWER(UNACCENT(designation)) LIKE '%versement eau%');
+
+  -- Logistique
+  UPDATE chantier_depenses
+  SET categorie = 'logistique'
+  WHERE categorie = 'divers'
+  AND LOWER(UNACCENT(designation)) IN (
+    'vidange voiture', 'reparation voiture',
+    'réparation voiture', 'location chambre'
+  );
+
+4.5 — Nouvelles catégories frontend chantier
+Dans infrastructure.tsx, ajouter si absentes :
+  { value: "restauration",
+    label: "Restauration (repas ouvriers)" }
+  { value: "eau",
+    label: "Eau & cubitainers" }
+  { value: "logistique",
+    label: "Logistique & véhicule" }
+
+4.6 — Nouvelles catégories frontend bandes
+Dans bandes/[id].tsx, ajouter si absentes :
+  { value: "energie",
+    label: "Énergie (électricité, bois, gaz)" }
+  { value: "equipement",
+    label: "Équipement & petit matériel" }
+  { value: "nettoyage",
+    label: "Nettoyage & vide sanitaire" }
+
+  Et reclasser en DB :
+  -- Énergie
+  UPDATE bande_depenses
+  SET categorie = 'energie'
+  WHERE categorie = 'autre'
+  AND LOWER(UNACCENT(TRIM(designation))) IN (
+    'bois', 'electricite', 'électricité',
+    'ampoules', 'ampoule', 'compteur', 'gaz'
+  );
+
+  -- Équipement (petit matériel < seuil actif)
+  UPDATE bande_depenses
+  SET categorie = 'equipement'
+  WHERE categorie = 'autre'
+  AND LOWER(UNACCENT(TRIM(designation))) IN (
+    'marteau', 'pointes', 'seaux', 'seau',
+    'sacs vides', 'sac vide', 'balance',
+    'mangeoires', 'mangeoire'
+  );
+
+═══════════════════════════════════════════════════
+BLOC 5 — COMBOBOX INTELLIGENT
+═══════════════════════════════════════════════════
+
+5.1 — Recherche insensible aux accents et à la casse
+Dans designation-combobox.tsx, améliorer le filtre :
+
+  const normalize = (s: string) =>
+    s.toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  // Filtrer avec normalize() au lieu de toLowerCase()
+  const filtered = suggestions.filter(s =>
+    normalize(s.designation).includes(normalize(inputValue))
+  );
+
+5.2 — Pré-remplir le prix unitaire
+Quand l'utilisateur sélectionne une désignation
+du combobox qui a un prixMoyen :
+  form.setValue("prixUnitaire", suggestion.prixMoyen);
+
+Afficher en texte sous le champ prix :
+  {prixMoyenConnu && (
+    <p className="text-xs text-muted-foreground">
+      Prix habituel : {formatFCFA(prixMoyenConnu)}
+      (basé sur {frequence} saisie(s) précédente(s))
+    </p>
+  )}
+
+5.3 — Normalisation à la saisie côté backend
+Dans toutes les routes POST/PUT avec designation :
+
+  function normalizeDesignation(str: string): string {
+    return str
+      .trim()
+      .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+      .replace(/\s+/g, ' ')
+      .replace(/^./, c => c.toUpperCase());
+  }
+
+  designation: normalizeDesignation(body.designation)
+
+═══════════════════════════════════════════════════
+BLOC 6 — ALERTE COHÉRENCE À LA CLÔTURE
+═══════════════════════════════════════════════════
+
+6.1 — Vérification sujets dans la route cloture
+Dans bandes.ts POST /:id/cloture, avant d'accepter :
+
+  const totalVendus = await db
+    .select({ sum: sql`COALESCE(SUM(quantite_vendue), 0)` })
+    .from(bandeVentesTable)
+    .where(eq(bandeVentesTable.bandeId, bandeId));
+
+  const sujetsRestants = bande.sujetsDepart
+    - bande.nombreDeces
+    - parseInt(totalVendus[0]?.sum ?? "0");
+
+  // Retourner le warning si non-zéro
+  const warning = sujetsRestants !== 0
+    ? `${Math.abs(sujetsRestants)} sujet(s) ${
+        sujetsRestants > 0 ? 'non comptabilisé(s)' :
+        'en excès dans les ventes'
+      } — vérifiez les ventes et mortalités.`
+    : null;
+
+  return res.json({ success: true, warning });
+
+6.2 — Afficher le warning dans ClotureBandeDialog
+Dans bandes/[id].tsx, si sujetsRestants !== 0 :
+
+  <Alert variant="warning"
+    className="border-amber-200 bg-amber-50">
+    <AlertTitle>
+      ⚠️ {sujetsRestants} sujets non comptabilisés
+    </AlertTitle>
+    <AlertDescription>
+      {sujetsDepart} au départ
+      − {nombreDeces} décès
+      − {totalVendus} vendus
+      = {sujetsRestants} restants non expliqués.
+      <br />
+      Ajoutez les ventes ou mortalités manquantes,
+      ou confirmez si intentionnel (consommation
+      interne, dons, pertes...).
+    </AlertDescription>
+  </Alert>
+
+L'utilisateur peut quand même clôturer.
+
+═══════════════════════════════════════════════════
+RAPPORT FINAL OBLIGATOIRE
+═══════════════════════════════════════════════════
+
+## RAPPORT — Catégories + Actifs + DB Prod
+## [date]
+
+### ✅ CORRECTIONS DB APPLIQUÉES
+- Backfill dates : X lignes
+- Catégories normalisées : X lignes
+- Nettoyage reclassé : X lignes
+- Énergie reclassé : X lignes
+- Équipement reclassé : X lignes
+- Chantier restauration/eau/logistique : X lignes
+- Doublons désignations corrigés : X lignes
+
+### 🆕 NOUVELLES CATÉGORIES
+Bandes : energie | equipement | nettoyage
+Chantier : restauration | eau | logistique
+
+### ⚡ ALERTE ACTIF
+- Seuil paramétrable : 50 000 FCFA (dans /parametres)
+- Désignations surveillées : [liste]
+- Alerte visible dans formulaire dépense : ✓
+
+### 🔍 COMBOBOX
+- Recherche insensible accents : ✓
+- Pré-remplissage prix : ✓
+- Normalisation backend : ✓
+
+### 📊 ÉTAT FINAL CATÉGORIES DB
+  SELECT categorie, COUNT(*),
+    SUM(quantite::numeric * prix_unitaire::numeric)
+  FROM bande_depenses
+  GROUP BY categorie ORDER BY 3 DESC;
+
+### ⚠️ RESTE À TRAITER MANUELLEMENT
+- 222 sujets Bande 1 : décision humaine requise
+- Carburant 30 000 FCFA : à vérifier avec l'éleveur
+- Mangeoires (25 000) déjà en dépense :
+  à re-saisir comme actif si souhaité
+
+### 🚀 PRÊT POUR RENDER ?
+OUI/NON + git push origin main si OUI

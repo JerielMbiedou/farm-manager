@@ -3,6 +3,7 @@ import { db, chantiersTable, chantierDevisLignesTable, chantierDepensesTable, ch
 import { eq } from "drizzle-orm";
 import { requireWriteAccess } from "../lib/middleware";
 import { logFromRequest } from "./activity-log";
+import { normalizeDesignation } from "../lib/validate";
 
 const router = Router();
 
@@ -172,7 +173,7 @@ router.post("/:id/depenses", async (req, res) => {
   const { designation, quantite, prixUnitaire, categorie, date, commentaire, lotId } = req.body;
   if (!designation) return res.status(400).json({ message: "La désignation est requise" });
   const rows = await db.insert(chantierDepensesTable).values({
-    chantierId, designation, quantite: String(quantite ?? 1),
+    chantierId, designation: normalizeDesignation(designation), quantite: String(quantite ?? 1),
     prixUnitaire: String(prixUnitaire ?? 0), categorie: categorie || "materiaux",
     date, commentaire, lotId: lotId || null,
   }).returning();
@@ -185,7 +186,7 @@ router.put("/:id/depenses/:depId", async (req, res) => {
   const depId = parseInt(req.params.depId);
   const { designation, quantite, prixUnitaire, categorie, date, commentaire, lotId } = req.body;
   const rows = await db.update(chantierDepensesTable).set({
-    designation, quantite: String(quantite), prixUnitaire: String(prixUnitaire),
+    designation: normalizeDesignation(designation), quantite: String(quantite), prixUnitaire: String(prixUnitaire),
     categorie, date, commentaire, lotId: lotId || null,
   }).where(eq(chantierDepensesTable.id, depId)).returning();
   if (rows.length === 0) return res.status(404).json({ message: "Dépense introuvable" });

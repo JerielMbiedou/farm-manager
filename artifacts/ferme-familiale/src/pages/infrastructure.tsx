@@ -35,6 +35,9 @@ const CATEGORIES_CONSTRUCTION = [
   { value: "main_oeuvre", label: "Main d'oeuvre" },
   { value: "transport", label: "Transport" },
   { value: "carburant", label: "Carburant" },
+  { value: "restauration", label: "Restauration (repas ouvriers)" },
+  { value: "eau", label: "Eau & cubitainers" },
+  { value: "logistique", label: "Logistique & véhicule" },
   { value: "divers", label: "Divers" },
 ];
 

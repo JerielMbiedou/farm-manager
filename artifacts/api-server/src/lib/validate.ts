@@ -19,3 +19,24 @@ export function validateBody<T>(schema: ZodSchema<T>) {
     next();
   };
 }
+
+/**
+ * Normalise une désignation à la saisie :
+ * - trim
+ * - apostrophes typographiques (' ‘ ‚ ‛) → apostrophe ASCII (')
+ * - espaces multiples → espace simple
+ * - première lettre en majuscule
+ */
+export function normalizeDesignation(str: string | null | undefined): string {
+  if (!str) return "";
+  const cleaned = String(str)
+    .trim()
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/\s+/g, " ");
+  if (!cleaned) return "";
+  // Si tout est en MAJUSCULES (>= 2 caractères), on bascule en Capitalisation
+  // pour éviter les doublons "ALIMENT" / "Aliment".
+  const isAllUpper = cleaned.length >= 2 && cleaned === cleaned.toUpperCase() && /[A-Z]/.test(cleaned);
+  const base = isAllUpper ? cleaned.toLowerCase() : cleaned;
+  return base.charAt(0).toLocaleUpperCase("fr-FR") + base.slice(1);
+}

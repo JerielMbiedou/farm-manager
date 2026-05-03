@@ -164,6 +164,9 @@ const ALL_PARAMETRES: Array<{ cle: string; valeur: string; description: string; 
   // Sauvegarde automatique (BLOC 4)
   { cle: "backup_heure",            valeur: "2", description: "Heure d'exécution de la sauvegarde automatique (0–23)", categorie: "Sauvegarde" },
   { cle: "backup_retention_jours",  valeur: "7", description: "Nombre de sauvegardes conservées (rotation)", categorie: "Sauvegarde" },
+
+  // Actifs vs dépenses (BLOC 2 audit 2026-05)
+  { cle: "seuil_valeur_actif", valeur: "50000", description: "Valeur minimale (FCFA) pour qu'un achat soit considéré comme un actif amortissable plutôt qu'une dépense directe. En dessous de ce seuil, enregistrer en dépense bande.", categorie: "Actifs" },
 ];
 
 /**

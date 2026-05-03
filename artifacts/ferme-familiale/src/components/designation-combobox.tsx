@@ -1,26 +1,45 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
+
+export type DesignationSuggestion = {
+  designation: string;
+  prixMoyen?: number;
+  frequence?: number;
+  categorie?: string | null;
+};
 
 interface DesignationComboboxProps {
   value: string;
   onChange: (value: string) => void;
-  suggestions: string[];
+  onSelectSuggestion?: (suggestion: DesignationSuggestion) => void;
+  suggestions: Array<DesignationSuggestion | string>;
   placeholder?: string;
 }
 
-export default function DesignationCombobox({ value, onChange, suggestions, placeholder }: DesignationComboboxProps) {
+const normalize = (s: string) =>
+  s.toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+export default function DesignationCombobox({ value, onChange, onSelectSuggestion, suggestions, placeholder }: DesignationComboboxProps) {
   const [open, setOpen] = useState(false);
-  const [filtered, setFiltered] = useState<string[]>([]);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (value.trim().length > 0) {
-      const lower = value.toLowerCase();
-      setFiltered(suggestions.filter(s => s.toLowerCase().includes(lower) && s.toLowerCase() !== lower));
-    } else {
-      setFiltered(suggestions.slice(0, 10));
-    }
-  }, [value, suggestions]);
+  // Normaliser les suggestions au format objet
+  const normalized: DesignationSuggestion[] = useMemo(
+    () => (suggestions ?? []).map((s) => (typeof s === "string" ? { designation: s } : s)).filter((s) => s.designation),
+    [suggestions]
+  );
+
+  const filtered = useMemo(() => {
+    const needle = normalize(value || "");
+    if (needle.length === 0) return normalized.slice(0, 10);
+    return normalized.filter((s) => {
+      const hay = normalize(s.designation);
+      return hay.includes(needle) && hay !== needle;
+    }).slice(0, 20);
+  }, [value, normalized]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -42,15 +61,25 @@ export default function DesignationCombobox({ value, onChange, suggestions, plac
         autoComplete="off"
       />
       {open && filtered.length > 0 && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg max-h-40 overflow-y-auto">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-y-auto">
           {filtered.map((s, i) => (
             <button
-              key={i}
+              key={`${s.designation}-${i}`}
               type="button"
-              className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
-              onMouseDown={(e) => { e.preventDefault(); onChange(s); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex justify-between items-center gap-2"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(s.designation);
+                onSelectSuggestion?.(s);
+                setOpen(false);
+              }}
             >
-              {s}
+              <span className="truncate">{s.designation}</span>
+              {s.prixMoyen && s.prixMoyen > 0 ? (
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {Math.round(s.prixMoyen).toLocaleString("fr-FR")} FCFA{s.frequence ? ` · ${s.frequence}×` : ""}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>

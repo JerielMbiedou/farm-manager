@@ -137,3 +137,9 @@ id = "3vDFPMMseUiOzhqr_SYtv"
 uri = "file://.local/reports/AUDIT_DB_PROD_2026-05-03.md"
 type = "text"
 title = "Audit base de données production — 03/05/2026"
+
+[[outputs]]
+id = "6cxlDqrlPXWZ34dxErL3a"
+uri = "file://.local/reports/RAPPORT_FINAL_2026-05-03.md"
+type = "text"
+title = "Rapport final — Ferme Mbiedou — 03 mai 2026"

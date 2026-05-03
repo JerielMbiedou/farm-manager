@@ -18,5 +18,8 @@ export const BandeDepenseCategorie = {
   salaires: "salaires",
   transport: "transport",
   main_oeuvre: "main_oeuvre",
+  energie: "energie",
+  equipement: "equipement",
+  nettoyage: "nettoyage",
   autre: "autre",
 } as const;

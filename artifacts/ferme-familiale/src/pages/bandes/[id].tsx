@@ -72,7 +72,21 @@ import { CreateBandeDepenseBodyCategorie } from "@workspace/api-client-react";
 import { exportBandePDF, exportBandeExcel, generateRapportBande } from "@/lib/export";
 import { useConsommationEau, useCreateConsommationEau, useDeleteConsommationEau, useTraitements, useCreateTraitement, useDeleteTraitement, useObservations, useCreateObservation, useDeleteObservation, useReferencePoids } from "@/lib/bande-extras-api";
 import ScanFiche from "@/components/scan-fiche";
-import DesignationCombobox from "@/components/designation-combobox";
+import DesignationCombobox, { type DesignationSuggestion } from "@/components/designation-combobox";
+
+// Désignations qui ressemblent à un actif amortissable (BLOC 3 — alerte UI)
+const DESIGNATIONS_ACTIFS_POTENTIELS = [
+  "mangeoire", "mangeoires", "abreuvoir", "abreuvoirs", "balance",
+  "pompe", "groupe electrogene", "groupe électrogène", "generateur", "générateur",
+  "réfrigérateur", "refrigerateur", "congélateur", "congelateur",
+  "broyeur", "mélangeur", "melangeur", "ventilateur",
+  "thermometre", "thermomètre", "hygrometre", "hygromètre",
+  "lampe chauffante", "incubateur",
+];
+
+function normalizeStr(s: string): string {
+  return (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+}
 
 // Phases d'élevage : valeurs par défaut, écrasées par /api/parametres au montage (BLOC 3).
 import { getPhasesSync, preloadBrand, type PhaseConfig } from "@/lib/branding";
@@ -162,9 +176,11 @@ const PROD_CAT_LABELS: Record<string, string> = {
   poussins: "Poussins", aliments: "Aliments", concentre: "Concentré",
   prophylaxie: "Prophylaxie", medicaments: "Prophylaxie", veterinaire: "Prophylaxie",
   carburant: "Carburant", salaires: "Salaires", transport: "Transport",
-  main_oeuvre: "Main-d'œuvre", autre: "Autre",
+  main_oeuvre: "Main-d'œuvre",
+  energie: "Énergie", equipement: "Équipement", nettoyage: "Nettoyage",
+  autre: "Autre",
 };
-const PROD_CAT_ORDER = ["poussins", "aliments", "concentre", "prophylaxie", "carburant", "salaires", "transport", "main_oeuvre", "autre"];
+const PROD_CAT_ORDER = ["poussins", "aliments", "concentre", "prophylaxie", "carburant", "salaires", "transport", "main_oeuvre", "energie", "equipement", "nettoyage", "autre"];
 const PROD_CAT_COLORS: Record<string, string> = {
   poussins: "bg-yellow-100 text-yellow-800 border-yellow-200",
   aliments: "bg-green-100 text-green-800 border-green-200",
@@ -701,9 +717,14 @@ function ClotureBandeDialog({ detail, isReopen }: { detail: any; isReopen?: bool
         body: JSON.stringify(isReopen ? {} : { dateCloture }),
       });
       if (!res.ok) throw new Error((await res.json()).message || "Erreur");
+      const payload = await res.json().catch(() => ({}));
       queryClient.invalidateQueries({ queryKey: getGetBandeQueryKey(detail.id) });
       queryClient.invalidateQueries({ queryKey: ["/api/bandes"] });
-      toast({ title: isReopen ? "Bande rouverte" : "Bande clôturée" });
+      if (!isReopen && payload?.warning) {
+        toast({ title: "Bande clôturée — vérifications", description: payload.warning, variant: "destructive" });
+      } else {
+        toast({ title: isReopen ? "Bande rouverte" : "Bande clôturée" });
+      }
       setOpen(false);
     } catch (e: any) {
       toast({ title: "Erreur", description: e.message, variant: "destructive" });
@@ -735,10 +756,26 @@ function ClotureBandeDialog({ detail, isReopen }: { detail: any; isReopen?: bool
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>Clôturer la bande {detail.nom}</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          {detail.sujetsRestants > 0 && (
+          {detail.sujetsRestants !== 0 && (
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-900">
               <Lock className="h-4 w-4 inline mr-1" />
-              Attention : il reste <strong>{detail.sujetsRestants} sujets vivants</strong> non encore vendus. Êtes-vous sûr de clôturer ?
+              {detail.sujetsRestants > 0 ? (
+                <>
+                  <strong>⚠️ {detail.sujetsRestants} sujet{detail.sujetsRestants > 1 ? "s" : ""} non comptabilisé{detail.sujetsRestants > 1 ? "s" : ""}</strong>
+                  <div className="mt-1 text-xs">
+                    {detail.sujetsDepart} au départ − {detail.nombreDeces} décès − {totalVendus} vendus = {detail.sujetsRestants} restants non expliqués.
+                    Ajoutez les ventes ou mortalités manquantes, ou confirmez si intentionnel (consommation interne, dons, pertes…).
+                  </div>
+                </>
+              ) : (
+                <>
+                  <strong>⚠️ {Math.abs(detail.sujetsRestants)} sujet{Math.abs(detail.sujetsRestants) > 1 ? "s" : ""} en excès dans les ventes</strong>
+                  <div className="mt-1 text-xs">
+                    {detail.sujetsDepart} au départ − {detail.nombreDeces} décès − {totalVendus} vendus.
+                    Vérifiez les saisies de ventes ou de mortalités.
+                  </div>
+                </>
+              )}
             </div>
           )}
           <div className="rounded-lg border p-4 space-y-2 bg-muted/30">
@@ -905,13 +942,35 @@ export default function BandeDetailView() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [dialogType, setDialogType] = useState<string>("");
-  const [designationSuggestions, setDesignationSuggestions] = useState<string[]>([]);
+  const [designationSuggestions, setDesignationSuggestions] = useState<DesignationSuggestion[]>([]);
+  const [seuilValeurActif, setSeuilValeurActif] = useState<number>(50000);
 
   useEffect(() => {
     const base = import.meta.env.BASE_URL || "/";
     fetch(`${base}api/bandes/designations-suggestions`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
-      .then(data => { if (Array.isArray(data)) setDesignationSuggestions(data); })
+      .then(data => {
+        if (Array.isArray(data)) {
+          // Compatibilité ancienne API (tableau de strings) et nouvelle (objets enrichis)
+          const normalized: DesignationSuggestion[] = data.map((d: any) =>
+            typeof d === "string" ? { designation: d } : d
+          );
+          setDesignationSuggestions(normalized);
+        }
+      })
+      .catch(() => {});
+
+    fetch(`${base}api/parametres`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then((data: any[]) => {
+        if (Array.isArray(data)) {
+          const p = data.find((x) => x.cle === "seuil_valeur_actif");
+          if (p?.valeur) {
+            const v = parseInt(p.valeur, 10);
+            if (!isNaN(v)) setSeuilValeurActif(v);
+          }
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -1413,21 +1472,66 @@ export default function BandeDetailView() {
                 <FormField control={depenseForm.control} name="categorie" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Catégorie</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger></FormControl>
                       <SelectContent>
-                        {Object.values(CreateBandeDepenseBodyCategorie).map(cat => {
-                          const labels: Record<string, string> = { poussins: "Poussins", aliments: "Aliments", concentre: "Concentré", prophylaxie: "Prophylaxie", carburant: "Carburant", salaires: "Salaires", transport: "Transport", main_oeuvre: "Main-d'oeuvre", autre: "Autre" };
-                          return <SelectItem key={cat} value={cat}>{labels[cat] || cat}</SelectItem>;
-                        })}
+                        {[
+                          { value: "poussins", label: "Poussins" },
+                          { value: "aliments", label: "Aliments" },
+                          { value: "prophylaxie", label: "Prophylaxie" },
+                          { value: "transport", label: "Transport" },
+                          { value: "main_oeuvre", label: "Main-d'œuvre" },
+                          { value: "energie", label: "Énergie (électricité, bois, gaz)" },
+                          { value: "equipement", label: "Équipement & petit matériel" },
+                          { value: "nettoyage", label: "Nettoyage & vide sanitaire" },
+                          { value: "autre", label: "Autre" },
+                        ].map(c => (
+                          <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={depenseForm.control} name="designation" render={({ field }) => (
-                  <FormItem><FormLabel required>Désignation</FormLabel><FormControl><DesignationCombobox value={field.value} onChange={field.onChange} suggestions={designationSuggestions} placeholder="Ex: Aliment démarrage" /></FormControl><FormMessage /></FormItem>
-                )} />
+                <FormField control={depenseForm.control} name="designation" render={({ field }) => {
+                  // Recherche prix moyen pour la désignation courante
+                  const norm = normalizeStr(field.value || "");
+                  const matched = designationSuggestions.find(s => normalizeStr(s.designation) === norm);
+                  const prixMoyenConnu = matched?.prixMoyen;
+                  const frequence = matched?.frequence ?? 0;
+                  return (
+                    <FormItem>
+                      <FormLabel required>Désignation</FormLabel>
+                      <FormControl>
+                        <DesignationCombobox
+                          value={field.value}
+                          onChange={field.onChange}
+                          onSelectSuggestion={(s) => {
+                            // Pré-remplir le prix unitaire avec le prix moyen historique
+                            if (s.prixMoyen && s.prixMoyen > 0) {
+                              depenseForm.setValue("prixUnitaire", Math.round(s.prixMoyen));
+                            }
+                            // Pré-remplir la catégorie uniquement si l'enum frontend
+                            // la connaît (sinon Zod rejette le formulaire avec un
+                            // message cryptique pour des valeurs legacy comme "medicaments").
+                            const validCats = Object.values(CreateBandeDepenseBodyCategorie) as string[];
+                            if (s.categorie && validCats.includes(s.categorie)) {
+                              depenseForm.setValue("categorie", s.categorie as CreateBandeDepenseBodyCategorie);
+                            }
+                          }}
+                          suggestions={designationSuggestions}
+                          placeholder="Ex: Aliment démarrage"
+                        />
+                      </FormControl>
+                      {prixMoyenConnu && prixMoyenConnu > 0 && frequence > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Prix habituel : {formatFCFA(Math.round(prixMoyenConnu))} (basé sur {frequence} saisie{frequence > 1 ? "s" : ""} précédente{frequence > 1 ? "s" : ""})
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }} />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={depenseForm.control} name="quantite" render={({ field }) => (
                     <FormItem><FormLabel>Quantité</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
@@ -1436,6 +1540,33 @@ export default function BandeDetailView() {
                     <FormItem><FormLabel>Prix U. (FCFA)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
+                {/* BLOC 3 — alerte "devrait être un actif" */}
+                {(() => {
+                  const designation = depenseForm.watch("designation");
+                  const quantite = Number(depenseForm.watch("quantite") || 0);
+                  const prixU = Number(depenseForm.watch("prixUnitaire") || 0);
+                  const norm = normalizeStr(designation || "");
+                  const ressembleActif = !!norm && DESIGNATIONS_ACTIFS_POTENTIELS.some(d => norm.includes(d));
+                  const montant = quantite * prixU;
+                  const depasseSeuil = montant >= seuilValeurActif;
+                  if (!ressembleActif || !depasseSeuil) return null;
+                  return (
+                    <div className="border border-blue-200 bg-blue-50 rounded-md p-3 mt-2 text-sm">
+                      <div className="font-semibold text-blue-800 mb-1">💡 Cet équipement devrait-il être un Actif ?</div>
+                      <div className="text-blue-700">
+                        <strong>{designation}</strong> à {formatFCFA(montant)} dépasse le seuil de {formatFCFA(seuilValeurActif)}.
+                        Les équipements durables (mangeoires, abreuvoirs, balance…) sont mieux gérés comme des <strong>Actifs amortissables</strong> :
+                        leur coût est réparti sur plusieurs bandes plutôt que chargé en une seule fois.
+                      </div>
+                      <div className="mt-2 flex items-center gap-3 flex-wrap">
+                        <Link href="/infrastructure">
+                          <a className="text-blue-700 underline text-sm font-medium">→ Enregistrer dans Infrastructure → Actifs</a>
+                        </Link>
+                        <span className="text-blue-600 text-xs">(ou continuer ici si c'est intentionnel)</span>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <Button type="submit" className="w-full">Enregistrer</Button>
               </form>
             </Form>
