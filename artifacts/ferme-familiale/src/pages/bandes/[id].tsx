@@ -632,6 +632,7 @@ type BandeActifAllocation = {
   actifId: number;
   bandeId: number;
   fractionUtilisee: number;
+  montantFixe: number | null;
   amortissement: number;
   actif: { id: number; nom: string; type: string; valeur: number; tauxAmortissementAnnuel: number; dateAcquisition: string };
 };
@@ -645,8 +646,17 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [addingActif, setAddingActif] = useState(false);
+  const [creatingActif, setCreatingActif] = useState(false);
   const [selectedActifId, setSelectedActifId] = useState<string>("");
   const [fraction, setFraction] = useState<string>("100");
+  // « pourcentage » : le montant est calculé (valeur × taux × fraction).
+  // « montant » : l'utilisateur saisit directement ce que la bande supporte.
+  const [modeImputation, setModeImputation] = useState<"pourcentage" | "montant">("pourcentage");
+  const [montantFixe, setMontantFixe] = useState<string>("");
+  const [nouvelActif, setNouvelActif] = useState({
+    nom: "", type: "materiel", valeur: "", taux: "10",
+    dateAcquisition: new Date().toISOString().split("T")[0],
+  });
 
   const { data: allocations = [] } = useQuery<BandeActifAllocation[]>({
     queryKey: ["/api/bandes", bandeId, "actifs"],
@@ -666,19 +676,77 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
     },
   });
 
+  const reinitialiserFormulairesActif = () => {
+    setAddingActif(false);
+    setCreatingActif(false);
+    setSelectedActifId("");
+    setFraction("100");
+    setModeImputation("pourcentage");
+    setMontantFixe("");
+    setNouvelActif({ nom: "", type: "materiel", valeur: "", taux: "10", dateAcquisition: new Date().toISOString().split("T")[0] });
+  };
+
+  // Les montants d'amortissement entrent dans les charges fixes de la bande :
+  // le détail de la bande doit être rafraîchi en même temps que la liste.
+  const invaliderActifs = () => {
+    qc.invalidateQueries({ queryKey: ["/api/bandes", bandeId, "actifs"] });
+    qc.invalidateQueries({ queryKey: ["/api/actifs"] });
+    qc.invalidateQueries({ queryKey: getGetBandeQueryKey(bandeId) });
+  };
+
+  const corpsAllocation = () => ({
+    fractionUtilisee: modeImputation === "pourcentage" ? parseFloat(fraction) / 100 : 1,
+    montantFixe: modeImputation === "montant" ? parseFloat(montantFixe) : null,
+  });
+
+  const messageErreur = async (res: Response) => {
+    const data = await res.json().catch(() => ({} as any));
+    return (data && (data.message || data.error)) || "Erreur";
+  };
+
   const addAllocation = useMutation({
-    mutationFn: async ({ actifId, fractionUtilisee }: { actifId: number; fractionUtilisee: number }) => {
+    mutationFn: async ({ actifId }: { actifId: number }) => {
       const base = import.meta.env.BASE_URL || "/";
       const res = await fetch(`${base}api/bandes/${bandeId}/actifs`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actifId, fractionUtilisee }),
+        body: JSON.stringify({ actifId, ...corpsAllocation() }),
       });
-      if (!res.ok) throw new Error("Erreur");
+      if (!res.ok) throw new Error(await messageErreur(res));
       return res.json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/bandes", bandeId, "actifs"] }); toast({ title: "Actif ajouté" }); setAddingActif(false); setSelectedActifId(""); setFraction("100"); },
-    onError: () => toast({ title: "Erreur", variant: "destructive" }),
+    onSuccess: () => { invaliderActifs(); toast({ title: "Actif ajouté" }); reinitialiserFormulairesActif(); },
+    onError: (e: any) => toast({ title: e?.message || "Erreur", variant: "destructive" }),
+  });
+
+  // Création d'un actif depuis l'écran de la bande, puis association immédiate :
+  // évite le détour par le module Infrastructure.
+  const createActif = useMutation({
+    mutationFn: async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/actifs`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nom: nouvelActif.nom.trim(),
+          type: nouvelActif.type,
+          valeur: parseFloat(nouvelActif.valeur),
+          tauxAmortissementAnnuel: parseFloat(nouvelActif.taux) || 0,
+          dateAcquisition: nouvelActif.dateAcquisition,
+        }),
+      });
+      if (!res.ok) throw new Error(await messageErreur(res));
+      const actif = await res.json();
+      const resAssoc = await fetch(`${base}api/bandes/${bandeId}/actifs`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actifId: actif.id, ...corpsAllocation() }),
+      });
+      if (!resAssoc.ok) throw new Error(await messageErreur(resAssoc));
+      return actif;
+    },
+    onSuccess: () => { invaliderActifs(); toast({ title: "Actif créé et associé à la bande" }); reinitialiserFormulairesActif(); },
+    onError: (e: any) => toast({ title: e?.message || "Erreur", variant: "destructive" }),
   });
 
   const removeAllocation = useMutation({
@@ -688,7 +756,7 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
       if (!res.ok) throw new Error("Erreur");
       return res.json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/bandes", bandeId, "actifs"] }); toast({ title: "Actif retiré" }); },
+    onSuccess: () => { invaliderActifs(); toast({ title: "Actif retiré" }); },
   });
 
   const updateAllocation = useMutation({
@@ -702,7 +770,7 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
       if (!res.ok) throw new Error("Erreur");
       return res.json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/bandes", bandeId, "actifs"] }); toast({ title: "Fraction mise à jour" }); },
+    onSuccess: () => { invaliderActifs(); toast({ title: "Fraction mise à jour" }); },
   });
 
   const totalAmortissementActifs = allocations.reduce((s: number, a: BandeActifAllocation) => s + a.amortissement, 0);
@@ -716,54 +784,162 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
 
   const typeLabel: Record<string, string> = { terrain: "Terrain", batiment: "Bâtiment", materiel: "Matériel" };
 
+  const montantFixeValide = parseFloat(montantFixe) > 0;
+  const imputationValide = modeImputation === "pourcentage" ? parseFloat(fraction) > 0 : montantFixeValide;
+  // Aperçu du montant en mode pourcentage, pour que la saisie reste lisible.
+  const apercuMontant = (valeur?: number, taux?: number) => {
+    if (modeImputation !== "pourcentage" || !valeur || !taux) return null;
+    const pct = parseFloat(fraction);
+    if (!Number.isFinite(pct)) return null;
+    return Math.round(valeur * (taux / 100) * (pct / 100));
+  };
+  const actifSelectionne = actifsDisponibles.find((a: any) => String(a.id) === selectedActifId);
+
+  // Bloc commun aux deux formulaires : pourcentage d'utilisation ou montant fixe.
+  const champsImputation = (valeur?: number, taux?: number) => {
+    const apercu = apercuMontant(valeur, taux);
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Imputation à cette bande</label>
+            <select
+              className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+              value={modeImputation}
+              onChange={e => setModeImputation(e.target.value as "pourcentage" | "montant")}
+            >
+              <option value="pourcentage">Pourcentage d'utilisation</option>
+              <option value="montant">Montant fixe</option>
+            </select>
+          </div>
+          <div>
+            {modeImputation === "pourcentage" ? (
+              <>
+                <label className="text-xs text-muted-foreground mb-1 block">Fraction utilisée (%)</label>
+                <Input type="number" min={1} max={100} step={1} value={fraction} onChange={e => setFraction(e.target.value)} />
+              </>
+            ) : (
+              <>
+                <label className="text-xs text-muted-foreground mb-1 block">Montant pour cette bande (FCFA)</label>
+                <Input type="number" min={0} step={100} value={montantFixe} onChange={e => setMontantFixe(e.target.value)} placeholder="ex. 150000" />
+              </>
+            )}
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {modeImputation === "pourcentage"
+            ? (apercu !== null
+                ? `Montant imputé : ${formatFCFA(apercu)} (valeur × taux × fraction).`
+                : "Le montant est calculé : valeur de l'actif × taux d'amortissement × fraction utilisée.")
+            : "Ce montant est imputé tel quel à la bande, sans calcul."}
+        </p>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle className="text-lg">Actifs utilisés pour cette bande</CardTitle>
-            {!isReadOnly && !addingActif && actifsDispo.length > 0 && (
-              <Button size="sm" variant="outline" onClick={() => setAddingActif(true)}>
-                <Plus className="h-4 w-4 mr-1" />Associer un actif
-              </Button>
+            {!isReadOnly && !addingActif && !creatingActif && (
+              <div className="flex gap-2">
+                {actifsDispo.length > 0 && (
+                  <Button size="sm" variant="outline" onClick={() => { reinitialiserFormulairesActif(); setAddingActif(true); }}>
+                    <Plus className="h-4 w-4 mr-1" />Associer un actif
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={() => { reinitialiserFormulairesActif(); setCreatingActif(true); }}>
+                  <Plus className="h-4 w-4 mr-1" />Nouvel actif
+                </Button>
+              </div>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">Sélectionnez les actifs (bâtiments, matériel) utilisés par cette bande et indiquez la fraction allouée. L'amortissement est calculé automatiquement.</p>
+          <p className="text-sm text-muted-foreground">Les actifs (bâtiments, matériel) utilisés par cette bande. Pour chacun, indiquez soit la fraction utilisée — l'amortissement est alors calculé —, soit directement le montant que la bande supporte.</p>
         </CardHeader>
         <CardContent className="space-y-4">
           {addingActif && (
             <div className="p-4 border rounded-lg bg-muted/20 space-y-3">
-              <div className="font-medium text-sm">Ajouter un actif</div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Actif</label>
-                  <select
-                    className="w-full border rounded-md px-3 py-2 text-sm bg-background"
-                    value={selectedActifId}
-                    onChange={e => setSelectedActifId(e.target.value)}
-                  >
-                    <option value="">Choisir un actif...</option>
-                    {actifsDispo.map((a: any) => (
-                      <option key={a.id} value={String(a.id)}>{a.nom} ({typeLabel[a.type] || a.type}) — {formatFCFA(a.valeur)}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Fraction utilisée (%)</label>
-                  <Input type="number" min={1} max={100} step={1} value={fraction} onChange={e => setFraction(e.target.value)} />
-                </div>
+              <div className="font-medium text-sm">Associer un actif existant</div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Actif</label>
+                <select
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                  value={selectedActifId}
+                  onChange={e => setSelectedActifId(e.target.value)}
+                >
+                  <option value="">Choisir un actif...</option>
+                  {actifsDispo.map((a: any) => (
+                    <option key={a.id} value={String(a.id)}>{a.nom} ({typeLabel[a.type] || a.type}) — {formatFCFA(a.valeur)}</option>
+                  ))}
+                </select>
               </div>
+              {champsImputation(actifSelectionne?.valeur, actifSelectionne?.tauxAmortissementAnnuel)}
               <div className="flex gap-2">
-                <Button size="sm" disabled={!selectedActifId || addAllocation.isPending} onClick={() => addAllocation.mutate({ actifId: parseInt(selectedActifId), fractionUtilisee: parseFloat(fraction) / 100 })}>Confirmer</Button>
-                <Button size="sm" variant="outline" onClick={() => setAddingActif(false)}>Annuler</Button>
+                <Button size="sm" disabled={!selectedActifId || !imputationValide || addAllocation.isPending} onClick={() => addAllocation.mutate({ actifId: parseInt(selectedActifId) })}>Confirmer</Button>
+                <Button size="sm" variant="outline" onClick={reinitialiserFormulairesActif}>Annuler</Button>
               </div>
             </div>
           )}
-          {allocations.length === 0 && !addingActif ? (
+          {creatingActif && (
+            <div className="p-4 border rounded-lg bg-muted/20 space-y-3">
+              <div className="font-medium text-sm">Nouvel actif</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="text-xs text-muted-foreground mb-1 block">Nom</label>
+                  <Input value={nouvelActif.nom} onChange={e => setNouvelActif(v => ({ ...v, nom: e.target.value }))} placeholder="ex. Poulailler principal" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Type</label>
+                  <select
+                    className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                    value={nouvelActif.type}
+                    onChange={e => setNouvelActif(v => ({ ...v, type: e.target.value }))}
+                  >
+                    <option value="materiel">Matériel</option>
+                    <option value="batiment">Bâtiment</option>
+                    <option value="terrain">Terrain</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Valeur (FCFA)</label>
+                  <Input type="number" min={0} step={1000} value={nouvelActif.valeur} onChange={e => setNouvelActif(v => ({ ...v, valeur: e.target.value }))} placeholder="ex. 3000000" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Amortissement par bande (%)</label>
+                  <Input type="number" min={0} max={100} step={1} value={nouvelActif.taux} onChange={e => setNouvelActif(v => ({ ...v, taux: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Date d'acquisition</label>
+                  <Input type="date" value={nouvelActif.dateAcquisition} onChange={e => setNouvelActif(v => ({ ...v, dateAcquisition: e.target.value }))} />
+                </div>
+              </div>
+              {champsImputation(parseFloat(nouvelActif.valeur) || undefined, parseFloat(nouvelActif.taux) || undefined)}
+              <p className="text-xs text-muted-foreground">
+                L'actif est aussi ajouté au module Infrastructure : vous pourrez l'associer aux bandes suivantes sans le ressaisir.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={!nouvelActif.nom.trim() || !(parseFloat(nouvelActif.valeur) > 0) || !imputationValide || createActif.isPending}
+                  onClick={() => createActif.mutate()}
+                >
+                  Créer et associer
+                </Button>
+                <Button size="sm" variant="outline" onClick={reinitialiserFormulairesActif}>Annuler</Button>
+              </div>
+            </div>
+          )}
+          {allocations.length === 0 && !addingActif && !creatingActif ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
               <p>Aucun actif associé à cette bande</p>
-              {!isReadOnly && actifsDisponibles.length === 0 && (
-                <p className="text-xs mt-1">Ajoutez d'abord des actifs dans le module Infrastructure</p>
+              {!isReadOnly && (
+                <p className="text-xs mt-1">
+                  {actifsDisponibles.length === 0
+                    ? "Utilisez « Nouvel actif » pour en créer un directement ici."
+                    : "Associez un actif existant, ou créez-en un nouveau."}
+                </p>
               )}
             </div>
           ) : (
@@ -778,7 +954,9 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-semibold">{formatFCFA(a.amortissement)}</div>
-                    <div className="text-xs text-muted-foreground">{Math.round(a.fractionUtilisee * 100)}% utilisé</div>
+                    <div className="text-xs text-muted-foreground">
+                      {a.montantFixe != null ? "montant fixe" : `${Math.round(a.fractionUtilisee * 100)}% utilisé`}
+                    </div>
                   </div>
                   {!isReadOnly && (
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 shrink-0" onClick={() => removeAllocation.mutate(a.id)}>

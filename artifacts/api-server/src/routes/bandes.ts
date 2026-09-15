@@ -38,6 +38,27 @@ async function assertBandeWritable(bandeId: number, res: any): Promise<boolean> 
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * Montant imputé à une bande pour un actif alloué.
+ * Un montant fixe saisi par l'utilisateur prime sur le calcul par pourcentage ;
+ * sans montant fixe, on garde valeur × fraction utilisée × taux d'amortissement.
+ */
+/** null = mode pourcentage, string = montant fixe à stocker, "invalide" = saisie refusée. */
+function normaliseMontantFixe(valeur: unknown): string | null | "invalide" {
+  if (valeur === undefined || valeur === null || valeur === "") return null;
+  const n = typeof valeur === "number" ? valeur : parseFloat(String(valeur));
+  if (!Number.isFinite(n) || n < 0) return "invalide";
+  return String(n);
+}
+
+function montantAlloue(a: { montantFixe?: string | null; fraction: string; valeur: string; taux: string }): number {
+  if (a.montantFixe !== null && a.montantFixe !== undefined && a.montantFixe !== "") {
+    const fixe = parseFloat(a.montantFixe);
+    if (Number.isFinite(fixe)) return fixe;
+  }
+  return parseFloat(a.valeur) * parseFloat(a.fraction) * (parseFloat(a.taux) / 100);
+}
+
 async function getBandeDetail(id: number) {
   const bandeRows = await db.select().from(bandesTable).where(eq(bandesTable.id, id));
   if (bandeRows.length === 0) return null;
@@ -85,6 +106,7 @@ async function getBandeDetail(id: number) {
   const actifsAllocs = await db
     .select({
       fraction: bandeActifsTable.fractionUtilisee,
+      montantFixe: bandeActifsTable.montantFixe,
       valeur: actifsTable.valeur,
       taux: actifsTable.tauxAmortissementAnnuel,
     })
@@ -92,7 +114,7 @@ async function getBandeDetail(id: number) {
     .innerJoin(actifsTable, eq(bandeActifsTable.actifId, actifsTable.id))
     .where(eq(bandeActifsTable.bandeId, id));
   const totalAmortissementActifs = actifsAllocs.reduce(
-    (s, a) => s + parseFloat(a.valeur) * parseFloat(a.fraction) * (parseFloat(a.taux) / 100),
+    (s, a) => s + montantAlloue(a),
     0,
   );
 
@@ -1223,15 +1245,21 @@ router.get("/:id/actifs", async (req, res) => {
     const taux = parseFloat(actif.tauxAmortissementAnnuel);
     const dateDebut = bandeRow?.dateDeDepart ? new Date(bandeRow.dateDeDepart) : new Date();
     const dureeJours = Math.max(1, Math.floor((Date.now() - dateDebut.getTime()) / (1000 * 60 * 60 * 24)));
-    // Amortissement PAR BANDE = valeur × (taux/100) × fraction utilisée
+    // Amortissement PAR BANDE = montant fixe saisi, sinon valeur × (taux/100) × fraction
     // (taux est désormais "par bande", indépendant de la durée)
     void dureeJours;
-    const amortissement = valeur * fraction * (taux / 100);
+    const amortissement = montantAlloue({
+      montantFixe: a.montantFixe,
+      fraction: a.fractionUtilisee,
+      valeur: actif.valeur,
+      taux: actif.tauxAmortissementAnnuel,
+    });
     return {
       id: a.id,
       actifId: a.actifId,
       bandeId: a.bandeId,
       fractionUtilisee: fraction,
+      montantFixe: a.montantFixe === null ? null : parseFloat(a.montantFixe),
       actif: { ...actif, valeur, tauxAmortissementAnnuel: taux },
       amortissement: Math.round(amortissement),
     };
@@ -1242,12 +1270,15 @@ router.get("/:id/actifs", async (req, res) => {
 router.post("/:id/actifs", async (req, res) => {
   if (!(await requireWriteAccess(req, res))) return;
   const bandeId = parseInt(req.params.id);
-  const { actifId, fractionUtilisee } = req.body;
+  const { actifId, fractionUtilisee, montantFixe } = req.body;
   if (!actifId) return res.status(400).json({ message: "actifId requis" });
+  const fixe = normaliseMontantFixe(montantFixe);
+  if (fixe === "invalide") return res.status(400).json({ message: "Montant fixe invalide (nombre positif attendu)" });
   const rows = await db.insert(bandeActifsTable).values({
     bandeId,
     actifId: parseInt(actifId),
     fractionUtilisee: String(fractionUtilisee ?? 1),
+    montantFixe: fixe,
   }).returning();
   res.status(201).json(rows[0]);
 });
@@ -1255,8 +1286,14 @@ router.post("/:id/actifs", async (req, res) => {
 router.put("/:id/actifs/:allocationId", async (req, res) => {
   if (!(await requireWriteAccess(req, res))) return;
   const allocationId = parseInt(req.params.allocationId);
-  const { fractionUtilisee } = req.body;
-  const rows = await db.update(bandeActifsTable).set({ fractionUtilisee: String(fractionUtilisee) }).where(eq(bandeActifsTable.id, allocationId)).returning();
+  const { fractionUtilisee, montantFixe } = req.body;
+  const fixe = normaliseMontantFixe(montantFixe);
+  if (fixe === "invalide") return res.status(400).json({ message: "Montant fixe invalide (nombre positif attendu)" });
+  // montantFixe absent du corps ⇒ retour au calcul par pourcentage.
+  const rows = await db.update(bandeActifsTable)
+    .set({ fractionUtilisee: String(fractionUtilisee ?? 1), montantFixe: fixe })
+    .where(eq(bandeActifsTable.id, allocationId))
+    .returning();
   if (rows.length === 0) return res.status(404).json({ message: "Allocation introuvable" });
   res.json(rows[0]);
 });

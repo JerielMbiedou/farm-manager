@@ -21,6 +21,9 @@ export const bandeActifsTable = pgTable("bande_actifs", {
   bandeId: integer("bande_id").notNull().references(() => bandesTable.id, { onDelete: "cascade" }),
   actifId: integer("actif_id").notNull().references(() => actifsTable.id, { onDelete: "cascade" }),
   fractionUtilisee: numeric("fraction_utilisee", { precision: 5, scale: 4 }).notNull().default("1"),
+  // Montant imputé directement à la bande pour cet actif. Quand il est renseigné,
+  // il remplace le calcul valeur × fraction × taux (saisie « montant fixe »).
+  montantFixe: numeric("montant_fixe", { precision: 15, scale: 2 }),
 });
 
 export const insertActifSchema = createInsertSchema(actifsTable).omit({ id: true, createdAt: true });
