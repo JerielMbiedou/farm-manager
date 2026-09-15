@@ -210,6 +210,7 @@ export const BandeDepenseCategorie = {
 export interface BandeDepense {
   id: number;
   bandeId: number;
+  date?: string | null;
   designation: string;
   categorie: BandeDepenseCategorie;
   quantite: number;
@@ -236,6 +237,7 @@ export const CreateBandeDepenseBodyCategorie = {
 } as const;
 
 export interface CreateBandeDepenseBody {
+  date?: string | null;
   designation: string;
   categorie: CreateBandeDepenseBodyCategorie;
   quantite: number;

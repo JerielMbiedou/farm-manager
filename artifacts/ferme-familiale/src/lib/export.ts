@@ -340,7 +340,7 @@ export async function generateRapportBande(
   const dateCloture = detail.dateCloture
     ? new Date(detail.dateCloture).toLocaleDateString("fr-FR")
     : (detail.statut === "active" ? "en cours" : "—");
-  doc.text(`Période : ${dateDebut} → ${dateCloture}`, marginX, y);
+  doc.text(`Période : ${dateDebut} – ${dateCloture}`, marginX, y);
   y += 5;
   doc.text(`Statut : ${detail.statut === "active" ? "Active" : "Terminée"}`, marginX, y);
   y += 5;
@@ -633,4 +633,175 @@ export async function generateRapportBande(
   }
 
   doc.save(`rapport_bande_${(detail.nom || "bande").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+// ---------------------------------------------------------------------------
+// Export PDF dédié au tableau « Dépenses de Production » (détail ligne à ligne,
+// avec la date de chaque dépense — contrairement au rapport global qui agrège).
+// ---------------------------------------------------------------------------
+
+const DEPENSE_CAT_LABELS: Record<string, string> = {
+  poussins: "Poussins", aliments: "Aliments", concentre: "Concentré",
+  prophylaxie: "Prophylaxie", medicaments: "Prophylaxie", veterinaire: "Prophylaxie",
+  carburant: "Carburant", salaires: "Salaires", transport: "Transport",
+  main_oeuvre: "Main-d'œuvre", energie: "Énergie", equipement: "Équipement",
+  nettoyage: "Nettoyage", autre: "Autre",
+};
+const DEPENSE_CAT_ORDER = ["poussins", "aliments", "concentre", "prophylaxie", "carburant", "salaires", "transport", "main_oeuvre", "energie", "equipement", "nettoyage", "autre"];
+
+function formatDateFR(d: any): string {
+  if (!d) return "—";
+  const parsed = new Date(d);
+  return isNaN(parsed.getTime()) ? "—" : parsed.toLocaleDateString("fr-FR");
+}
+
+export async function exportDepensesPDF(
+  detail: any,
+  depenses: any[],
+  chargesFixes: Array<{ id: string; designation: string; montant: number }> = [],
+) {
+  await preloadBrand();
+  const brand = getBrandSync();
+  const doc = new jsPDF();
+  const marginX = 14;
+  let y = 18;
+
+  doc.setFontSize(20);
+  doc.setTextColor(34, 87, 47);
+  doc.text(brand.nom, marginX, y);
+  y += 8;
+  doc.setFontSize(15);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`Dépenses de production – ${detail?.nom ?? ""}`, marginX, y);
+  y += 7;
+  doc.setFontSize(10);
+  doc.setTextColor(110, 110, 110);
+  const dateDebut = detail?.dateDeDepart ? formatDateFR(detail.dateDeDepart) : "—";
+  const dateFin = detail?.dateCloture
+    ? formatDateFR(detail.dateCloture)
+    : (detail?.statut === "active" ? "en cours" : "—");
+  doc.text(`Période : ${dateDebut} – ${dateFin}`, marginX, y);
+  y += 5;
+  doc.text(`Document généré le ${new Date().toLocaleDateString("fr-FR")} à ${new Date().toLocaleTimeString("fr-FR")}`, marginX, y);
+  y += 8;
+  doc.setTextColor(0, 0, 0);
+
+  const montantOf = (d: any) => {
+    const m = Number(d.montant);
+    if (!isNaN(m) && m !== 0) return m;
+    return (Number(d.quantite) || 0) * (Number(d.prixUnitaire) || 0);
+  };
+
+  // Regroupement par catégorie, dans le même ordre que le tableau de l'écran.
+  const groups = new Map<string, any[]>();
+  for (const d of depenses) {
+    const cat = d.categorie || "autre";
+    if (!groups.has(cat)) groups.set(cat, []);
+    groups.get(cat)!.push(d);
+  }
+  const cats = [...groups.keys()].sort((a, b) => {
+    const ai = DEPENSE_CAT_ORDER.indexOf(a); const bi = DEPENSE_CAT_ORDER.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  const rows: any[][] = [];
+  let grandTotal = 0;
+  for (const cat of cats) {
+    const items = [...groups.get(cat)!].sort((a, b) => {
+      // Les lignes sans date sont renvoyées en fin de catégorie.
+      const ad = a.date ? new Date(a.date).getTime() : Infinity;
+      const bd = b.date ? new Date(b.date).getTime() : Infinity;
+      if (ad !== bd) return ad - bd;
+      return String(a.designation || "").localeCompare(String(b.designation || ""));
+    });
+    const subtotal = items.reduce((s, d) => s + montantOf(d), 0);
+    grandTotal += subtotal;
+    const label = DEPENSE_CAT_LABELS[cat] || String(cat).replace(/_/g, " ");
+
+    rows.push([{
+      content: `${label}  (${items.length} ${items.length > 1 ? "lignes" : "ligne"})`,
+      colSpan: 5,
+      styles: { fontStyle: "bold", fillColor: [234, 240, 232], textColor: [34, 87, 47] },
+    }]);
+    for (const d of items) {
+      rows.push([
+        formatDateFR(d.date),
+        d.designation || "—",
+        String(Math.round((Number(d.quantite) || 0) * 100) / 100),
+        formatFCFA(Number(d.prixUnitaire) || 0),
+        formatFCFA(montantOf(d)),
+      ]);
+    }
+    rows.push([
+      { content: `Sous-total ${label}`, colSpan: 4, styles: { fontStyle: "bold", fillColor: [243, 243, 243] } },
+      { content: formatFCFA(subtotal), styles: { fontStyle: "bold", fillColor: [243, 243, 243], halign: "right" } },
+    ]);
+  }
+
+  // Les charges fixes (amortissements, imprévus, loyer, charges personnalisées)
+  // ne sont pas saisies ligne à ligne : section en lecture seule, sans date.
+  const chargesFixesTotal = chargesFixes.reduce((s, c) => s + (Number(c.montant) || 0), 0);
+  if (chargesFixes.length > 0) {
+    rows.push([{
+      content: `Charges fixes  (${chargesFixes.length} ${chargesFixes.length > 1 ? "lignes" : "ligne"})`,
+      colSpan: 5,
+      styles: { fontStyle: "bold", fillColor: [237, 237, 240], textColor: [60, 60, 70] },
+    }]);
+    for (const c of chargesFixes) {
+      rows.push(["—", c.designation || "—", "", "", formatFCFA(Number(c.montant) || 0)]);
+    }
+    rows.push([
+      { content: "Sous-total Charges fixes", colSpan: 4, styles: { fontStyle: "bold", fillColor: [243, 243, 243] } },
+      { content: formatFCFA(chargesFixesTotal), styles: { fontStyle: "bold", fillColor: [243, 243, 243], halign: "right" } },
+    ]);
+  }
+
+  const footRows: any[][] = [[
+    { content: "Total dépenses de production", colSpan: 4, styles: { fontStyle: "normal" } },
+    { content: formatFCFA(grandTotal), styles: { halign: "right" } },
+  ]];
+  if (chargesFixes.length > 0) {
+    footRows.push([
+      { content: "+ Charges fixes", colSpan: 4, styles: { fontStyle: "normal" } },
+      { content: formatFCFA(chargesFixesTotal), styles: { halign: "right" } },
+    ]);
+  }
+  footRows.push([
+    { content: chargesFixes.length > 0 ? "COÛT TOTAL" : "TOTAL DÉPENSES", colSpan: 4, styles: { fontStyle: "bold" } },
+    { content: formatFCFA(grandTotal + chargesFixesTotal), styles: { fontStyle: "bold", halign: "right" } },
+  ]);
+
+  if (rows.length === 0) {
+    doc.setFontSize(11);
+    doc.text("Aucune dépense enregistrée pour cette bande.", marginX, y + 4);
+  } else {
+    autoTable(doc, {
+      startY: y,
+      head: [["Date", "Désignation", "Qté", "Prix unit.", "Total"]],
+      body: rows,
+      foot: footRows,
+      // Les totaux n'ont de sens qu'une fois toutes les lignes imprimées.
+      showFoot: "lastPage",
+      theme: "striped",
+      headStyles: { fillColor: [34, 87, 47] },
+      footStyles: { fillColor: [220, 230, 220], textColor: [20, 20, 20] },
+      columnStyles: {
+        0: { cellWidth: 24 },
+        2: { halign: "right", cellWidth: 20 },
+        3: { halign: "right", cellWidth: 30 },
+        4: { halign: "right", cellWidth: 34 },
+      },
+      margin: { left: marginX, right: marginX },
+    });
+  }
+
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`${brand.nom} — Dépenses ${detail?.nom ?? ""} — Page ${i}/${pageCount}`, marginX, 290);
+  }
+
+  doc.save(`depenses_${(detail?.nom || "bande").replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`);
 }

@@ -1279,6 +1279,10 @@ components:
           type: integer
         bandeId:
           type: integer
+        date:
+          type: string
+          format: date
+          nullable: true
         designation:
           type: string
         categorie:
@@ -1302,6 +1306,10 @@ components:
     CreateBandeDepenseBody:
       type: object
       properties:
+        date:
+          type: string
+          format: date
+          nullable: true
         designation:
           type: string
         categorie:

@@ -8,6 +8,7 @@
 import type { CreateBandeDepenseBodyCategorie } from "./createBandeDepenseBodyCategorie";
 
 export interface CreateBandeDepenseBody {
+  date?: Date | null;
   designation: string;
   categorie: CreateBandeDepenseBodyCategorie;
   quantite: number;

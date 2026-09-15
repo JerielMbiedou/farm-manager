@@ -216,6 +216,7 @@ export const ListBandeDepensesParams = zod.object({
 export const ListBandeDepensesResponseItem = zod.object({
   id: zod.number(),
   bandeId: zod.number(),
+  date: zod.coerce.date().nullish(),
   designation: zod.string(),
   categorie: zod.enum([
     "poussins",
@@ -247,6 +248,7 @@ export const CreateBandeDepenseParams = zod.object({
 });
 
 export const CreateBandeDepenseBody = zod.object({
+  date: zod.coerce.date().nullish(),
   designation: zod.string(),
   categorie: zod.enum([
     "poussins",
@@ -275,6 +277,7 @@ export const UpdateBandeDepenseParams = zod.object({
 });
 
 export const UpdateBandeDepenseBody = zod.object({
+  date: zod.coerce.date().nullish(),
   designation: zod.string(),
   categorie: zod.enum([
     "poussins",
@@ -297,6 +300,7 @@ export const UpdateBandeDepenseBody = zod.object({
 export const UpdateBandeDepenseResponse = zod.object({
   id: zod.number(),
   bandeId: zod.number(),
+  date: zod.coerce.date().nullish(),
   designation: zod.string(),
   categorie: zod.enum([
     "poussins",

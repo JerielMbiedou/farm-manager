@@ -69,7 +69,7 @@ import { Link } from "wouter";
 import { BandeDetail } from "@workspace/api-client-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, PieChart, Pie, Cell, ComposedChart, Area } from "recharts";
 import { CreateBandeDepenseBodyCategorie } from "@workspace/api-client-react";
-import { exportBandePDF, exportBandeExcel, generateRapportBande } from "@/lib/export";
+import { exportBandePDF, exportBandeExcel, generateRapportBande, exportDepensesPDF } from "@/lib/export";
 import { useConsommationEau, useCreateConsommationEau, useDeleteConsommationEau, useTraitements, useCreateTraitement, useDeleteTraitement, useObservations, useCreateObservation, useDeleteObservation, useReferencePoids } from "@/lib/bande-extras-api";
 import ScanFiche from "@/components/scan-fiche";
 import DesignationCombobox, { type DesignationSuggestion } from "@/components/designation-combobox";
@@ -224,16 +224,30 @@ const PROD_CAT_COLORS: Record<string, string> = {
   autre: "bg-gray-100 text-gray-800 border-gray-200",
 };
 
+export type ChargeFixeLigne = { id: string; designation: string; montant: number };
+
+function formatDateCourte(d?: string | null): string {
+  if (!d) return "—";
+  const parsed = new Date(d);
+  return isNaN(parsed.getTime()) ? "—" : format(parsed, "dd/MM/yyyy");
+}
+
 function DepensesGroupedTable({
   items,
   isReadOnly,
   onEdit,
   onDelete,
+  onExportPDF,
+  chargesFixes = [],
+  onVoirCharges,
 }: {
-  items: Array<{ id: number; designation: string; categorie: string; quantite: number; prixUnitaire: number; montant: number }>;
+  items: Array<{ id: number; date?: string | null; designation: string; categorie: string; quantite: number; prixUnitaire: number; montant: number }>;
   isReadOnly: boolean;
   onEdit: (item: any) => void;
   onDelete: (id: number) => void;
+  onExportPDF?: (items: any[], chargesFixes: ChargeFixeLigne[]) => void;
+  chargesFixes?: ChargeFixeLigne[];
+  onVoirCharges?: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -241,7 +255,9 @@ function DepensesGroupedTable({
   const filtered = useMemo(() => {
     if (!search.trim()) return items;
     const q = search.toLowerCase();
-    return items.filter(i => i.designation.toLowerCase().includes(q));
+    return items.filter(i =>
+      i.designation.toLowerCase().includes(q) || formatDateCourte(i.date).includes(q)
+    );
   }, [items, search]);
 
   const grouped = useMemo(() => {
@@ -251,8 +267,26 @@ function DepensesGroupedTable({
       if (!g[cat]) g[cat] = [];
       g[cat].push(item);
     }
+    // Chronologique dans chaque catégorie ; les lignes sans date passent à la fin.
+    for (const cat of Object.keys(g)) {
+      g[cat]!.sort((a, b) => {
+        const ad = a.date ? new Date(a.date).getTime() : Infinity;
+        const bd = b.date ? new Date(b.date).getTime() : Infinity;
+        return ad - bd;
+      });
+    }
     return g;
   }, [filtered]);
+
+  // Les charges fixes ne sont pas saisies ici (amortissements, imprévus, loyer,
+  // charges personnalisées) : on les affiche en lecture seule pour que le pied
+  // du tableau donne le coût réel de la bande.
+  const chargesFixesFiltrees = useMemo(() => {
+    if (!search.trim()) return chargesFixes;
+    const q = search.toLowerCase();
+    return chargesFixes.filter(c => c.designation.toLowerCase().includes(q));
+  }, [chargesFixes, search]);
+  const chargesFixesTotal = chargesFixesFiltrees.reduce((s, c) => s + (c.montant || 0), 0);
 
   const sortedCats = useMemo(() =>
     Object.keys(grouped).sort((a, b) => {
@@ -261,7 +295,7 @@ function DepensesGroupedTable({
     }), [grouped]);
 
   const filteredTotal = filtered.reduce((s, i) => s + (i.montant || 0), 0);
-  const colCount = isReadOnly ? 5 : 6;
+  const colCount = isReadOnly ? 6 : 7;
 
   return (
     <div className="space-y-0">
@@ -270,7 +304,7 @@ function DepensesGroupedTable({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             className="w-full pl-9 pr-3 py-1.5 text-sm border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-            placeholder="Rechercher une désignation..."
+            placeholder="Rechercher une désignation ou une date..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -278,12 +312,25 @@ function DepensesGroupedTable({
         {search && (
           <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setSearch("")}>Effacer</button>
         )}
+        {onExportPDF && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 ml-auto"
+            disabled={filtered.length === 0 && chargesFixesFiltrees.length === 0}
+            onClick={() => onExportPDF(filtered, chargesFixesFiltrees)}
+            title={search ? "Exporter en PDF les lignes affichées" : "Exporter le tableau en PDF"}
+          >
+            <Download className="h-4 w-4" /> PDF
+          </Button>
+        )}
       </div>
       <div className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
               <TableHead className="w-10"></TableHead>
+              <TableHead className="w-28">Date</TableHead>
               <TableHead>Désignation</TableHead>
               <TableHead className="text-right">Qté</TableHead>
               <TableHead className="text-right">Prix unit.</TableHead>
@@ -292,7 +339,7 @@ function DepensesGroupedTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 ? (
+            {filtered.length === 0 && chargesFixesFiltrees.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={colCount} className="text-center py-10 text-muted-foreground">
                   {search ? "Aucun résultat pour cette recherche" : "Aucune dépense enregistrée"}
@@ -314,7 +361,7 @@ function DepensesGroupedTable({
                       <TableCell className="w-10 px-3">
                         {isCollapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                       </TableCell>
-                      <TableCell colSpan={2} className="font-semibold">
+                      <TableCell colSpan={3} className="font-semibold">
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium ${badgeColor}`}>{label}</span>
                           <span className="text-muted-foreground text-sm font-normal">
@@ -329,6 +376,7 @@ function DepensesGroupedTable({
                     {!isCollapsed && catItems.map(item => (
                       <TableRow key={item.id} className="hover:bg-muted/10">
                         <TableCell></TableCell>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{formatDateCourte(item.date)}</TableCell>
                         <TableCell className="font-medium text-sm">{item.designation}</TableCell>
                         <TableCell className="text-right text-sm">{item.quantite}</TableCell>
                         <TableCell className="text-right text-sm">{formatFCFA(item.prixUnitaire)}</TableCell>
@@ -351,12 +399,71 @@ function DepensesGroupedTable({
                 );
               })
             )}
+            {chargesFixesFiltrees.length > 0 && (() => {
+              const isCollapsed = collapsed["__charges_fixes"];
+              return (
+                <Fragment key="__charges_fixes">
+                  <TableRow
+                    className="bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors"
+                    onClick={() => setCollapsed(prev => ({ ...prev, __charges_fixes: !prev.__charges_fixes }))}
+                  >
+                    <TableCell className="w-10 px-3">
+                      {isCollapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                    </TableCell>
+                    <TableCell colSpan={3} className="font-semibold">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded border text-xs font-medium bg-slate-100 text-slate-700 border-slate-200">Charges fixes</span>
+                        <span className="text-muted-foreground text-sm font-normal">
+                          ({chargesFixesFiltrees.length} {chargesFixesFiltrees.length > 1 ? "lignes" : "ligne"})
+                        </span>
+                        {onVoirCharges && (
+                          <button
+                            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground font-normal"
+                            onClick={e => { e.stopPropagation(); onVoirCharges(); }}
+                          >
+                            gérer dans l'onglet Charges
+                          </button>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground font-medium">Sous-total</TableCell>
+                    <TableCell className="text-right font-semibold">{formatFCFA(chargesFixesTotal)}</TableCell>
+                    {!isReadOnly && <TableCell></TableCell>}
+                  </TableRow>
+                  {!isCollapsed && chargesFixesFiltrees.map(charge => (
+                    <TableRow key={charge.id} className="hover:bg-muted/10">
+                      <TableCell></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">—</TableCell>
+                      <TableCell className="font-medium text-sm">{charge.designation}</TableCell>
+                      <TableCell></TableCell>
+                      <TableCell></TableCell>
+                      <TableCell className="text-right font-medium text-sm">{formatFCFA(charge.montant)}</TableCell>
+                      {!isReadOnly && <TableCell></TableCell>}
+                    </TableRow>
+                  ))}
+                </Fragment>
+              );
+            })()}
           </TableBody>
-          {filtered.length > 0 && (
+          {(filtered.length > 0 || chargesFixesFiltrees.length > 0) && (
             <TableFooter>
+              <TableRow className="bg-transparent hover:bg-transparent">
+                <TableCell colSpan={5} className="font-medium">Total Dépenses</TableCell>
+                <TableCell className="text-right font-medium">{formatFCFA(filteredTotal)}</TableCell>
+                {!isReadOnly && <TableCell></TableCell>}
+              </TableRow>
+              {chargesFixesFiltrees.length > 0 && (
+                <TableRow className="bg-transparent hover:bg-transparent">
+                  <TableCell colSpan={5} className="font-medium text-muted-foreground">+ Charges fixes</TableCell>
+                  <TableCell className="text-right font-medium text-muted-foreground">{formatFCFA(chargesFixesTotal)}</TableCell>
+                  {!isReadOnly && <TableCell></TableCell>}
+                </TableRow>
+              )}
               <TableRow className="bg-primary/5">
-                <TableCell colSpan={4} className="font-bold">Total Dépenses</TableCell>
-                <TableCell className="text-right font-bold text-primary">{formatFCFA(filteredTotal)}</TableCell>
+                <TableCell colSpan={5} className="font-bold">
+                  {chargesFixesFiltrees.length > 0 ? "COÛT TOTAL" : "Total Dépenses"}
+                </TableCell>
+                <TableCell className="text-right font-bold text-primary">{formatFCFA(filteredTotal + chargesFixesTotal)}</TableCell>
                 {!isReadOnly && <TableCell></TableCell>}
               </TableRow>
             </TableFooter>
@@ -1192,6 +1299,33 @@ export default function BandeDetailView() {
   const { data: observationsData } = useObservations(bandeId);
   const { data: referencePoids } = useReferencePoids();
 
+  // Décomposition des charges fixes, dans le même ordre que le calcul serveur
+  // (chargesFixesTotal = dépréciation matériel + imprévus + loyer + charges perso + amortissement actifs).
+  const chargesFixesLignes = useMemo<ChargeFixeLigne[]>(() => {
+    const cf = (chargesFixes || {}) as any;
+    const det = (bande || {}) as any;
+    const lignes: ChargeFixeLigne[] = [];
+    const pousser = (id: string, designation: string, valeur: any) => {
+      const montant = Number(valeur) || 0;
+      if (montant > 0) lignes.push({ id, designation, montant });
+    };
+    // Taux affichés à partir des montants : ils sont paramétrables côté serveur.
+    const taux = (part: any, base: any) => {
+      const p = Number(part), b = Number(base);
+      return b > 0 && p > 0 ? `${Math.round((p / b) * 100)} %` : null;
+    };
+    const tauxMateriel = taux(cf.valeurPerdueMateriel, det.valeurMaterielFixe);
+    const tauxImprevus = taux(cf["imprévus"], det.totalDepenses);
+    pousser("cf-materiel", `Dépréciation matériel fixe${tauxMateriel ? ` (${tauxMateriel})` : ""}`, cf.valeurPerdueMateriel);
+    pousser("cf-actifs", "Amortissement actifs alloués", det.totalAmortissementActifs);
+    pousser("cf-loyer", "Loyer", cf.loyer);
+    pousser("cf-imprevus", `Imprévus${tauxImprevus ? ` (${tauxImprevus} des dépenses)` : ""}`, cf["imprévus"]);
+    for (const c of (det.chargesCustom || [])) {
+      pousser(`cf-custom-${c.id}`, c.designation || "Charge fixe", c.montant);
+    }
+    return lignes;
+  }, [chargesFixes, bande]);
+
   const createDepense = useCreateBandeDepense();
   const updateDepense = useUpdateBandeDepense();
   const deleteDepense = useDeleteBandeDepense();
@@ -1332,6 +1466,9 @@ export default function BandeDetailView() {
 
   const invalidateBandeData = () => {
     queryClient.invalidateQueries({ queryKey: getGetBandeQueryKey(bandeId) });
+    // Les imprévus et la dépréciation matériel sont calculés à partir du total
+    // des dépenses : ce calcul doit être rafraîchi en même temps.
+    queryClient.invalidateQueries({ queryKey: getGetBandeChargesFixeQueryKey(bandeId) });
   };
 
   const onDepenseSubmit = async (values: z.infer<typeof depenseSchema>) => {
@@ -2115,6 +2252,9 @@ export default function BandeDetailView() {
                 isReadOnly={isReadOnly}
                 onEdit={(item) => { setDialogType("depense"); handleEdit(item, 'depense'); }}
                 onDelete={(id) => handleDelete(id, 'depense')}
+                onExportPDF={(rows, charges) => exportDepensesPDF(detail, rows, charges)}
+                chargesFixes={chargesFixesLignes}
+                onVoirCharges={() => setActiveTab("charges")}
               />
             </CardContent>
           </Card>

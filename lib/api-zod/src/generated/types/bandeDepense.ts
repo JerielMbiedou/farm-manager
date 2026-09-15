@@ -10,6 +10,7 @@ import type { BandeDepenseCategorie } from "./bandeDepenseCategorie";
 export interface BandeDepense {
   id: number;
   bandeId: number;
+  date?: Date | null;
   designation: string;
   categorie: BandeDepenseCategorie;
   quantite: number;
