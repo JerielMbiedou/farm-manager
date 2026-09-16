@@ -1934,6 +1934,29 @@ export default function BandeDetailView() {
                 <FormField control={mortaliteForm.control} name="date" render={({ field }) => (
                   <FormItem><FormLabel required>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
+                {(() => {
+                  // Deux lignes pour la même journée s'additionnent dans les cumuls :
+                  // on signale l'entrée existante et on propose de la corriger.
+                  const dateSaisie = mortaliteForm.watch("date");
+                  const existante = mortaliteItems.find(
+                    (m) => String(m.date) === dateSaisie && Number(m.id) !== editingId,
+                  );
+                  if (!existante) return null;
+                  return (
+                    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 space-y-2">
+                      <p className="text-sm text-amber-900">
+                        Un enregistrement existe déjà pour cette date :{" "}
+                        <strong>{String(existante.decesJour)} décès</strong> (J{String(existante.ageJours)}).
+                        Une seconde ligne ne remplace pas la première — les deux s'additionnent dans les cumuls.
+                      </p>
+                      {!editingId && (
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleEditMortalite(existante)}>
+                          <Pencil className="h-3.5 w-3.5 mr-1" /> Modifier cette entrée à la place
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })()}
                 <FormField control={mortaliteForm.control} name="ageJours" render={({ field }) => (
                   <FormItem><FormLabel>Âge (jours)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
