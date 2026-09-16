@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -81,6 +81,34 @@ export default function JournalDuJour({ bande, open, onOpenChange, onSuccess }: 
     },
   });
 
+  // La journée ne doit produire qu'une seule ligne de mortalité : on charge
+  // celle du jour à l'ouverture, on pré-remplit le total et on la met à jour.
+  // Hors-ligne (fetch en échec), on retombe sur une création comme avant.
+  const [entreeDuJour, setEntreeDuJour] = useState<{ id: number; decesJour: number } | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    let annule = false;
+    const base = import.meta.env.BASE_URL || "/";
+    fetch(`${base}api/bandes/${bande.id}/mortalite`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((entries: unknown) => {
+        if (annule) return;
+        const liste = Array.isArray(entries) ? (entries as Array<Record<string, unknown>>) : [];
+        const duJour = liste.find((e) => String(e.date) === today);
+        if (!duJour) { setEntreeDuJour(null); return; }
+        const deces = Number(duJour.decesJour) || 0;
+        setEntreeDuJour({ id: Number(duJour.id), decesJour: deces });
+        // Ne pas écraser une saisie déjà commencée (la réponse peut tarder).
+        if (!form.getFieldState("deces").isDirty) {
+          form.setValue("deces", deces);
+        }
+      })
+      .catch(() => { if (!annule) setEntreeDuJour(null); });
+    return () => { annule = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, bande.id, today]);
+
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     const base = import.meta.env.BASE_URL || "/";
@@ -89,11 +117,14 @@ export default function JournalDuJour({ bande, open, onOpenChange, onSuccess }: 
     const tasks: Promise<{ ok: boolean; queued: boolean }>[] = [];
 
     tasks.push(
-      offlineFetch(`${baseUrl}/mortalite`, {
-        method: "POST",
-        body: { date: today, ageJours, decesJour: values.deces ?? 0 },
-        label: `Mortalité ${bande.nom} J${ageJours}`,
-      })
+      offlineFetch(
+        entreeDuJour ? `${baseUrl}/mortalite/${entreeDuJour.id}` : `${baseUrl}/mortalite`,
+        {
+          method: entreeDuJour ? "PUT" : "POST",
+          body: { date: today, ageJours, decesJour: values.deces ?? 0 },
+          label: `Mortalité ${bande.nom} J${ageJours}`,
+        },
+      )
     );
 
     if (values.alimentKg && values.alimentKg > 0) {
@@ -245,7 +276,11 @@ export default function JournalDuJour({ bande, open, onOpenChange, onSuccess }: 
                       value={field.value ?? 0}
                     />
                   </FormControl>
-                  <FormDescription>Indiquer 0 si aucun décès aujourd'hui.</FormDescription>
+                  <FormDescription>
+                    {entreeDuJour
+                      ? `Déjà enregistré aujourd'hui : ${entreeDuJour.decesJour} décès. Corrigez le total de la journée — l'entrée existante sera mise à jour, pas dupliquée.`
+                      : "Indiquer 0 si aucun décès aujourd'hui."}
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
