@@ -658,6 +658,31 @@ export const CreateBandeMortaliteBody = zod.object({
 });
 
 /**
+ * @summary Modifier une entrée de mortalité
+ */
+export const UpdateBandeMortaliteParams = zod.object({
+  id: zod.coerce.number(),
+  mortaliteId: zod.coerce.number(),
+});
+
+export const UpdateBandeMortaliteBody = zod.object({
+  date: zod.string(),
+  ageJours: zod.number(),
+  decesJour: zod.number(),
+});
+
+export const UpdateBandeMortaliteResponse = zod.object({
+  id: zod.number(),
+  bandeId: zod.number(),
+  date: zod.string(),
+  ageJours: zod.number(),
+  decesJour: zod.number(),
+  decesCumules: zod.number().optional(),
+  tauxMortalite: zod.number().optional(),
+  alerteRouge: zod.boolean().optional(),
+});
+
+/**
  * @summary Supprimer une entrée de mortalité
  */
 export const DeleteBandeMortaliteParams = zod.object({

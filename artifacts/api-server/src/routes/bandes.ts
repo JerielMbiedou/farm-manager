@@ -51,6 +51,22 @@ function normaliseMontantFixe(valeur: unknown): string | null | "invalide" {
   return String(n);
 }
 
+/** Alerte du jour : taux rapporté aux sujets vivants en début de journée. */
+async function calculerAlerteMortalite(
+  bandeId: number,
+  r: { ageJours: number; decesJour: number },
+  totalDeces: number,
+): Promise<{ tauxJour: number; seuilApplicable: number; alerteRouge: boolean }> {
+  const bande = (await db.select().from(bandesTable).where(eq(bandesTable.id, bandeId)))[0];
+  const seuilDemarrage = await getParam("seuil_mortalite_alerte_jour_demarrage", 1);
+  const seuilFinition = await getParam("seuil_mortalite_alerte_jour_finition", 0.5);
+  const decesAvant = totalDeces - r.decesJour;
+  const vivantsDebutJournee = (bande?.sujetsDepart ?? 0) - decesAvant;
+  const tauxJour = vivantsDebutJournee > 0 ? (r.decesJour / vivantsDebutJournee) * 100 : 0;
+  const seuilApplicable = r.ageJours <= 21 ? seuilDemarrage : seuilFinition;
+  return { tauxJour, seuilApplicable, alerteRouge: tauxJour > seuilApplicable };
+}
+
 function montantAlloue(a: { montantFixe?: string | null; fraction: string; valeur: string; taux: string }): number {
   if (a.montantFixe !== null && a.montantFixe !== undefined && a.montantFixe !== "") {
     const fixe = parseFloat(a.montantFixe);
@@ -758,18 +774,39 @@ router.post("/:id/mortalite", validateBody(mortaliteCreateSchema), async (req, r
     return { row: inserted[0], totalDeces: total };
   });
 
-  // Calcule l'alerte pour la nouvelle entrée
-  const bande = (await db.select().from(bandesTable).where(eq(bandesTable.id, bandeId)))[0];
-  const seuilDemarrage = await getParam("seuil_mortalite_alerte_jour_demarrage", 1);
-  const seuilFinition = await getParam("seuil_mortalite_alerte_jour_finition", 0.5);
-  const decesAvant = totalDeces - r.decesJour;
-  const vivantsDebutJournee = (bande?.sujetsDepart ?? 0) - decesAvant;
-  const tauxJour = vivantsDebutJournee > 0 ? (r.decesJour / vivantsDebutJournee) * 100 : 0;
-  const seuilApplicable = r.ageJours <= 21 ? seuilDemarrage : seuilFinition;
-  const alerteRouge = tauxJour > seuilApplicable;
+  const { tauxJour, seuilApplicable, alerteRouge } = await calculerAlerteMortalite(bandeId, r, totalDeces);
 
   await logFromRequest(req, "Ajout mortalité", `${decesJour} décès - Bande ID: ${bandeId}${alerteRouge ? " — ALERTE" : ""}`);
   res.status(201).json({
+    id: r.id, bandeId: r.bandeId, date: r.date, ageJours: r.ageJours, decesJour: r.decesJour,
+    tauxJour: Math.round(tauxJour * 100) / 100, seuilApplicable, alerteRouge,
+  });
+});
+
+router.put("/:id/mortalite/:mortaliteId", validateBody(mortaliteCreateSchema), async (req, res) => {
+  const bandeId = parseInt(String(req.params.id));
+  if (!(await requireWriteAccess(req, res))) return;
+  if (!(await assertBandeWritable(bandeId, res))) return;
+  const mortaliteId = parseInt(String(req.params.mortaliteId));
+  const { date, ageJours, decesJour } = req.body;
+  const { row: r, totalDeces } = await db.transaction(async (tx) => {
+    const updated = await tx.update(mortaliteJournaliereTable)
+      .set({ date, ageJours, decesJour: decesJour ?? 0 })
+      .where(and(eq(mortaliteJournaliereTable.id, mortaliteId), eq(mortaliteJournaliereTable.bandeId, bandeId)))
+      .returning();
+    if (updated.length === 0) return { row: null, totalDeces: 0 };
+    // Le cumul de la bande est recalculé depuis la source de vérité.
+    const sumRows = await tx.select({ total: sql<number>`COALESCE(SUM(${mortaliteJournaliereTable.decesJour}), 0)` }).from(mortaliteJournaliereTable).where(eq(mortaliteJournaliereTable.bandeId, bandeId));
+    const total = Number(sumRows[0]?.total ?? 0);
+    await tx.update(bandesTable).set({ nombreDeces: total }).where(eq(bandesTable.id, bandeId));
+    return { row: updated[0], totalDeces: total };
+  });
+  if (!r) return res.status(404).json({ message: "Entrée de mortalité introuvable" });
+
+  const { tauxJour, seuilApplicable, alerteRouge } = await calculerAlerteMortalite(bandeId, r, totalDeces);
+
+  await logFromRequest(req, "Modification mortalité", `${decesJour} décès - Bande ID: ${bandeId}${alerteRouge ? " — ALERTE" : ""}`);
+  res.json({
     id: r.id, bandeId: r.bandeId, date: r.date, ageJours: r.ageJours, decesJour: r.decesJour,
     tauxJour: Math.round(tauxJour * 100) / 100, seuilApplicable, alerteRouge,
   });

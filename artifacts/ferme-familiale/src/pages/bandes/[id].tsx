@@ -18,6 +18,7 @@ import {
   useDeleteBandeDepenseVente,
   useGetBandeMortalite,
   useCreateBandeMortalite,
+  useUpdateBandeMortalite,
   useDeleteBandeMortalite,
   useGetBandePesees,
   useCreateBandePesee,
@@ -1516,6 +1517,7 @@ export default function BandeDetailView() {
   const updateDepenseVente = useUpdateBandeDepenseVente();
   const deleteDepenseVente = useDeleteBandeDepenseVente();
   const createMortalite = useCreateBandeMortalite();
+  const updateMortalite = useUpdateBandeMortalite();
   const deleteMortalite = useDeleteBandeMortalite();
   const createPesee = useCreateBandePesee();
   const deletePesee = useDeleteBandePesee();
@@ -1697,10 +1699,11 @@ export default function BandeDetailView() {
 
   const onMortaliteSubmit = async (values: z.infer<typeof mortaliteSchema>) => {
     try {
-      await createMortalite.mutateAsync({ id: bandeId, data: values });
+      if (editingId) await updateMortalite.mutateAsync({ id: bandeId, mortaliteId: editingId, data: values });
+      else await createMortalite.mutateAsync({ id: bandeId, data: values });
       queryClient.invalidateQueries({ queryKey: getGetBandeMortaliteQueryKey(bandeId) });
       invalidateBandeData();
-      toast({ title: "Mortalité enregistrée" });
+      toast({ title: editingId ? "Mortalité modifiée" : "Mortalité enregistrée" });
       setIsDialogOpen(false);
       resetForms();
     } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
@@ -1783,6 +1786,16 @@ export default function BandeDetailView() {
     } else if (type === 'depenseVente') {
       depenseVenteForm.reset({ designation: item.designation, montant: item.montant });
     }
+    setIsDialogOpen(true);
+  };
+
+  const handleEditMortalite = (m: Record<string, unknown>) => {
+    resetForms();
+    setDialogType("mortalite");
+    setEditingId(m.id as number);
+    const brut = typeof m.date === "string" ? m.date : "";
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(brut) ? brut : new Date().toISOString().split("T")[0];
+    mortaliteForm.reset({ date, ageJours: Number(m.ageJours) || 1, decesJour: Number(m.decesJour) || 0 });
     setIsDialogOpen(true);
   };
 
@@ -1902,7 +1915,7 @@ export default function BandeDetailView() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {dialogType === "mortalite" && "Ajouter une entrée de mortalité"}
+              {dialogType === "mortalite" && (editingId ? "Modifier l'entrée de mortalité" : "Ajouter une entrée de mortalité")}
               {dialogType === "pesee" && "Ajouter une pesée"}
               {dialogType === "consommation" && "Ajouter consommation aliment"}
               {dialogType === "vaccin" && "Ajouter un vaccin"}
@@ -2548,7 +2561,7 @@ export default function BandeDetailView() {
                       <TableHead className="text-right cursor-pointer select-none" onClick={() => mortaliteSorted.toggleSort("decesJour")}>Décès <span className="text-xs text-muted-foreground">{mortaliteSorted.sortIcon("decesJour")}</span></TableHead>
                       <TableHead className="text-right cursor-pointer select-none" onClick={() => mortaliteSorted.toggleSort("decesCumules")}>Cumulés <span className="text-xs text-muted-foreground">{mortaliteSorted.sortIcon("decesCumules")}</span></TableHead>
                       <TableHead className="text-right cursor-pointer select-none" onClick={() => mortaliteSorted.toggleSort("tauxMortalite")}>Taux % <span className="text-xs text-muted-foreground">{mortaliteSorted.sortIcon("tauxMortalite")}</span></TableHead>
-                      {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
+                      {!isReadOnly && <TableHead className="text-right w-24">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -2567,7 +2580,11 @@ export default function BandeDetailView() {
                           </TableCell>
                           {!isReadOnly && (
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
+                              <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="Modifier cette entrée" onClick={() => handleEditMortalite(m)}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Supprimer cette entrée" onClick={async () => {
                                 if (await confirmAction({
                                   title: "Supprimer cette entrée de mortalité ?",
                                   description: "Le décès enregistré pour cette journée sera retiré du registre. Cette action est irréversible.",
@@ -2581,6 +2598,7 @@ export default function BandeDetailView() {
                                   } catch { /* BLOC A3 — toast global affiché par MutationCache */ }
                                 }
                               }}><Trash2 className="h-4 w-4" /></Button>
+                              </div>
                             </TableCell>
                           )}
                         </TableRow>

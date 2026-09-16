@@ -3069,6 +3069,97 @@ export const useCreateBandeMortalite = <
 };
 
 /**
+ * @summary Modifier une entrée de mortalité
+ */
+export const getUpdateBandeMortaliteUrl = (id: number, mortaliteId: number) => {
+  return `/api/bandes/${id}/mortalite/${mortaliteId}`;
+};
+
+export const updateBandeMortalite = async (
+  id: number,
+  mortaliteId: number,
+  createMortaliteBody: CreateMortaliteBody,
+  options?: RequestInit,
+): Promise<MortaliteEntry> => {
+  return customFetch<MortaliteEntry>(
+    getUpdateBandeMortaliteUrl(id, mortaliteId),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(createMortaliteBody),
+    },
+  );
+};
+
+export const getUpdateBandeMortaliteMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBandeMortalite>>,
+    TError,
+    { id: number; mortaliteId: number; data: BodyType<CreateMortaliteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateBandeMortalite>>,
+  TError,
+  { id: number; mortaliteId: number; data: BodyType<CreateMortaliteBody> },
+  TContext
+> => {
+  const mutationKey = ["updateBandeMortalite"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateBandeMortalite>>,
+    { id: number; mortaliteId: number; data: BodyType<CreateMortaliteBody> }
+  > = (props) => {
+    const { id, mortaliteId, data } = props ?? {};
+
+    return updateBandeMortalite(id, mortaliteId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateBandeMortaliteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateBandeMortalite>>
+>;
+export type UpdateBandeMortaliteMutationBody = BodyType<CreateMortaliteBody>;
+export type UpdateBandeMortaliteMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Modifier une entrée de mortalité
+ */
+export const useUpdateBandeMortalite = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBandeMortalite>>,
+    TError,
+    { id: number; mortaliteId: number; data: BodyType<CreateMortaliteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateBandeMortalite>>,
+  TError,
+  { id: number; mortaliteId: number; data: BodyType<CreateMortaliteBody> },
+  TContext
+> => {
+  return useMutation(getUpdateBandeMortaliteMutationOptions(options));
+};
+
+/**
  * @summary Supprimer une entrée de mortalité
  */
 export const getDeleteBandeMortaliteUrl = (id: number, mortaliteId: number) => {
