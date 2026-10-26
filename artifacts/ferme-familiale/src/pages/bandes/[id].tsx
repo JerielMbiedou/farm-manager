@@ -96,6 +96,7 @@ import { getPhasesSync, preloadBrand, type PhaseConfig } from "@/lib/branding";
 import { legendeLisible } from "@/lib/chart-legende";
 import { SortableHead } from "@/components/sortable-head";
 import { GroupToggle } from "@/components/group-toggle";
+import { useOngletUrl } from "@/lib/onglet-url";
 
 const DEFAULT_PHASES: PhaseConfig[] = [
   { nom: "Demarrage", label: "Démarrage", min: 1, max: 15, color: "#3b82f6" },
@@ -1392,22 +1393,25 @@ function ClotureBandeDialog({ detail, isReopen }: { detail: any; isReopen?: bool
  * Affiché uniquement sur mobile (md:hidden), il remplace les 10 onglets
  * empilés qui débordent sur petit écran.
  */
-const MOBILE_TABS: Array<{ value: string; label: string; icon: typeof Info }> = [
-  { value: "resume", label: "Résumé", icon: Info },
-  { value: "depenses", label: "Dépenses", icon: Receipt },
-  { value: "ventes", label: "Ventes", icon: ShoppingCart },
-  { value: "mortalite", label: "Mortalité", icon: Skull },
-  { value: "pesees", label: "Pesées & IC", icon: Scale },
-  { value: "vaccinations", label: "Vaccins", icon: Syringe },
-  { value: "eau", label: "Eau", icon: Droplets },
-  { value: "traitements", label: "Traitements", icon: Pill },
-  { value: "journal", label: "Journal", icon: BookOpen },
-  { value: "charges", label: "Charges", icon: CheckSquare },
+// Onglets de la fiche bande, dans l'ordre d'usage : le suivi quotidien d'abord,
+// l'argent ensuite. Une seule liste pour la barre (bureau) et la feuille (mobile).
+const ONGLETS_BANDE: Array<{ value: string; label: string; icon: typeof Info; groupe: string }> = [
+  { value: "resume", label: "Résumé", icon: Info, groupe: "" },
+  { value: "mortalite", label: "Mortalité", icon: Skull, groupe: "Suivi quotidien" },
+  { value: "pesees", label: "Pesées & IC", icon: Scale, groupe: "Suivi quotidien" },
+  { value: "eau", label: "Eau", icon: Droplets, groupe: "Suivi quotidien" },
+  { value: "vaccinations", label: "Vaccins", icon: Syringe, groupe: "Suivi quotidien" },
+  { value: "traitements", label: "Traitements", icon: Pill, groupe: "Suivi quotidien" },
+  { value: "journal", label: "Journal", icon: BookOpen, groupe: "Suivi quotidien" },
+  { value: "depenses", label: "Dépenses", icon: Receipt, groupe: "Argent" },
+  { value: "ventes", label: "Ventes", icon: ShoppingCart, groupe: "Argent" },
+  { value: "charges", label: "Charges", icon: CheckSquare, groupe: "Argent" },
 ];
+const debutDeGroupe = (i: number) => i > 0 && ONGLETS_BANDE[i].groupe !== ONGLETS_BANDE[i - 1].groupe;
 
 function MobileTabsSheet({ activeTab, onChange }: { activeTab: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
-  const current = MOBILE_TABS.find(t => t.value === activeTab) || MOBILE_TABS[0];
+  const current = ONGLETS_BANDE.find(t => t.value === activeTab) || ONGLETS_BANDE[0];
   const CurrentIcon = current.icon;
   return (
     <div className="md:hidden mb-4">
@@ -1427,13 +1431,17 @@ function MobileTabsSheet({ activeTab, onChange }: { activeTab: string; onChange:
             <SheetDescription className="sr-only">Choisissez la section à afficher pour cette bande</SheetDescription>
           </SheetHeader>
           <nav className="p-2 flex flex-col gap-1">
-            {MOBILE_TABS.map(tab => {
+            {ONGLETS_BANDE.map((tab, i) => {
               const Icon = tab.icon;
               const active = tab.value === activeTab;
               return (
+                <Fragment key={tab.value}>
+                {debutDeGroupe(i) && (
+                  <p className="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tab.groupe}</p>
+                )}
                 <button
-                  key={tab.value}
                   type="button"
+                  aria-current={active ? "page" : undefined}
                   onClick={() => { onChange(tab.value); setOpen(false); }}
                   className={`flex items-center gap-3 px-3 py-3 rounded-md text-sm text-left transition-colors ${
                     active ? "bg-primary/10 text-primary font-semibold" : "hover:bg-muted text-foreground"
@@ -1442,6 +1450,7 @@ function MobileTabsSheet({ activeTab, onChange }: { activeTab: string; onChange:
                   <Icon className="h-4 w-4 shrink-0" />
                   {tab.label}
                 </button>
+                </Fragment>
               );
             })}
           </nav>
@@ -1540,12 +1549,12 @@ export default function BandeDetailView() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState("resume");
+  const [activeTab, setActiveTab] = useOngletUrl(`/bandes/${bandeId}`, "resume", ONGLETS_BANDE.map(t => t.value));
   // Titre d'onglet : la bande et l'onglet ouvert, pour savoir où l'on se trouve.
   useEffect(() => {
     const nom = (bande as { nom?: string } | undefined)?.nom;
     if (!nom) return;
-    const onglet = MOBILE_TABS.find(t => t.value === activeTab)?.label;
+    const onglet = ONGLETS_BANDE.find(t => t.value === activeTab)?.label;
     setPageTitle(onglet ? `${nom} · ${onglet}` : nom);
   }, [bande, activeTab]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -2259,22 +2268,21 @@ export default function BandeDetailView() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* BLOC A5 — Sheet mobile : navigation par drawer pour les écrans étroits */}
         <MobileTabsSheet activeTab={activeTab} onChange={setActiveTab} />
-        <TabsList className="hidden md:flex flex-wrap w-full bg-muted/50 p-1 mb-6 h-auto gap-1">
-          <TabsTrigger value="resume" className="flex gap-1 text-xs sm:text-sm"><Info className="h-4 w-4" /><span className="hidden sm:inline">Résumé</span></TabsTrigger>
-          <TabsTrigger value="depenses" className="flex gap-1 text-xs sm:text-sm"><Receipt className="h-4 w-4" /><span className="hidden sm:inline">Dépenses</span></TabsTrigger>
-          <TabsTrigger value="ventes" className="flex gap-1 text-xs sm:text-sm"><ShoppingCart className="h-4 w-4" /><span className="hidden sm:inline">Ventes</span></TabsTrigger>
-          <TabsTrigger value="mortalite" className="flex gap-1 text-xs sm:text-sm"><Skull className="h-4 w-4" /><span className="hidden sm:inline">Mortalité</span></TabsTrigger>
-          <TabsTrigger value="pesees" className="flex gap-1 text-xs sm:text-sm"><Scale className="h-4 w-4" /><span className="hidden sm:inline">Pesées & IC</span></TabsTrigger>
-          <TabsTrigger value="vaccinations" className="flex gap-1 text-xs sm:text-sm"><Syringe className="h-4 w-4" /><span className="hidden sm:inline">Vaccins</span></TabsTrigger>
-          <TabsTrigger value="eau" className="flex gap-1 text-xs sm:text-sm"><Droplets className="h-4 w-4" /><span className="hidden sm:inline">Eau</span></TabsTrigger>
-          <TabsTrigger value="traitements" className="flex gap-1 text-xs sm:text-sm"><Pill className="h-4 w-4" /><span className="hidden sm:inline">Traitements</span></TabsTrigger>
-          <TabsTrigger value="journal" className="flex gap-1 text-xs sm:text-sm"><BookOpen className="h-4 w-4" /><span className="hidden sm:inline">Journal</span></TabsTrigger>
-          <TabsTrigger value="charges" className="flex gap-1 text-xs sm:text-sm"><CheckSquare className="h-4 w-4" /><span className="hidden sm:inline">Charges</span></TabsTrigger>
+        <TabsList className="hidden md:flex flex-wrap items-center w-full bg-muted/50 p-1 mb-6 h-auto gap-1">
+          {ONGLETS_BANDE.map((tab, i) => {
+            const Icon = tab.icon;
+            return (
+              <Fragment key={tab.value}>
+                {debutDeGroupe(i) && <span aria-hidden="true" className="mx-1 h-5 w-px bg-border" />}
+                <TabsTrigger value={tab.value} className="flex gap-1 text-xs sm:text-sm"><Icon className="h-4 w-4" /><span>{tab.label}</span></TabsTrigger>
+              </Fragment>
+            );
+          })}
         </TabsList>
 
         <TabsContent value="resume" className="space-y-6">
           <div className="flex justify-end gap-2 flex-wrap">
-            <ScanFiche
+            {!isReadOnly && <ScanFiche
               bandeId={detail.id}
               bandeStartDate={detail.dateDeDepart}
               onDataSaved={() => {
@@ -2286,7 +2294,7 @@ export default function BandeDetailView() {
                 queryClient.invalidateQueries({ queryKey: ["traitements", detail.id] });
                 queryClient.invalidateQueries({ queryKey: ["observations", detail.id] });
               }}
-            />
+            />}
             <Button variant="outline" size="sm" className="gap-2" onClick={() => exportBandePDF(detail, depenses || [], ventes || [], chargesFixes, mortaliteItems, peseesItems, consResp)}>
               <Download className="h-4 w-4" /> PDF
             </Button>

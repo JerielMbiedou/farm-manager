@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { toast } from "@/hooks/use-toast";
@@ -15,7 +15,6 @@ import Financement from "@/pages/financement";
 import Infrastructure from "@/pages/infrastructure";
 import Bandes from "@/pages/bandes/index";
 import BandeDetailView from "@/pages/bandes/[id]";
-import HistoriqueCaisse from "@/pages/historique-caisse";
 import ComparaisonBandes from "@/pages/comparaison-bandes";
 import ActivityLog from "@/pages/activity-log";
 import Utilisateurs from "@/pages/utilisateurs";
@@ -116,7 +115,6 @@ const FinancementRoute = makeProtectedRoute(Financement);
 const InfrastructureRoute = makeProtectedRoute(Infrastructure);
 const BandesRoute = makeProtectedRoute(Bandes);
 const BandeDetailRoute = makeProtectedRoute(BandeDetailView);
-const HistoriqueCaisseRoute = makeProtectedRoute(HistoriqueCaisse);
 const ComparaisonBandesRoute = makeProtectedRoute(ComparaisonBandes);
 const ActivityLogRoute = makeProtectedRoute(ActivityLog);
 const UtilisateursRoute = makeProtectedRoute(Utilisateurs);
@@ -132,18 +130,20 @@ function Router() {
       <Route path="/" component={HomeRoute} />
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={DashboardRoute} />
-      <Route path="/financement" component={FinancementRoute} />
+      <Route path="/financement/:onglet?" component={FinancementRoute} />
       <Route path="/infrastructure" component={InfrastructureRoute} />
+      <Route path="/infrastructure/actifs" component={InfrastructureRoute} />
+      <Route path="/infrastructure/chantiers/:id" component={InfrastructureRoute} />
       <Route path="/bandes" component={BandesRoute} />
-      <Route path="/bandes/:id" component={BandeDetailRoute} />
-      <Route path="/historique-caisse" component={HistoriqueCaisseRoute} />
+      <Route path="/bandes/:id/:onglet?" component={BandeDetailRoute} />
+      <Route path="/historique-caisse"><Redirect to="/tresorerie/historique" replace /></Route>
       <Route path="/comparaison-bandes" component={ComparaisonBandesRoute} />
       <Route path="/activity-log" component={ActivityLogRoute} />
       <Route path="/utilisateurs" component={UtilisateursRoute} />
       <Route path="/parametres" component={ParametresRoute} />
-      <Route path="/stocks" component={StocksRoute} />
+      <Route path="/stocks/:onglet?" component={StocksRoute} />
       <Route path="/simulation" component={SimulationRoute} />
-      <Route path="/tresorerie" component={TresorerieRoute} />
+      <Route path="/tresorerie/:onglet?" component={TresorerieRoute} />
       <Route path="/planification" component={PlanificationRoute} />
       
       <Route component={NotFound} />

@@ -27,7 +27,8 @@ async function fetchHistoriqueCaisse(): Promise<{ entries: CaisseEntry[]; soldeC
   return res.json();
 }
 
-export default function HistoriqueCaisse() {
+/** `enOnglet` : affichée dans Trésorerie › Historique, sans son propre titre de page. */
+export default function HistoriqueCaisse({ enOnglet = false }: { enOnglet?: boolean }) {
   const { data, isLoading } = useQuery({ queryKey: ["historique-caisse"], queryFn: fetchHistoriqueCaisse });
   const [dateFilter, setDateFilter] = useState("");
   const [catFilter, setCatFilter] = useState("all");
@@ -59,10 +60,12 @@ export default function HistoriqueCaisse() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Historique de caisse</h1>
-        <p className="text-muted-foreground mt-1">Journal complet des mouvements financiers</p>
-      </div>
+      {!enOnglet && (
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Historique de caisse</h1>
+          <p className="text-muted-foreground mt-1">Journal complet des mouvements financiers</p>
+        </div>
+      )}
 
       <Card className="border-t-4 border-t-primary shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between pb-2">

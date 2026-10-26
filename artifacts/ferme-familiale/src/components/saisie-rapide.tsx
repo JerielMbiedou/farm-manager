@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useListBandes } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,42 @@ export default function SaisieRapide() {
 
   const activeBandes = ((bandes as any[]) || []).filter((b: any) => b.statut === "active");
 
+  // Une seule entrée de mortalité par jour et par bande : on charge celle du
+  // jour, on pré-remplit le champ et on la met à jour au lieu d'en créer une
+  // seconde. Hors-ligne (fetch en échec), on retombe sur une création.
+  const [mortaliteDuJour, setMortaliteDuJour] = useState<Record<number, { id: number; decesJour: number }>>({});
+  const [rechargement, setRechargement] = useState(0);
+  const idsActifs = activeBandes.map((b: any) => b.id as number).join(",");
+
+  useEffect(() => {
+    if (!idsActifs) return;
+    let annule = false;
+    const base = import.meta.env.BASE_URL || "/";
+    Promise.all(idsActifs.split(",").map(async (id) => {
+      try {
+        const r = await fetch(`${base}api/bandes/${id}/mortalite`, { credentials: "include" });
+        const liste: unknown = r.ok ? await r.json() : [];
+        const duJour = Array.isArray(liste) ? (liste as Array<Record<string, unknown>>).find((e) => String(e.date) === today) : undefined;
+        return duJour ? [Number(id), { id: Number(duJour.id), decesJour: Number(duJour.decesJour) || 0 }] as const : null;
+      } catch { return null; }
+    })).then((resultats) => {
+      if (annule) return;
+      const trouves: Record<number, { id: number; decesJour: number }> = {};
+      for (const r of resultats) if (r) trouves[r[0]] = r[1];
+      setMortaliteDuJour(trouves);
+      // Ne pas écraser une saisie déjà commencée (la réponse peut tarder).
+      setEntries(prev => {
+        const suivant = { ...prev };
+        for (const [id, m] of Object.entries(trouves)) {
+          const e = prev[Number(id)];
+          if (!e?.mortalite) suivant[Number(id)] = { ...(e ?? { alimentKg: "", eauLitres: "", saving: false, saved: false }), mortalite: String(m.decesJour) };
+        }
+        return suivant;
+      });
+    });
+    return () => { annule = true; };
+  }, [idsActifs, today, rechargement]);
+
   function getEntry(id: number): DayEntry {
     return entries[id] ?? { mortalite: "", alimentKg: "", eauLitres: "", saving: false, saved: false };
   }
@@ -39,8 +75,9 @@ export default function SaisieRapide() {
     const todayDate = new Date(today + "T00:00:00");
     const ageJours = Math.floor((todayDate.getTime() - startDate.getTime()) / 86400000) + 1;
 
-    if (!entry.mortalite && !entry.alimentKg && !entry.eauLitres) {
-      toast({ title: "Aucune donnée à enregistrer", variant: "destructive" });
+    const mortaliteInchangee = !entry.mortalite || Number(entry.mortalite) === mortaliteDuJour[bande.id]?.decesJour;
+    if (mortaliteInchangee && !entry.alimentKg && !entry.eauLitres) {
+      toast({ title: entry.mortalite ? "Déjà enregistré pour aujourd'hui" : "Aucune donnée à enregistrer", variant: entry.mortalite ? undefined : "destructive" });
       return;
     }
 
@@ -48,9 +85,10 @@ export default function SaisieRapide() {
     const errors: string[] = [];
     let queuedCount = 0;
 
-    if (entry.mortalite && Number(entry.mortalite) >= 0) {
-      const r = await offlineFetch(`${base}api/bandes/${bande.id}/mortalite`, {
-        method: "POST",
+    const existante = mortaliteDuJour[bande.id];
+    if (entry.mortalite && Number(entry.mortalite) >= 0 && Number(entry.mortalite) !== existante?.decesJour) {
+      const r = await offlineFetch(existante ? `${base}api/bandes/${bande.id}/mortalite/${existante.id}` : `${base}api/bandes/${bande.id}/mortalite`, {
+        method: existante ? "PUT" : "POST",
         body: { date: today, ageJours, decesJour: Number(entry.mortalite) },
         label: `Mortalité ${bande.nom} J${ageJours}`,
       });
@@ -86,6 +124,7 @@ export default function SaisieRapide() {
     } else {
       toast({ title: `Données J${ageJours} enregistrées pour ${bande.nom}` });
       setEntries(prev => ({ ...prev, [bande.id]: { mortalite: "", alimentKg: "", eauLitres: "", saving: false, saved: true } }));
+      setRechargement(n => n + 1);
     }
   }
 

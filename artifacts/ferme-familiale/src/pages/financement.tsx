@@ -22,6 +22,7 @@ import { useSortable } from "@/lib/use-sortable";
 import { DataPagination } from "@/components/data-pagination";
 import { confirmAction } from "@/lib/confirm-dialog";
 import { SortableHead } from "@/components/sortable-head";
+import { useOngletUrl } from "@/lib/onglet-url";
 
 const financementSchema = z.object({
   nom: z.string().min(2, "Le nom est requis"),
@@ -52,6 +53,7 @@ function extractErrorMsg(err: unknown): string {
 }
 
 export default function Financement() {
+  const [onglet, setOnglet] = useOngletUrl("/financement", "investissements", ["investissements", "remboursements", "soldes"] as const);
   const { data: financements, isLoading } = useListFinancements();
   const { data: rembData } = useGetRemboursements();
   const { data: user } = useGetMe();
@@ -182,11 +184,11 @@ export default function Financement() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Financement</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Apports & prêts</h1>
         <p className="text-muted-foreground mt-1">Suivi des apports, prêts et remboursements</p>
       </div>
 
-      <Tabs defaultValue="investissements">
+      <Tabs value={onglet} onValueChange={setOnglet}>
         <TabsList>
           <TabsTrigger value="investissements">Investissements</TabsTrigger>
           <TabsTrigger value="remboursements">Remboursements</TabsTrigger>

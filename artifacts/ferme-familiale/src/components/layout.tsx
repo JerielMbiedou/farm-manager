@@ -1,46 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { 
-  LayoutDashboard, 
-  Wallet, 
-  Bird, 
-  LogOut, 
-  Menu,
-  X,
-  BarChart3,
-  ClipboardList,
-  Users,
-  Settings,
-  Package,
-  Calculator,
-  TrendingUp,
-  CalendarDays,
-  Construction,
-  BookOpen,
-} from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { useGetMe, useLogout, UserRole } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { preloadBrand, getBrandSync } from "@/lib/branding";
 import { OfflineBanner } from "@/components/offline-banner";
 import { setPageTitle } from "@/lib/page-title";
+import { MENU, entreePour } from "@/lib/navigation";
 import logoMbiedou from "@assets/logos/v7_medallion_hen_chicks.png";
-
-const TITRES_PAGES: Record<string, string> = {
-  "/dashboard": "Tableau de bord",
-  "/bandes": "Bandes de poulets",
-  "/tresorerie": "Finances",
-  "/financement": "Financement",
-  "/infrastructure": "Infrastructure",
-  "/stocks": "Stocks",
-  "/comparaison-bandes": "Comparaison des bandes",
-  "/simulation": "Simulation",
-  "/planification": "Planification",
-  "/historique-caisse": "Historique de caisse",
-  "/activity-log": "Journal d'activité",
-  "/utilisateurs": "Utilisateurs",
-  "/parametres": "Paramètres",
-};
 
 // lg de Tailwind : au-delà, la barre latérale est toujours affichée.
 const REQUETE_BUREAU = "(min-width: 1024px)";
@@ -76,7 +44,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // La fiche d'une bande (/bandes/:id) pose son propre titre (nom + onglet).
     if (/^\/bandes\/[^/]+/.test(location)) return;
-    setPageTitle(TITRES_PAGES[location] ?? "");
+    setPageTitle(entreePour(location)?.label ?? "");
   }, [location, fermeNom]);
 
   useEffect(() => {
@@ -113,51 +81,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const role = user.role as UserRole;
   const allRoles: UserRole[] = [UserRole.admin, UserRole.investisseur, UserRole.gestionnaire, UserRole.lecteur];
 
-  type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; roles: UserRole[]; badge?: string };
-  type NavGroup = { label: string; items: NavItem[] };
 
-  const navGroups: NavGroup[] = [
-    {
-      label: "Exploitation",
-      items: [
-        { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, roles: allRoles },
-        { href: "/bandes", label: "Bandes de poulets", icon: Bird, roles: [UserRole.admin, UserRole.gestionnaire, UserRole.lecteur] },
-      ],
-    },
-    {
-      label: "Finances",
-      items: [
-        { href: "/tresorerie", label: "Finances", icon: TrendingUp, roles: [UserRole.admin, UserRole.investisseur, UserRole.lecteur] },
-        { href: "/financement", label: "Financement", icon: Wallet, roles: allRoles },
-      ],
-    },
-    {
-      label: "Infrastructure",
-      items: [
-        { href: "/infrastructure", label: "Infrastructure", icon: Construction, roles: [UserRole.admin, UserRole.gestionnaire] },
-        { href: "/stocks", label: "Stocks", icon: Package, roles: [UserRole.admin, UserRole.gestionnaire] },
-      ],
-    },
-    {
-      label: "Outils",
-      items: [
-        { href: "/comparaison-bandes", label: "Comparaison", icon: BarChart3, roles: [UserRole.admin, UserRole.investisseur, UserRole.lecteur] },
-        { href: "/simulation", label: "Simulation", icon: Calculator, roles: allRoles },
-        { href: "/planification", label: "Planification", icon: CalendarDays, roles: [UserRole.admin, UserRole.gestionnaire] },
-        { href: "/historique-caisse", label: "Historique caisse", icon: BookOpen, roles: [UserRole.admin, UserRole.investisseur, UserRole.lecteur] },
-      ],
-    },
-    {
-      label: "Administration",
-      items: [
-        { href: "/activity-log", label: "Journal d'activite", icon: ClipboardList, roles: [UserRole.admin] },
-        { href: "/utilisateurs", label: "Utilisateurs", icon: Users, roles: [UserRole.admin] },
-        { href: "/parametres", label: "Parametres", icon: Settings, roles: allRoles },
-      ],
-    },
-  ];
-
-  const filteredGroups = navGroups.map(g => ({
+  const filteredGroups = MENU.map(g => ({
     ...g,
     items: g.items.filter(item => item.roles.includes(role)),
   })).filter(g => g.items.length > 0);
@@ -252,11 +177,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       `}>
                         <Icon className="h-[18px] w-[18px] shrink-0" />
                         <span className="text-[0.8125rem] flex-1">{item.label}</span>
-                        {item.badge && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-sidebar-foreground/10 text-sidebar-foreground/50 uppercase font-medium tracking-wide">
-                            {item.badge}
-                          </span>
-                        )}
                       </div>
                     </Link>
                   );

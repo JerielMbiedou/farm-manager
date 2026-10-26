@@ -21,6 +21,7 @@ import { useSortable } from "@/lib/use-sortable";
 import { DataPagination } from "@/components/data-pagination";
 import { confirmAction } from "@/lib/confirm-dialog";
 import { SortableHead } from "@/components/sortable-head";
+import { useOngletUrl } from "@/lib/onglet-url";
 
 const alimentSchema = z.object({
   designation: z.string().min(1, "La désignation est requise"),
@@ -44,6 +45,7 @@ const medicamentSchema = z.object({
 });
 
 export default function Stocks() {
+  const [onglet, setOnglet] = useOngletUrl("/stocks", "aliments", ["aliments", "medicaments"] as const);
   const { data: user } = useGetMe();
   const { data: alimentsData, isLoading: loadingAliments } = useStockAliments();
   const { data: medicamentsData, isLoading: loadingMedicaments } = useStockMedicaments();
@@ -132,7 +134,7 @@ export default function Stocks() {
         <p className="text-muted-foreground mt-1">Suivi des aliments et produits vétérinaires</p>
       </div>
 
-      <Tabs defaultValue="aliments">
+      <Tabs value={onglet} onValueChange={setOnglet}>
         <TabsList>
           <TabsTrigger value="aliments" className="gap-2"><Wheat className="h-4 w-4" /> Aliments</TabsTrigger>
           <TabsTrigger value="medicaments" className="gap-2"><Pill className="h-4 w-4" /> Médicaments / Vaccins</TabsTrigger>

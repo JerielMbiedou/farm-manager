@@ -24,6 +24,7 @@ import { exportConstructionPDF, exportConstructionExcel } from "@/lib/export";
 import { matchesText, downloadCSV, safeFilenameSlug } from "@/lib/csv";
 import { X } from "lucide-react";
 import { GroupToggle } from "@/components/group-toggle";
+import { useLocation } from "wouter";
 
 const API = "/api";
 
@@ -1114,7 +1115,11 @@ function ActifFormDialog({ actif, onSuccess, trigger }: { actif?: Actif; onSucce
 
 function ChantiersTab() {
   const { data: chantiers = [], isLoading } = useChantiers();
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Chantier ouvert = /infrastructure/chantiers/:id : rechargement, lien et bouton Retour fonctionnent.
+  const [location, navigate] = useLocation();
+  const m = location.match(/^\/infrastructure\/chantiers\/(\d+)/);
+  const selectedId = m ? Number(m[1]) : null;
+  const setSelectedId = (id: number | null) => navigate(id === null ? "/infrastructure" : `/infrastructure/chantiers/${id}`);
   const { toast } = useToast();
   const qc = useQueryClient();
   const deleteChantier = useMutation({
@@ -1397,13 +1402,15 @@ function ActifsTab() {
 }
 
 export default function Infrastructure() {
+  const [location, navigate] = useLocation();
+  const onglet = location.startsWith("/infrastructure/actifs") ? "actifs" : "chantiers";
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Infrastructure</h1>
+        <h1 className="text-2xl font-bold">Chantiers & actifs</h1>
         <p className="text-muted-foreground text-sm mt-1">Suivi des chantiers, budget prévu vs réel, et registre du patrimoine de l'exploitation</p>
       </div>
-      <Tabs defaultValue="chantiers">
+      <Tabs value={onglet} onValueChange={(v) => navigate(v === "actifs" ? "/infrastructure/actifs" : "/infrastructure")}>
         <TabsList>
           <TabsTrigger value="chantiers"><Construction className="h-4 w-4 mr-2" />Chantiers</TabsTrigger>
           <TabsTrigger value="actifs"><Package2 className="h-4 w-4 mr-2" />Actifs & Patrimoine</TabsTrigger>
