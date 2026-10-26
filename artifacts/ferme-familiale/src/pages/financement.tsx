@@ -295,8 +295,8 @@ export default function Financement() {
                         {!isReadOnly && (
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" aria-label={`Modifier le financement de ${item.nom}`} onClick={() => handleEdit(item)}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" aria-label={`Supprimer le financement de ${item.nom}`} className="text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
                             </div>
                           </TableCell>
                         )}
@@ -384,7 +384,7 @@ export default function Financement() {
                       <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{r.commentaire || "-"}</TableCell>
                       {!isReadOnly && (
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteRemb(r.id)}><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" aria-label={`Supprimer le remboursement de ${r.investisseurNom}`} className="text-destructive" onClick={() => handleDeleteRemb(r.id)}><Trash2 className="h-4 w-4" /></Button>
                         </TableCell>
                       )}
                     </TableRow>
@@ -493,8 +493,8 @@ function FinancementsTable({
                   {!isReadOnly && (
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => onEdit(item)}><Pencil className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" aria-label={`Modifier le financement de ${item.nom}`} onClick={() => onEdit(item)}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" aria-label={`Supprimer le financement de ${item.nom}`} className="text-destructive" onClick={() => onDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </TableCell>
                   )}

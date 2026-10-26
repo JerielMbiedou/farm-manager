@@ -23,7 +23,27 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { preloadBrand, getBrandSync } from "@/lib/branding";
 import { OfflineBanner } from "@/components/offline-banner";
+import { setPageTitle } from "@/lib/page-title";
 import logoMbiedou from "@assets/logos/v7_medallion_hen_chicks.png";
+
+const TITRES_PAGES: Record<string, string> = {
+  "/dashboard": "Tableau de bord",
+  "/bandes": "Bandes de poulets",
+  "/tresorerie": "Finances",
+  "/financement": "Financement",
+  "/infrastructure": "Infrastructure",
+  "/stocks": "Stocks",
+  "/comparaison-bandes": "Comparaison des bandes",
+  "/simulation": "Simulation",
+  "/planification": "Planification",
+  "/historique-caisse": "Historique de caisse",
+  "/activity-log": "Journal d'activité",
+  "/utilisateurs": "Utilisateurs",
+  "/parametres": "Paramètres",
+};
+
+// lg de Tailwind : au-delà, la barre latérale est toujours affichée.
+const REQUETE_BUREAU = "(min-width: 1024px)";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -31,6 +51,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const logout = useLogout();
   const { toast } = useToast();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== "undefined" && window.matchMedia(REQUETE_BUREAU).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(REQUETE_BUREAU);
+    const onChange = () => setIsDesktop(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  // Échap referme le menu mobile, comme tout panneau superposé.
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsMobileMenuOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isMobileMenuOpen]);
   // BLOC 2 — nom de la ferme dynamique (chargé depuis /api/parametres)
   const [fermeNom, setFermeNom] = useState<string>(getBrandSync().nom);
   useEffect(() => {
@@ -38,6 +72,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
     preloadBrand().then(() => { if (alive) setFermeNom(getBrandSync().nom); });
     return () => { alive = false; };
   }, []);
+
+  useEffect(() => {
+    // La fiche d'une bande (/bandes/:id) pose son propre titre (nom + onglet).
+    if (/^\/bandes\/[^/]+/.test(location)) return;
+    setPageTitle(TITRES_PAGES[location] ?? "");
+  }, [location, fermeNom]);
 
   useEffect(() => {
     if (!isLoading && !user && location !== "/login" && location !== "/") {
@@ -133,13 +173,33 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex w-full bg-background selection:bg-primary/20">
+      <a
+        href="#contenu"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:shadow-md"
+        onClick={(e) => { e.preventDefault(); document.getElementById("contenu")?.focus(); }}
+      >
+        Aller au contenu
+      </a>
       <div className="lg:hidden fixed top-4 right-4 z-50">
-        <Button variant="outline" size="icon" className="bg-white shadow-md" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+        <Button
+          variant="outline"
+          size="icon"
+          className="bg-white shadow-md"
+          aria-label={isMobileMenuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+          aria-expanded={isMobileMenuOpen}
+          aria-controls="menu-principal"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
           {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
       </div>
 
-      <aside className={`
+      <aside
+        id="menu-principal"
+        // Fermé sur mobile, le menu est seulement glissé hors écran : sans inert,
+        // la touche Tab et les lecteurs d'écran parcouraient ses liens invisibles.
+        inert={!isDesktop && !isMobileMenuOpen}
+        className={`
         fixed inset-y-0 left-0 z-40 w-[260px] bg-sidebar text-sidebar-foreground transform transition-transform duration-300 ease-in-out
         lg:relative lg:translate-x-0 flex flex-col
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
@@ -152,9 +212,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
               className="w-11 h-11 rounded-full object-cover shrink-0 ring-2 ring-sidebar-primary/30"
             />
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-sidebar-primary leading-tight">
+              <p className="text-lg font-bold tracking-tight text-sidebar-primary leading-tight">
                 {fermeNom}
-              </h1>
+              </p>
               <p className="text-[11px] text-sidebar-foreground/50 leading-tight">Gestion avicole</p>
             </div>
           </div>
@@ -183,7 +243,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   const Icon = item.icon;
                   const isActive = location === item.href || location.startsWith(item.href + "/");
                   return (
-                    <Link key={item.href} href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
+                    <Link key={item.href} href={item.href} aria-current={isActive ? "page" : undefined} onClick={() => setIsMobileMenuOpen(false)}>
                       <div className={`
                         flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer
                         ${isActive 
@@ -217,7 +277,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main id="contenu" tabIndex={-1} className="flex-1 flex flex-col min-w-0 overflow-hidden focus:outline-none">
         <OfflineBanner />
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-6xl mx-auto">

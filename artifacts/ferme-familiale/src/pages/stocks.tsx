@@ -216,7 +216,7 @@ export default function Stocks() {
                           <TableCell className="text-muted-foreground">{item.fournisseur || "-"}</TableCell>
                           {!isReadOnly && (
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
+                              <Button variant="ghost" size="icon" aria-label={`Supprimer ${item.designation}`} className="h-8 w-8 text-destructive" onClick={async () => {
                                 if (await confirmAction({
                                   title: "Supprimer ce mouvement ?",
                                   description: "Le mouvement de stock aliment sera retiré du registre.",
@@ -331,7 +331,7 @@ export default function Stocks() {
                           <TableCell className="text-muted-foreground">{item.fournisseur || "-"}</TableCell>
                           {!isReadOnly && (
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
+                              <Button variant="ghost" size="icon" aria-label={`Supprimer ${item.nom}`} className="h-8 w-8 text-destructive" onClick={async () => {
                                 if (await confirmAction({
                                   title: "Supprimer ce mouvement ?",
                                   description: "Le mouvement médicament/vaccin sera retiré du registre.",
@@ -617,7 +617,7 @@ function AlimentsTable({ items, isReadOnly, onDelete }: { items: AlimentRow[]; i
                 <TableCell className="text-muted-foreground">{item.fournisseur || "-"}</TableCell>
                 {!isReadOnly && (
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" aria-label={`Supprimer ${item.designation}`} className="h-8 w-8 text-destructive" onClick={() => onDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
                   </TableCell>
                 )}
               </TableRow>
@@ -683,7 +683,7 @@ function MedicamentsTable({ items, isReadOnly, onDelete }: { items: MedicamentRo
                 <TableCell className="text-muted-foreground">{item.fournisseur || "-"}</TableCell>
                 {!isReadOnly && (
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" aria-label={`Supprimer ${item.nom}`} className="h-8 w-8 text-destructive" onClick={() => onDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
                   </TableCell>
                 )}
               </TableRow>

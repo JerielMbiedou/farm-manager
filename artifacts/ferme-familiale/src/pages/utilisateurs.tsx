@@ -249,7 +249,7 @@ export default function Utilisateurs() {
                     </TableCell>
                     <TableCell className="text-right">
                       {!isCurrentUser && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(u.id, u.nom)}>
+                        <Button variant="ghost" size="icon" aria-label={`Supprimer l'utilisateur ${u.nom}`} className="h-8 w-8 text-destructive" onClick={() => handleDelete(u.id, u.nom)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}

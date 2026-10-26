@@ -253,7 +253,7 @@ export default function Bandes() {
                   {!isReadOnly && user?.role === 'admin' && (
                     <Button 
                       variant="ghost" 
-                      size="icon" 
+                      size="icon" aria-label={`Supprimer la bande ${bande.nom}`} 
                       className="h-8 w-8 text-destructive hover:bg-destructive/10" 
                       onClick={(e) => handleDelete(e, bande.id)}
                     >

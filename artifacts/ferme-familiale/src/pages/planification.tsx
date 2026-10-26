@@ -144,9 +144,9 @@ export default function Planification() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <Button variant="outline" size="icon" onClick={() => setMoisOffset(o => o - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" aria-label="Mois précédent" onClick={() => setMoisOffset(o => o - 1)}><ChevronLeft className="h-4 w-4" /></Button>
           <CardTitle className="text-xl font-serif capitalize">{moisNom}</CardTitle>
-          <Button variant="outline" size="icon" onClick={() => setMoisOffset(o => o + 1)}><ChevronRight className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" aria-label="Mois suivant" onClick={() => setMoisOffset(o => o + 1)}><ChevronRight className="h-4 w-4" /></Button>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-7 gap-1 text-center text-sm">

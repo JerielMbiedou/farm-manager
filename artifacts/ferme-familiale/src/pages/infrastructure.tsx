@@ -433,11 +433,11 @@ function DepenseGroupSection({
             <TableCell>
               <div className="flex justify-end gap-1">
                 <DepenseFormDialog chantierId={chantierId} depense={d} lots={lots} onSuccess={() => {}} trigger={
-                  <Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>
+                  <Button variant="ghost" size="icon" aria-label={`Modifier la dépense ${d.designation}`} className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>
                 } />
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500"><Trash2 className="h-3 w-3" /></Button>
+                    <Button variant="ghost" size="icon" aria-label={`Supprimer la dépense ${d.designation}`} className="h-7 w-7 text-red-500"><Trash2 className="h-3 w-3" /></Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader><AlertDialogTitle>Supprimer cette dépense ?</AlertDialogTitle><AlertDialogDescription>{d.designation} — {formatFCFA(d.prixTotal)}</AlertDialogDescription></AlertDialogHeader>
@@ -716,9 +716,9 @@ function LotTabContent({ lot, chantier, isCloture, onDeleteDepense, onDeleteDevi
                     {!isCloture && (
                       <TableCell>
                         <div className="flex gap-1">
-                          <DevisLigneFormDialog chantierId={chantier.id} ligne={l} onSuccess={() => {}} trigger={<Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>} />
+                          <DevisLigneFormDialog chantierId={chantier.id} ligne={l} onSuccess={() => {}} trigger={<Button variant="ghost" size="icon" aria-label={`Modifier la ligne de budget ${l.poste}`} className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>} />
                           <AlertDialog>
-                            <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-red-500"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
+                            <AlertDialogTrigger asChild><Button variant="ghost" size="icon" aria-label={`Supprimer la ligne de budget ${l.poste}`} className="h-7 w-7 text-red-500"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader><AlertDialogTitle>Supprimer ce poste ?</AlertDialogTitle><AlertDialogDescription>{l.poste}</AlertDialogDescription></AlertDialogHeader>
                               <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={() => onDeleteDevis(l.id)} className="bg-red-600 hover:bg-red-700">Supprimer</AlertDialogAction></AlertDialogFooter>
@@ -941,9 +941,9 @@ function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: ()
                         {!isCloture && (
                           <TableCell>
                             <div className="flex gap-1">
-                              <DevisLigneFormDialog chantierId={chantierId} ligne={l} onSuccess={() => {}} trigger={<Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>} />
+                              <DevisLigneFormDialog chantierId={chantierId} ligne={l} onSuccess={() => {}} trigger={<Button variant="ghost" size="icon" aria-label={`Modifier la ligne de budget ${l.poste}`} className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>} />
                               <AlertDialog>
-                                <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-red-500"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
+                                <AlertDialogTrigger asChild><Button variant="ghost" size="icon" aria-label={`Supprimer la ligne de budget ${l.poste}`} className="h-7 w-7 text-red-500"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader><AlertDialogTitle>Supprimer ce poste ?</AlertDialogTitle><AlertDialogDescription>{l.poste}</AlertDialogDescription></AlertDialogHeader>
                                   <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={() => deleteDevisLigne.mutate(l.id)} className="bg-red-600 hover:bg-red-700">Supprimer</AlertDialogAction></AlertDialogFooter>
@@ -1371,9 +1371,9 @@ function ActifsTab() {
                       <TableCell className="text-right text-sm">{a.type === "terrain" ? "—" : `${a.tauxAmortissementAnnuel}%`}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <ActifFormDialog actif={a} onSuccess={() => {}} trigger={<Button variant="ghost" size="icon" className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>} />
+                          <ActifFormDialog actif={a} onSuccess={() => {}} trigger={<Button variant="ghost" size="icon" aria-label={`Modifier l'actif ${a.nom}`} className="h-7 w-7"><Pencil className="h-3 w-3" /></Button>} />
                           <AlertDialog>
-                            <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-red-500"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
+                            <AlertDialogTrigger asChild><Button variant="ghost" size="icon" aria-label={`Supprimer l'actif ${a.nom}`} className="h-7 w-7 text-red-500"><Trash2 className="h-3 w-3" /></Button></AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader><AlertDialogTitle>Supprimer cet actif ?</AlertDialogTitle><AlertDialogDescription>{a.nom} — {formatFCFA(a.valeur)}</AlertDialogDescription></AlertDialogHeader>
                               <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={() => deleteActif.mutate(a.id)} className="bg-red-600 hover:bg-red-700">Supprimer</AlertDialogAction></AlertDialogFooter>

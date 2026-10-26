@@ -47,7 +47,7 @@ import { getAgeJours } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -71,6 +71,7 @@ import { BandeDetail } from "@workspace/api-client-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, PieChart, Pie, Cell, ComposedChart, Area } from "recharts";
 import { CreateBandeDepenseBodyCategorie } from "@workspace/api-client-react";
 import { exportBandePDF, exportBandeExcel, generateRapportBande, exportDepensesPDF } from "@/lib/export";
+import { setPageTitle } from "@/lib/page-title";
 import { useConsommationEau, useCreateConsommationEau, useDeleteConsommationEau, useTraitements, useCreateTraitement, useDeleteTraitement, useObservations, useCreateObservation, useDeleteObservation, useReferencePoids } from "@/lib/bande-extras-api";
 import ScanFiche from "@/components/scan-fiche";
 import DesignationCombobox, { type DesignationSuggestion } from "@/components/designation-combobox";
@@ -385,10 +386,10 @@ function DepensesGroupedTable({
                         {!isReadOnly && (
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); onEdit(item); }}>
+                              <Button variant="ghost" size="icon" aria-label={`Modifier ${item.designation}`} className="h-8 w-8" onClick={e => { e.stopPropagation(); onEdit(item); }}>
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={e => { e.stopPropagation(); onDelete(item.id); }}>
+                              <Button variant="ghost" size="icon" aria-label={`Supprimer ${item.designation}`} className="h-8 w-8 text-destructive" onClick={e => { e.stopPropagation(); onDelete(item.id); }}>
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -419,7 +420,7 @@ function DepensesGroupedTable({
                         </span>
                         {onVoirCharges && (
                           <button
-                            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground font-normal"
+                            className="inline-flex items-center min-h-11 -my-3.5 px-1 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground font-normal"
                             onClick={e => { e.stopPropagation(); onVoirCharges(); }}
                           >
                             gérer dans l'onglet Charges
@@ -597,10 +598,10 @@ function VentesGroupedTable({
                         {!isReadOnly && (
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={e => { e.stopPropagation(); onEdit(item); }}>
+                              <Button variant="ghost" size="icon" aria-label={`Modifier la vente du ${formatDateCourte(item.date)}`} className="h-8 w-8" onClick={e => { e.stopPropagation(); onEdit(item); }}>
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={e => { e.stopPropagation(); onDelete(item.id); }}>
+                              <Button variant="ghost" size="icon" aria-label={`Supprimer la vente du ${formatDateCourte(item.date)}`} className="h-8 w-8 text-destructive" onClick={e => { e.stopPropagation(); onDelete(item.id); }}>
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
@@ -960,7 +961,7 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
                     </div>
                   </div>
                   {!isReadOnly && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 shrink-0" onClick={() => removeAllocation.mutate(a.id)}>
+                    <Button variant="ghost" size="icon" aria-label={`Retirer ${a.actif.nom} de la bande`} className="h-7 w-7 text-red-500 shrink-0" onClick={() => removeAllocation.mutate(a.id)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   )}
@@ -1189,10 +1190,10 @@ function ChargesFixesCustomCard({ bandeId, isReadOnly }: { bandeId: number; isRe
                   {!isReadOnly && (
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)}>
+                        <Button variant="ghost" size="icon" aria-label={`Modifier ${c.designation}`} className="h-7 w-7" onClick={() => openEdit(c)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => remove(c)}>
+                        <Button variant="ghost" size="icon" aria-label={`Supprimer ${c.designation}`} className="h-7 w-7 text-red-500" onClick={() => remove(c)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -1536,6 +1537,13 @@ export default function BandeDetailView() {
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("resume");
+  // Titre d'onglet : la bande et l'onglet ouvert, pour savoir où l'on se trouve.
+  useEffect(() => {
+    const nom = (bande as { nom?: string } | undefined)?.nom;
+    if (!nom) return;
+    const onglet = MOBILE_TABS.find(t => t.value === activeTab)?.label;
+    setPageTitle(onglet ? `${nom} · ${onglet}` : nom);
+  }, [bande, activeTab]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -1895,8 +1903,8 @@ export default function BandeDetailView() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/bandes">
-          <Button variant="outline" size="icon" className="h-8 w-8"><ArrowLeft className="h-4 w-4" /></Button>
+        <Link href="/bandes" aria-label="Retour aux bandes" className={buttonVariants({ variant: "outline", size: "icon", className: "h-8 w-8" })}>
+          <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
           <div className="flex items-center gap-3">
@@ -2510,8 +2518,8 @@ export default function BandeDetailView() {
                           {!isReadOnly && (
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setDialogType("depenseVente"); handleEdit(item, 'depenseVente'); }}><Pencil className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(item.id, 'depenseVente')}><Trash2 className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" aria-label={`Modifier ${item.designation}`} className="h-8 w-8" onClick={() => { setDialogType("depenseVente"); handleEdit(item, 'depenseVente'); }}><Pencil className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" aria-label={`Supprimer ${item.designation}`} className="h-8 w-8 text-destructive" onClick={() => handleDelete(item.id, 'depenseVente')}><Trash2 className="h-4 w-4" /></Button>
                               </div>
                             </TableCell>
                           )}
@@ -2714,7 +2722,7 @@ export default function BandeDetailView() {
                             </TableCell>
                             {!isReadOnly && (
                               <TableCell className="text-right">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
+                                <Button variant="ghost" size="icon" aria-label={`Supprimer la pesée de J${String(p.ageJours)}`} className="h-8 w-8 text-destructive" onClick={async () => {
                                   if (await confirmAction({
                                     title: "Supprimer cette pesée ?",
                                     description: "Cette mesure de poids sera retirée du suivi de croissance.",
@@ -2813,7 +2821,7 @@ export default function BandeDetailView() {
                               <TableCell className="text-right font-medium">{c.quantiteKg as number} kg</TableCell>
                               {!isReadOnly && (
                                 <TableCell className="text-right">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
+                                  <Button variant="ghost" size="icon" aria-label={`Supprimer la consommation du ${formatDateCourte(c.date as string)}`} className="h-8 w-8 text-destructive" onClick={async () => {
                                     if (await confirmAction({
                                       title: "Supprimer cette consommation ?",
                                       description: "L'enregistrement de consommation d'aliment sera retiré du registre.",
@@ -2964,7 +2972,7 @@ export default function BandeDetailView() {
                           <TableCell className="text-right font-medium">{e.quantiteLitres} L</TableCell>
                           {!isReadOnly && (
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
+                              <Button variant="ghost" size="icon" aria-label={`Supprimer la consommation d'eau de J${String(e.ageJours)}`} className="h-8 w-8 text-destructive" onClick={async () => {
                                 if (await confirmAction({
                                   title: "Supprimer cet enregistrement d'eau ?",
                                   description: "Cette consommation d'eau sera retirée du registre.",
@@ -3027,7 +3035,7 @@ export default function BandeDetailView() {
                           <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">{t.observations || "-"}</TableCell>
                           {!isReadOnly && (
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
+                              <Button variant="ghost" size="icon" aria-label={`Supprimer le traitement ${String(t.produit)} (J${String(t.ageJours)})`} className="h-8 w-8 text-destructive" onClick={async () => {
                                 if (await confirmAction({
                                   title: "Supprimer ce traitement ?",
                                   description: "Le traitement enregistré sera retiré du registre.",
@@ -3081,7 +3089,7 @@ export default function BandeDetailView() {
                         <p className="text-sm">{o.contenu}</p>
                       </div>
                       {!isReadOnly && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={async () => {
+                        <Button variant="ghost" size="icon" aria-label={`Supprimer l'observation de J${String(o.ageJours)}`} className="h-8 w-8 text-destructive shrink-0" onClick={async () => {
                           if (await confirmAction({
                             title: "Supprimer cette observation ?",
                             description: "L'observation sera retirée du registre.",
