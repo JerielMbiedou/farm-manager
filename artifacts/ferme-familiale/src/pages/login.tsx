@@ -4,7 +4,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { UserPlus, Lock, User, ArrowRight } from "lucide-react";
-import { useLogin, useGetMe } from "@workspace/api-client-react";
+import { useLogin } from "@workspace/api-client-react";
+import { useSession } from "@/lib/session";
 import { getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -38,7 +39,7 @@ const registerSchema = z.object({
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const { data: user, isLoading: isUserLoading } = useGetMe();
+  const { user, enCours: isUserLoading } = useSession();
   const loginMutation = useLogin();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -62,8 +63,10 @@ export default function Login() {
 
   async function onSubmit(values: z.infer<typeof loginSchema>) {
     try {
-      await loginMutation.mutateAsync({ data: values });
-      queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      const reponse = await loginMutation.mutateAsync({ data: values });
+      // L'utilisateur est mis en cache tout de suite : la garde du tableau de
+      // bord le voit sans attendre une nouvelle vérification.
+      queryClient.setQueryData(getGetMeQueryKey(), reponse.user);
       toast({ title: "Connexion reussie", description: "Bienvenue dans l'espace de gestion." });
       setLocation("/dashboard");
     } catch {

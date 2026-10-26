@@ -6,7 +6,8 @@ import { toast } from "@/hooks/use-toast";
 import { ConfirmDialogHost } from "@/lib/confirm-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
-import { useGetMe, UserRole } from "@workspace/api-client-react";
+import { UserRole } from "@workspace/api-client-react";
+import { useSession } from "@/lib/session";
 import { roleAutorise } from "@/lib/navigation";
 import { PageReservee } from "@/components/page-reservee";
 
@@ -74,7 +75,7 @@ const queryClient = new QueryClient({
 
 /** QW1 — Si l'utilisateur est déjà authentifié et atterrit sur /, on l'envoie sur /dashboard. */
 function HomeRoute() {
-  const { data: user, isLoading } = useGetMe();
+  const { user, enCours: isLoading } = useSession();
   const [, setLocation] = useLocation();
   useEffect(() => {
     if (!isLoading && user) {
@@ -87,20 +88,20 @@ function HomeRoute() {
 /** Garde d'authentification : renvoie sur / (page de connexion) si l'utilisateur n'est pas authentifié.
  *  Évite les pages blanches quand on tape une URL protégée sans session valide. */
 function Protected({ children }: { children: React.ReactNode }) {
-  const { data: user, isLoading, isError } = useGetMe();
+  const { user, enCours: isLoading } = useSession();
   const [, setLocation] = useLocation();
   useEffect(() => {
-    if (!isLoading && (isError || !user)) {
+    if (!isLoading && !user) {
       setLocation("/");
     }
-  }, [user, isLoading, isError, setLocation]);
+  }, [user, isLoading, setLocation]);
   if (isLoading || !user) return null;
   return <>{children}</>;
 }
 
 /** Garde de rôle : une adresse tapée à la main ne contourne pas le menu. */
 function AccesRole({ children }: { children: React.ReactNode }) {
-  const { data: user } = useGetMe();
+  const { user } = useSession();
   const [location] = useLocation();
   if (!roleAutorise(location, user?.role as UserRole | undefined)) return <PageReservee />;
   return <>{children}</>;

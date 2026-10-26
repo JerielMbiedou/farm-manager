@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { LogOut, Menu, X } from "lucide-react";
-import { useGetMe, useLogout, UserRole } from "@workspace/api-client-react";
+import { useLogout, UserRole } from "@workspace/api-client-react";
+import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { preloadBrand, getBrandSync } from "@/lib/branding";
@@ -15,7 +16,7 @@ const REQUETE_BUREAU = "(min-width: 1024px)";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
-  const { data: user, isLoading } = useGetMe();
+  const { user, enCours: isLoading } = useSession();
   const logout = useLogout();
   const { toast } = useToast();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
