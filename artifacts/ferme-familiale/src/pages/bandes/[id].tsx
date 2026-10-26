@@ -93,6 +93,7 @@ function normalizeStr(s: string): string {
 
 // Phases d'élevage : valeurs par défaut, écrasées par /api/parametres au montage (BLOC 3).
 import { getPhasesSync, preloadBrand, type PhaseConfig } from "@/lib/branding";
+import { legendeLisible } from "@/lib/chart-legende";
 
 const DEFAULT_PHASES: PhaseConfig[] = [
   { nom: "Demarrage", label: "Démarrage", min: 1, max: 15, color: "#3b82f6" },
@@ -307,6 +308,7 @@ function DepensesGroupedTable({
           <input
             className="w-full pl-9 pr-3 py-1.5 text-sm border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary"
             placeholder="Rechercher une désignation ou une date..."
+            aria-label="Rechercher une dépense par désignation ou par date"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -804,8 +806,8 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
       <div className="space-y-2">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Imputation à cette bande</label>
-            <select
+            <label htmlFor="actif-imputation" className="text-xs text-muted-foreground mb-1 block">Imputation à cette bande</label>
+            <select id="actif-imputation"
               className="w-full border rounded-md px-3 py-2 text-sm bg-background"
               value={modeImputation}
               onChange={e => setModeImputation(e.target.value as "pourcentage" | "montant")}
@@ -817,13 +819,13 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
           <div>
             {modeImputation === "pourcentage" ? (
               <>
-                <label className="text-xs text-muted-foreground mb-1 block">Fraction utilisée (%)</label>
-                <Input type="number" min={1} max={100} step={1} value={fraction} onChange={e => setFraction(e.target.value)} />
+                <label htmlFor="actif-fraction" className="text-xs text-muted-foreground mb-1 block">Fraction utilisée (%)</label>
+                <Input id="actif-fraction" type="number" min={1} max={100} step={1} value={fraction} onChange={e => setFraction(e.target.value)} />
               </>
             ) : (
               <>
-                <label className="text-xs text-muted-foreground mb-1 block">Montant pour cette bande (FCFA)</label>
-                <Input type="number" min={0} step={100} value={montantFixe} onChange={e => setMontantFixe(e.target.value)} placeholder="ex. 150000" />
+                <label htmlFor="actif-montant-fixe" className="text-xs text-muted-foreground mb-1 block">Montant pour cette bande (FCFA)</label>
+                <Input id="actif-montant-fixe" type="number" min={0} step={100} value={montantFixe} onChange={e => setMontantFixe(e.target.value)} placeholder="ex. 150000" />
               </>
             )}
           </div>
@@ -865,8 +867,8 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
             <div className="p-4 border rounded-lg bg-muted/20 space-y-3">
               <div className="font-medium text-sm">Associer un actif existant</div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Actif</label>
-                <select
+                <label htmlFor="actif-existant" className="text-xs text-muted-foreground mb-1 block">Actif</label>
+                <select id="actif-existant"
                   className="w-full border rounded-md px-3 py-2 text-sm bg-background"
                   value={selectedActifId}
                   onChange={e => setSelectedActifId(e.target.value)}
@@ -889,12 +891,12 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
               <div className="font-medium text-sm">Nouvel actif</div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
-                  <label className="text-xs text-muted-foreground mb-1 block">Nom</label>
-                  <Input value={nouvelActif.nom} onChange={e => setNouvelActif(v => ({ ...v, nom: e.target.value }))} placeholder="ex. Poulailler principal" />
+                  <label htmlFor="nouvel-actif-nom" className="text-xs text-muted-foreground mb-1 block">Nom</label>
+                  <Input id="nouvel-actif-nom" value={nouvelActif.nom} onChange={e => setNouvelActif(v => ({ ...v, nom: e.target.value }))} placeholder="ex. Poulailler principal" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Type</label>
-                  <select
+                  <label htmlFor="nouvel-actif-type" className="text-xs text-muted-foreground mb-1 block">Type</label>
+                  <select id="nouvel-actif-type"
                     className="w-full border rounded-md px-3 py-2 text-sm bg-background"
                     value={nouvelActif.type}
                     onChange={e => setNouvelActif(v => ({ ...v, type: e.target.value }))}
@@ -905,16 +907,16 @@ function BandeChargesFixesPanel({ bandeId, isReadOnly, chargesFixes, detail }: {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Valeur (FCFA)</label>
-                  <Input type="number" min={0} step={1000} value={nouvelActif.valeur} onChange={e => setNouvelActif(v => ({ ...v, valeur: e.target.value }))} placeholder="ex. 3000000" />
+                  <label htmlFor="nouvel-actif-valeur" className="text-xs text-muted-foreground mb-1 block">Valeur (FCFA)</label>
+                  <Input id="nouvel-actif-valeur" type="number" min={0} step={1000} value={nouvelActif.valeur} onChange={e => setNouvelActif(v => ({ ...v, valeur: e.target.value }))} placeholder="ex. 3000000" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Amortissement par bande (%)</label>
-                  <Input type="number" min={0} max={100} step={1} value={nouvelActif.taux} onChange={e => setNouvelActif(v => ({ ...v, taux: e.target.value }))} />
+                  <label htmlFor="nouvel-actif-taux" className="text-xs text-muted-foreground mb-1 block">Amortissement par bande (%)</label>
+                  <Input id="nouvel-actif-taux" type="number" min={0} max={100} step={1} value={nouvelActif.taux} onChange={e => setNouvelActif(v => ({ ...v, taux: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Date d'acquisition</label>
-                  <Input type="date" value={nouvelActif.dateAcquisition} onChange={e => setNouvelActif(v => ({ ...v, dateAcquisition: e.target.value }))} />
+                  <label htmlFor="nouvel-actif-date" className="text-xs text-muted-foreground mb-1 block">Date d'acquisition</label>
+                  <Input id="nouvel-actif-date" type="date" value={nouvelActif.dateAcquisition} onChange={e => setNouvelActif(v => ({ ...v, dateAcquisition: e.target.value }))} />
                 </div>
               </div>
               {champsImputation(parseFloat(nouvelActif.valeur) || undefined, parseFloat(nouvelActif.taux) || undefined)}
@@ -1219,10 +1221,10 @@ function ChargesFixesCustomCard({ bandeId, isReadOnly }: { bandeId: number; isRe
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1 block">
-                  Désignation<span className="text-red-500 ml-1">*</span>
+                <label htmlFor="charge-designation" className="text-sm font-medium mb-1 block">
+                  Désignation<span className="text-red-600 ml-1">*</span>
                 </label>
-                <DesignationCombobox
+                <DesignationCombobox id="charge-designation"
                   value={designation}
                   onChange={setDesignation}
                   suggestions={CHARGE_FIXE_DESIGNATION_SUGGESTIONS}
@@ -1230,15 +1232,15 @@ function ChargesFixesCustomCard({ bandeId, isReadOnly }: { bandeId: number; isRe
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block">
-                  Montant (FCFA)<span className="text-red-500 ml-1">*</span>
+                <label htmlFor="charge-montant" className="text-sm font-medium mb-1 block">
+                  Montant (FCFA)<span className="text-red-600 ml-1">*</span>
                 </label>
-                <Input type="number" min={1} placeholder="Ex: 45000" value={montant} onChange={e => setMontant(e.target.value)} />
+                <Input id="charge-montant" type="number" min={1} placeholder="Ex: 45000" value={montant} onChange={e => setMontant(e.target.value)} />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block">Catégorie</label>
+                <label htmlFor="charge-categorie" className="text-sm font-medium mb-1 block">Catégorie</label>
                 <Select value={categorie} onValueChange={setCategorie}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="charge-categorie"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {CHARGE_FIXE_CATEGORIES.map(c => (
                       <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
@@ -1247,10 +1249,10 @@ function ChargesFixesCustomCard({ bandeId, isReadOnly }: { bandeId: number; isRe
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block">
+                <label htmlFor="charge-commentaire" className="text-sm font-medium mb-1 block">
                   Commentaire <span className="text-muted-foreground text-xs">(optionnel)</span>
                 </label>
-                <Textarea rows={2} placeholder="Précision sur cette charge…" value={commentaire} onChange={e => setCommentaire(e.target.value)} />
+                <Textarea id="charge-commentaire" rows={2} placeholder="Précision sur cette charge…" value={commentaire} onChange={e => setCommentaire(e.target.value)} />
               </div>
               <Button className="w-full" onClick={submit} disabled={submitting}>
                 {submitting ? "…" : editing ? "Enregistrer" : "Ajouter la charge"}
@@ -1372,8 +1374,8 @@ function ClotureBandeDialog({ detail, isReopen }: { detail: any; isReopen?: bool
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium">Date de clôture</label>
-            <Input type="date" value={dateCloture} onChange={e => setDateCloture(e.target.value)} className="mt-1" />
+            <label htmlFor="cloture-date" className="text-sm font-medium">Date de clôture</label>
+            <Input id="cloture-date" type="date" value={dateCloture} onChange={e => setDateCloture(e.target.value)} className="mt-1" />
           </div>
           <p className="text-xs text-muted-foreground">Une fois clôturée, la bande sera intégrée aux moyennes historiques utilisées par le simulateur.</p>
           <Button onClick={submit} disabled={submitting} className="w-full">Confirmer la clôture</Button>
@@ -2396,7 +2398,7 @@ export default function BandeDetailView() {
                 <Card className={`shadow-sm border-t-4 ${detail.beneficeNet >= 0 ? 'border-t-green-500' : 'border-t-red-500'}`}>
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Bénéfice net</CardTitle></CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold ${detail.beneficeNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatFCFA(detail.beneficeNet)}</div>
+                    <div className={`text-2xl font-bold ${detail.beneficeNet >= 0 ? 'text-green-700' : 'text-red-600'}`}>{formatFCFA(detail.beneficeNet)}</div>
                     <p className="text-xs text-muted-foreground mt-1">Sans charges : {formatFCFA(detail.beneficeNetSansCharges)}</p>
                   </CardContent>
                 </Card>
@@ -2546,7 +2548,7 @@ export default function BandeDetailView() {
                       <YAxis yAxisId="left" />
                       <YAxis yAxisId="right" orientation="right" unit="%" />
                       <Tooltip />
-                      <Legend />
+                      <Legend formatter={legendeLisible} />
                       <Bar yAxisId="left" dataKey="deces" name="Décès / jour" fill="#ef4444" />
                       <Line yAxisId="right" type="monotone" dataKey="taux" name="Taux cumulé %" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
                     </ComposedChart>
@@ -2668,7 +2670,7 @@ export default function BandeDetailView() {
                     <XAxis dataKey="jour" />
                     <YAxis unit="g" />
                     <Tooltip />
-                    <Legend />
+                    <Legend formatter={legendeLisible} />
                     <Line type="monotone" dataKey="poids" name="Poids réel (g)" stroke="#22c55e" strokeWidth={2} dot={{ r: 4 }} connectNulls />
                     <Line type="monotone" dataKey="reference" name="Référence COBB 500 (g)" stroke="#3b82f6" strokeDasharray="5 5" strokeWidth={2} dot={{ r: 3 }} connectNulls />
                   </LineChart>
@@ -2713,11 +2715,11 @@ export default function BandeDetailView() {
                             <TableCell className="text-right text-xs text-muted-foreground">
                               {p.poidsMinG != null && p.poidsMaxG != null ? `${p.poidsMinG} / ${p.poidsMaxG}` : "-"}
                             </TableCell>
-                            <TableCell className={`text-right font-medium text-xs ${cvAlerte ? "text-orange-600" : cv != null ? "text-green-600" : "text-muted-foreground"}`}>
+                            <TableCell className={`text-right font-medium text-xs ${cvAlerte ? "text-orange-700" : cv != null ? "text-green-700" : "text-muted-foreground"}`}>
                               {cv != null ? `${cv} %` : "-"}
                             </TableCell>
                             <TableCell className="text-right text-muted-foreground">{p.objectifPoidsG ? `${p.objectifPoidsG}g` : "-"}</TableCell>
-                            <TableCell className={`text-right font-medium ${p.ecart && (p.ecart as number) < 0 ? "text-orange-600" : "text-green-600"}`}>
+                            <TableCell className={`text-right font-medium ${p.ecart && (p.ecart as number) < 0 ? "text-orange-700" : "text-green-700"}`}>
                               {p.ecart != null ? `${(p.ecart as number) > 0 ? "+" : ""}${p.ecart}g` : "-"}
                             </TableCell>
                             {!isReadOnly && (
@@ -2764,7 +2766,7 @@ export default function BandeDetailView() {
                     <div>
                       <span className="text-muted-foreground text-xs block">IC</span>
                       <span className={`font-bold text-lg ${
-                        consResp.ic ? ((consResp.ic as number) <= 1.8 ? "text-green-700" : (consResp.ic as number) <= 2.2 ? "text-orange-600" : "text-red-600") : ""
+                        consResp.ic ? ((consResp.ic as number) <= 1.8 ? "text-green-700" : (consResp.ic as number) <= 2.2 ? "text-orange-700" : "text-red-600") : ""
                       }`}>
                         {consResp.ic ? (consResp.ic as number).toFixed(2) : "-"}
                       </span>
@@ -2791,7 +2793,7 @@ export default function BandeDetailView() {
                             <div className="text-muted-foreground text-xs">{phase.alimentKg.toFixed(1)} kg aliment</div>
                             <div className="font-bold text-lg">
                               {phase.ic ? (
-                                <span className={phase.ic <= 1.8 ? "text-green-700" : phase.ic <= 2.2 ? "text-orange-600" : "text-red-600"}>
+                                <span className={phase.ic <= 1.8 ? "text-green-700" : phase.ic <= 2.2 ? "text-orange-700" : "text-red-600"}>
                                   {phase.ic}
                                 </span>
                               ) : "-"}
@@ -2886,7 +2888,7 @@ export default function BandeDetailView() {
                             {v.fait === "oui" ? (
                               <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded bg-green-100 text-green-800"><Check className="h-3 w-3" /> Fait</span>
                             ) : v.enRetard ? (
-                              <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded">EN RETARD</span>
+                              <span className="text-xs font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded">EN RETARD</span>
                             ) : (
                               <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">En attente</span>
                             )}
@@ -2923,7 +2925,7 @@ export default function BandeDetailView() {
                     <XAxis dataKey="jour" />
                     <YAxis unit="L" />
                     <Tooltip />
-                    <Legend />
+                    <Legend formatter={legendeLisible} />
                     <Area type="monotone" dataKey="litres" name="Eau (L)" fill="#3b82f6" fillOpacity={0.2} stroke="#3b82f6" strokeWidth={2} />
                   </ComposedChart>
                 </ResponsiveContainer>

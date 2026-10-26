@@ -215,7 +215,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <p className="text-lg font-bold tracking-tight text-sidebar-primary leading-tight">
                 {fermeNom}
               </p>
-              <p className="text-[11px] text-sidebar-foreground/50 leading-tight">Gestion avicole</p>
+              <p className="text-xs text-sidebar-foreground/75 leading-tight">Gestion avicole</p>
             </div>
           </div>
         </div>
@@ -227,7 +227,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="min-w-0">
               <div className="text-sm font-semibold truncate">{user.nom}</div>
-              <div className="text-[11px] text-sidebar-foreground/60">{roleName}</div>
+              <div className="text-xs text-sidebar-foreground/75">{roleName}</div>
             </div>
           </div>
         </div>
@@ -236,7 +236,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {filteredGroups.map((group, gi) => (
             <div key={group.label} className={gi > 0 ? "mt-4" : ""}>
               <div className="px-3 py-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">{group.label}</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/75">{group.label}</span>
               </div>
               <div className="space-y-0.5">
                 {group.items.map((item) => {
@@ -251,7 +251,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                           : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"}
                       `}>
                         <Icon className="h-[18px] w-[18px] shrink-0" />
-                        <span className="text-[13px] flex-1">{item.label}</span>
+                        <span className="text-[0.8125rem] flex-1">{item.label}</span>
                         {item.badge && (
                           <span className="text-[9px] px-1.5 py-0.5 rounded bg-sidebar-foreground/10 text-sidebar-foreground/50 uppercase font-medium tracking-wide">
                             {item.badge}
@@ -268,7 +268,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
         <div className="p-3 mt-auto border-t border-sidebar-accent/50">
           <button 
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground transition-all duration-150 text-[13px]"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground transition-all duration-150 text-[0.8125rem]"
             onClick={handleLogout}
           >
             <LogOut className="h-[18px] w-[18px]" />

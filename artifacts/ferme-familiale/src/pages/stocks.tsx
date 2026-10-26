@@ -150,7 +150,7 @@ export default function Stocks() {
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total entrées</CardTitle></CardHeader>
-              <CardContent><div className="text-2xl font-bold text-green-600">{(alimentsData?.totalEntrees || 0).toFixed(1)} kg</div></CardContent>
+              <CardContent><div className="text-2xl font-bold text-green-700">{(alimentsData?.totalEntrees || 0).toFixed(1)} kg</div></CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total sorties</CardTitle></CardHeader>

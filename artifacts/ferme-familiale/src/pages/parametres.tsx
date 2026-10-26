@@ -274,13 +274,14 @@ export default function Parametres() {
               {grouped[cat].map(p => (
                 <div key={p.cle} className="flex items-start gap-4 p-3 rounded-lg border bg-card hover:bg-accent/30 transition-colors">
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">{p.description}</div>
+                    <div id={`param-${p.cle}`} className="font-medium text-sm">{p.description}</div>
                     <div className="text-xs text-muted-foreground mt-0.5 font-mono">{p.cle}</div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {isAdmin ? (
                       BOOLEAN_TOGGLE_KEYS.has(p.cle) ? (
                         <Switch
+                          aria-labelledby={`param-${p.cle}`}
                           checked={getDisplayValue(p) === "true"}
                           disabled={saving === p.cle}
                           onCheckedChange={async (checked) => {
@@ -312,6 +313,8 @@ export default function Parametres() {
                       <>
                         <div className="relative">
                           <Input
+                            aria-labelledby={`param-${p.cle}`}
+                            aria-describedby={UNIT_LABELS[p.cle] ? `param-unite-${p.cle}` : undefined}
                             className="w-40 text-right pr-12"
                             value={getDisplayValue(p)}
                             onChange={(e) => {
@@ -324,7 +327,7 @@ export default function Parametres() {
                             }}
                           />
                           {UNIT_LABELS[p.cle] && (
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                            <span id={`param-unite-${p.cle}`} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                               {UNIT_LABELS[p.cle]}
                             </span>
                           )}

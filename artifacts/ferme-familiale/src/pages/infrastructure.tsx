@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatFCFA } from "@/lib/format";
 import { format } from "date-fns";
@@ -457,6 +457,7 @@ function GroupedDepensesTable({ items, isCloture, chantierId, chantierName, lots
   items: DepenseItem[]; isCloture: boolean; chantierId: number; chantierName?: string; lots?: LotDetail[]; onDelete: (id: number) => void;
 }) {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const filtreId = useId();
   const [searchQuery, setSearchQuery] = useState("");
   const [dateDebut, setDateDebut] = useState("");
   const [dateFin, setDateFin] = useState("");
@@ -518,6 +519,7 @@ function GroupedDepensesTable({ items, isCloture, chantierId, chantierName, lots
             <Input
               type="text"
               placeholder="Rechercher une désignation..."
+              aria-label="Rechercher une dépense du chantier"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="pl-8 h-9"
@@ -525,12 +527,12 @@ function GroupedDepensesTable({ items, isCloture, chantierId, chantierName, lots
             />
           </div>
           <div className="flex items-center gap-1">
-            <label className="text-xs text-muted-foreground">Du</label>
-            <Input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="h-9 w-[140px]" data-testid="input-date-debut" />
+            <label htmlFor={`${filtreId}-du`} className="text-xs text-muted-foreground">Du</label>
+            <Input id={`${filtreId}-du`} type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} className="h-9 w-[140px]" data-testid="input-date-debut" />
           </div>
           <div className="flex items-center gap-1">
-            <label className="text-xs text-muted-foreground">Au</label>
-            <Input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="h-9 w-[140px]" data-testid="input-date-fin" />
+            <label htmlFor={`${filtreId}-au`} className="text-xs text-muted-foreground">Au</label>
+            <Input id={`${filtreId}-au`} type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} className="h-9 w-[140px]" data-testid="input-date-fin" />
           </div>
           <Select value={filterCategorie} onValueChange={setFilterCategorie}>
             <SelectTrigger className="h-9 w-[170px]" data-testid="select-filter-categorie"><SelectValue placeholder="Catégorie" /></SelectTrigger>
@@ -646,7 +648,7 @@ function LotTabContent({ lot, chantier, isCloture, onDeleteDepense, onDeleteDevi
             </div>
             <div>
               <div className="text-xs text-muted-foreground mb-1">Écart</div>
-              <div className={`font-bold ${ecart > 0 ? "text-red-600" : ecart < 0 ? "text-green-600" : ""}`}>
+              <div className={`font-bold ${ecart > 0 ? "text-red-600" : ecart < 0 ? "text-green-700" : ""}`}>
                 {ecart > 0 ? "+" : ""}{formatFCFA(ecart)}
               </div>
             </div>
@@ -654,7 +656,7 @@ function LotTabContent({ lot, chantier, isCloture, onDeleteDepense, onDeleteDevi
           <Progress value={lot.totalPrevu > 0 ? Math.min(100, (lot.totalReel / lot.totalPrevu) * 100) : 0} className="h-2" />
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>{lot.totalPrevu > 0 ? Math.round((lot.totalReel / lot.totalPrevu) * 100) : 0}% du budget utilisé</span>
-            <span className={ecart > 0 ? "text-red-600" : "text-green-600"}>
+            <span className={ecart > 0 ? "text-red-600" : "text-green-700"}>
               Écart : {ecart > 0 ? "+" : ""}{ecartPct.toFixed(1)}%
             </span>
           </div>
@@ -794,7 +796,7 @@ function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: ()
             <>
               {hasLots && (
                 <Select value={exportScope} onValueChange={setExportScope}>
-                  <SelectTrigger className="h-8 w-[180px] text-xs">
+                  <SelectTrigger aria-label="Périmètre de l'export" className="h-8 w-[180px] text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -846,7 +848,7 @@ function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: ()
         <Card className="border-0 bg-muted/30">
           <CardContent className="pt-4 pb-3">
             <div className="text-xs text-muted-foreground mb-1">Écart global</div>
-            <div className={`text-lg font-bold ${ecart > 0 ? "text-red-600" : ecart < 0 ? "text-green-600" : ""}`}>
+            <div className={`text-lg font-bold ${ecart > 0 ? "text-red-600" : ecart < 0 ? "text-green-700" : ""}`}>
               {ecart > 0 ? "+" : ""}{formatFCFA(ecart)}
             </div>
           </CardContent>
@@ -977,7 +979,7 @@ function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: ()
                     <Progress value={lot.totalPrevu > 0 ? Math.min(100, (lot.totalReel / lot.totalPrevu) * 100) : 0} className="h-1.5" />
                     <div className="flex justify-between text-xs text-muted-foreground mt-1">
                       <span>{lot.totalPrevu > 0 ? Math.round((lot.totalReel / lot.totalPrevu) * 100) : 0}%</span>
-                      <span className={(lot.totalReel - lot.totalPrevu) > 0 ? "text-red-600" : "text-green-600"}>
+                      <span className={(lot.totalReel - lot.totalPrevu) > 0 ? "text-red-600" : "text-green-700"}>
                         Écart : {lot.totalReel - lot.totalPrevu > 0 ? "+" : ""}{formatFCFA(lot.totalReel - lot.totalPrevu)}
                       </span>
                     </div>
@@ -1001,7 +1003,7 @@ function ChantierDetail({ chantierId, onBack }: { chantierId: number; onBack: ()
                   <Progress value={totalPrevu > 0 ? Math.min(100, (totalReel / totalPrevu) * 100) : 0} className="h-2 mb-2" />
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{totalPrevu > 0 ? Math.round((totalReel / totalPrevu) * 100) : 0}% utilisé</span>
-                    <span className={ecart > 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                    <span className={ecart > 0 ? "text-red-600 font-medium" : "text-green-700 font-medium"}>
                       Écart : {ecart > 0 ? "+" : ""}{formatFCFA(ecart)} ({ecartPct > 0 ? "+" : ""}{ecartPct.toFixed(1)}%)
                     </span>
                   </div>
@@ -1148,13 +1150,13 @@ function ChantiersTab() {
           {enCours.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <Clock className="h-4 w-4 text-orange-500" />
+                <Clock className="h-4 w-4 text-orange-700" />
                 <span className="text-sm font-medium text-muted-foreground">En cours</span>
               </div>
               <div className="space-y-2">
                 {enCours.map(c => (
                   <div key={c.id} className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/30 cursor-pointer transition-colors group" onClick={() => setSelectedId(c.id)}>
-                    <Construction className="h-5 w-5 text-orange-500 shrink-0" />
+                    <Construction className="h-5 w-5 text-orange-700 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">{c.nom}</div>
                       {c.description && <div className="text-xs text-muted-foreground truncate">{c.description}</div>}
@@ -1171,13 +1173,13 @@ function ChantiersTab() {
           {clotures.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <CheckCircle2 className="h-4 w-4 text-green-700" />
                 <span className="text-sm font-medium text-muted-foreground">Clôturés</span>
               </div>
               <div className="space-y-2">
                 {clotures.map(c => (
                   <div key={c.id} className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/30 cursor-pointer transition-colors group opacity-75" onClick={() => setSelectedId(c.id)}>
-                    <Lock className="h-5 w-5 text-green-500 shrink-0" />
+                    <Lock className="h-5 w-5 text-green-700 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">{c.nom}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">Coût final : {formatFCFA(c.totalReel)} · Clôturé le {c.dateCloture ? format(new Date(c.dateCloture + "T00:00:00"), "dd/MM/yyyy") : "—"}</div>
@@ -1264,7 +1266,7 @@ function ActifsTab() {
           <div className="flex flex-wrap gap-2 items-end">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input type="text" placeholder="Rechercher un actif..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9" data-testid="input-search-actif" />
+              <Input type="text" aria-label="Rechercher un actif" placeholder="Rechercher un actif..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9" data-testid="input-search-actif" />
             </div>
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="h-9 w-[150px]" data-testid="select-filter-type-actif"><SelectValue /></SelectTrigger>
@@ -1274,12 +1276,12 @@ function ActifsTab() {
               </SelectContent>
             </Select>
             <div className="flex items-center gap-1">
-              <label className="text-xs text-muted-foreground">Acquis depuis</label>
-              <Input type="date" value={acquisDepuis} onChange={e => setAcquisDepuis(e.target.value)} className="h-9 w-[140px]" data-testid="input-acquis-depuis" />
+              <label htmlFor="actifs-acquis-depuis" className="text-xs text-muted-foreground">Acquis depuis</label>
+              <Input id="actifs-acquis-depuis" type="date" value={acquisDepuis} onChange={e => setAcquisDepuis(e.target.value)} className="h-9 w-[140px]" data-testid="input-acquis-depuis" />
             </div>
             <div className="flex items-center gap-1">
-              <label className="text-xs text-muted-foreground">jusqu'à</label>
-              <Input type="date" value={acquisJusqua} onChange={e => setAcquisJusqua(e.target.value)} className="h-9 w-[140px]" data-testid="input-acquis-jusqua" />
+              <label htmlFor="actifs-acquis-jusqua" className="text-xs text-muted-foreground">jusqu'à</label>
+              <Input id="actifs-acquis-jusqua" type="date" value={acquisJusqua} onChange={e => setAcquisJusqua(e.target.value)} className="h-9 w-[140px]" data-testid="input-acquis-jusqua" />
             </div>
             <Select value={filterResiduelle} onValueChange={setFilterResiduelle}>
               <SelectTrigger className="h-9 w-[170px]" data-testid="select-filter-residuelle"><SelectValue /></SelectTrigger>
@@ -1366,7 +1368,7 @@ function ActifsTab() {
                       </TableCell>
                       <TableCell className="text-sm">{format(new Date(a.dateAcquisition + "T00:00:00"), "dd/MM/yyyy")}</TableCell>
                       <TableCell className="text-right font-semibold">{formatFCFA(a.valeur)}</TableCell>
-                      <TableCell className="text-right text-sm text-orange-600">{a.type === "terrain" ? "—" : formatFCFA(a.amortissementCumule ?? 0)}</TableCell>
+                      <TableCell className="text-right text-sm text-orange-700">{a.type === "terrain" ? "—" : formatFCFA(a.amortissementCumule ?? 0)}</TableCell>
                       <TableCell className="text-right font-semibold text-green-700">{a.type === "terrain" ? formatFCFA(a.valeur) : formatFCFA(a.valeurResiduelle ?? a.valeur)}</TableCell>
                       <TableCell className="text-right text-sm">{a.type === "terrain" ? "—" : `${a.tauxAmortissementAnnuel}%`}</TableCell>
                       <TableCell>

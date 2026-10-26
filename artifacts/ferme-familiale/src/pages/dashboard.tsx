@@ -123,7 +123,7 @@ export default function Dashboard() {
           )}
           {alerteSoldeBas && (
             <div className="bg-orange-50 border border-orange-300 text-orange-900 px-4 py-3 rounded-lg flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 shrink-0 text-orange-600" />
+              <AlertTriangle className="h-5 w-5 shrink-0 text-orange-700" />
               <p className="font-medium text-sm">
                 Solde caisse bas : {formatFCFA(summary.caisseDisponible)} (seuil {formatFCFA(seuilSoldeCaisse)}).
               </p>
@@ -142,12 +142,12 @@ export default function Dashboard() {
         <Card className="group hover:shadow-md transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Caisse disponible</CardTitle>
-            <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-              <Receipt className="h-4 w-4 text-accent" />
+            <div className="w-8 h-8 rounded-lg bg-chart-3/10 flex items-center justify-center">
+              <Receipt className="h-4 w-4 text-chart-3" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${alerteSoldeBas ? "text-orange-600" : "text-foreground"}`}>{formatFCFA(summary.caisseDisponible)}</div>
+            <div className={`text-2xl font-bold ${alerteSoldeBas ? "text-orange-700" : "text-foreground"}`}>{formatFCFA(summary.caisseDisponible)}</div>
           </CardContent>
         </Card>
 
@@ -196,7 +196,7 @@ export default function Dashboard() {
           <CardHeader className="pb-3 bg-orange-50/50 border-b border-orange-100">
             <CardTitle className="flex items-center gap-2 text-base">
               <div className="w-7 h-7 rounded-md bg-orange-100 flex items-center justify-center">
-                <Syringe className="h-4 w-4 text-orange-600" />
+                <Syringe className="h-4 w-4 text-orange-700" />
               </div>
               Prochaines vaccinations
             </CardTitle>
@@ -211,7 +211,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-muted-foreground text-xs">{v.datePrevue}</span>
-                    {v.enRetard && <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">EN RETARD</span>}
+                    {v.enRetard && <span className="text-xs font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">EN RETARD</span>}
                     <Button
                       size="sm"
                       variant="outline"
@@ -243,7 +243,7 @@ export default function Dashboard() {
               {bandesActives.length > 0 ? (
                 bandesActives.map((bande) => {
                   const icColor = bande.icStatus === "bon" ? "text-green-700"
-                    : bande.icStatus === "moyen" ? "text-orange-600"
+                    : bande.icStatus === "moyen" ? "text-orange-700"
                     : bande.icStatus === "mauvais" ? "text-red-600"
                     : "text-muted-foreground";
                   return (

@@ -15,6 +15,8 @@ interface DesignationComboboxProps {
   onSelectSuggestion?: (suggestion: DesignationSuggestion) => void;
   suggestions: Array<DesignationSuggestion | string>;
   placeholder?: string;
+  /** Relie le champ à un <label htmlFor> extérieur. */
+  id?: string;
 }
 
 const normalize = (s: string) =>
@@ -23,7 +25,7 @@ const normalize = (s: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-export default function DesignationCombobox({ value, onChange, onSelectSuggestion, suggestions, placeholder }: DesignationComboboxProps) {
+export default function DesignationCombobox({ value, onChange, onSelectSuggestion, suggestions, placeholder, id }: DesignationComboboxProps) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +57,7 @@ export default function DesignationCombobox({ value, onChange, onSelectSuggestio
   return (
     <div ref={wrapperRef} className="relative">
       <Input
+        id={id}
         value={value}
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}

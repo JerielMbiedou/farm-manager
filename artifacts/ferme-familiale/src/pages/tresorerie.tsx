@@ -12,6 +12,7 @@ import {
   Building2, BarChart3, Target, AlertCircle, CheckCircle2, Clock, Bird, BookOpen,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend } from "recharts";
+import { legendeLisible } from "@/lib/chart-legende";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -35,13 +36,13 @@ function StatCard({
 }) {
   const colorMap: Record<string, string> = {
     primary: "bg-primary/10 text-primary",
-    green: "bg-green-100 text-green-700",
+    green: "bg-green-100 text-green-800",
     red: "bg-red-100 text-red-700",
     orange: "bg-orange-100 text-orange-700",
     blue: "bg-blue-100 text-blue-700",
     purple: "bg-purple-100 text-purple-700",
   };
-  const trendColor = trend === "up" ? "text-green-600" : trend === "down" ? "text-red-600" : "text-muted-foreground";
+  const trendColor = trend === "up" ? "text-green-700" : trend === "down" ? "text-red-600" : "text-muted-foreground";
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -65,7 +66,7 @@ function FlowRow({ label, montant, type, sub }: { label: string; montant: number
     <div className={`flex items-center justify-between py-3 px-4 rounded-lg ${isTotal ? "bg-primary/5 border border-primary/20" : "hover:bg-muted/30"}`}>
       <div className="flex items-center gap-3">
         <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${isTotal ? "bg-primary/10" : isEntree ? "bg-green-100" : "bg-red-100"}`}>
-          {isTotal ? <Wallet className="h-3.5 w-3.5 text-primary" /> : isEntree ? <ArrowUpRight className="h-3.5 w-3.5 text-green-600" /> : <ArrowDownRight className="h-3.5 w-3.5 text-red-600" />}
+          {isTotal ? <Wallet className="h-3.5 w-3.5 text-primary" /> : isEntree ? <ArrowUpRight className="h-3.5 w-3.5 text-green-700" /> : <ArrowDownRight className="h-3.5 w-3.5 text-red-600" />}
         </div>
         <div>
           <div className={`text-sm font-medium ${isTotal ? "text-primary font-semibold" : ""}`}>{label}</div>
@@ -164,7 +165,7 @@ export default function Finances() {
             <Card>
               <CardHeader className="pb-3 border-b">
                 <CardTitle className="text-base font-serif flex items-center gap-2">
-                  <ArrowUpRight className="h-5 w-5 text-green-600" />
+                  <ArrowUpRight className="h-5 w-5 text-green-700" />
                   Entrées de trésorerie
                 </CardTitle>
               </CardHeader>
@@ -213,7 +214,7 @@ export default function Finances() {
                 </p>
               </div>
               <div className={`w-16 h-16 rounded-full flex items-center justify-center ${soldePositif ? "bg-green-100" : "bg-red-100"}`}>
-                {soldePositif ? <TrendingUp className="h-8 w-8 text-green-600" /> : <TrendingDown className="h-8 w-8 text-red-600" />}
+                {soldePositif ? <TrendingUp className="h-8 w-8 text-green-700" /> : <TrendingDown className="h-8 w-8 text-red-600" />}
               </div>
             </CardContent>
           </Card>
@@ -233,7 +234,7 @@ export default function Finances() {
                     <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
                     <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
                     <Tooltip formatter={(v: number) => formatFCFA(v)} />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Legend formatter={legendeLisible} wrapperStyle={{ fontSize: 12 }} />
                     <Line type="monotone" dataKey="entrees" name="Entrées" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} />
                     <Line type="monotone" dataKey="sorties" name="Sorties" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
                     <Line type="monotone" dataKey="soldeFinal" name="Solde cumulé" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
@@ -270,7 +271,7 @@ export default function Finances() {
                             {b.beneficeNet >= 0 ? "+" : ""}{formatFCFA(b.beneficeNet)}
                           </TableCell>
                           <TableCell className="text-right">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.statut === "active" ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.statut === "active" ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"}`}>
                               {b.statut === "active" ? "Active" : "Terminée"}
                             </span>
                           </TableCell>
@@ -289,7 +290,7 @@ export default function Finances() {
           <Card>
             <CardHeader className="border-b">
               <CardTitle className="text-base font-serif flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-orange-600" />
+                <Building2 className="h-5 w-5 text-orange-700" />
                 Récupération de l'investissement construction
               </CardTitle>
             </CardHeader>
@@ -405,7 +406,7 @@ export default function Finances() {
                             <div className="flex items-center gap-1.5">
                               {b.statut === "active"
                                 ? <Clock className="h-3.5 w-3.5 text-blue-500" />
-                                : b.beneficeNet >= 0 ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> : <AlertCircle className="h-3.5 w-3.5 text-red-500" />}
+                                : b.beneficeNet >= 0 ? <CheckCircle2 className="h-3.5 w-3.5 text-green-700" /> : <AlertCircle className="h-3.5 w-3.5 text-red-500" />}
                               {b.nom}
                             </div>
                           </TableCell>
@@ -442,7 +443,7 @@ export default function Finances() {
                   <CardContent>
                     {b.hypothese === "pas_de_vente_encore" ? (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                        <AlertCircle className="h-4 w-4 text-orange-500" />
+                        <AlertCircle className="h-4 w-4 text-orange-700" />
                         Aucune vente enregistrée — impossible de projeter un prix de vente. Enregistre une première vente pour activer les projections.
                       </div>
                     ) : (
@@ -529,9 +530,9 @@ function HistoriqueCaisseTab() {
         </div>
       </div>
       <div className="flex gap-3 flex-wrap">
-        <Input type="month" placeholder="Filtrer par mois" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-44" />
+        <Input type="month" aria-label="Filtrer par mois" placeholder="Filtrer par mois" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-44" />
         <Select value={catFilter} onValueChange={setCatFilter}>
-          <SelectTrigger className="w-52"><SelectValue placeholder="Catégorie" /></SelectTrigger>
+          <SelectTrigger aria-label="Filtrer par catégorie" className="w-52"><SelectValue placeholder="Catégorie" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Toutes les catégories</SelectItem>
             {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}

@@ -192,22 +192,22 @@ export default function Simulation() {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-medium">Nombre de sujets</label>
-                  <Input type="number" value={nbSujets} onChange={e => setNbSujets(Number(e.target.value))} />
+                  <label htmlFor="sim-nbSujets" className="text-sm font-medium">Nombre de sujets</label>
+                  <Input id="sim-nbSujets" type="number" value={nbSujets} onChange={e => setNbSujets(Number(e.target.value))} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Durée (jours)</label>
-                  <Input type="number" value={dureeJours} onChange={e => setDureeJours(Number(e.target.value))} />
+                  <label htmlFor="sim-dureeJours" className="text-sm font-medium">Durée (jours)</label>
+                  <Input id="sim-dureeJours" type="number" value={dureeJours} onChange={e => setDureeJours(Number(e.target.value))} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-medium">Prix poussin (FCFA)</label>
-                  <Input type="number" value={prixPoussin} onChange={e => setPrixPoussin(Number(e.target.value))} />
+                  <label htmlFor="sim-prixPoussin" className="text-sm font-medium">Prix poussin (FCFA)</label>
+                  <Input id="sim-prixPoussin" type="number" value={prixPoussin} onChange={e => setPrixPoussin(Number(e.target.value))} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Taux mortalité (%)</label>
-                  <Input type="number" step="0.1" value={tauxMortalite} onChange={e => setTauxMortalite(Number(e.target.value))} />
+                  <label htmlFor="sim-tauxMortalite" className="text-sm font-medium">Taux mortalité (%)</label>
+                  <Input id="sim-tauxMortalite" type="number" step="0.1" value={tauxMortalite} onChange={e => setTauxMortalite(Number(e.target.value))} />
                 </div>
               </div>
             </CardContent>
@@ -225,12 +225,12 @@ export default function Simulation() {
                 <div className="text-sm font-semibold text-green-700">Démarrage (J1-15)</div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground">kg / sujet</label>
-                    <Input type="number" step="0.01" value={alimentDemarrageKg} onChange={e => setAlimentDemarrageKg(Number(e.target.value))} />
+                    <label htmlFor="sim-alimentDemarrageKg" className="text-xs text-muted-foreground">kg / sujet</label>
+                    <Input id="sim-alimentDemarrageKg" aria-label="Démarrage : kg / sujet" type="number" step="0.01" value={alimentDemarrageKg} onChange={e => setAlimentDemarrageKg(Number(e.target.value))} />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">Prix / kg (FCFA)</label>
-                    <Input type="number" value={prixAlimDemarrage} onChange={e => setPrixAlimDemarrage(Number(e.target.value))} />
+                    <label htmlFor="sim-prixAlimDemarrage" className="text-xs text-muted-foreground">Prix / kg (FCFA)</label>
+                    <Input id="sim-prixAlimDemarrage" aria-label="Démarrage : Prix / kg (FCFA)" type="number" value={prixAlimDemarrage} onChange={e => setPrixAlimDemarrage(Number(e.target.value))} />
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -241,12 +241,12 @@ export default function Simulation() {
                 <div className="text-sm font-semibold text-green-700">Croissance (J16-28)</div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground">kg / sujet</label>
-                    <Input type="number" step="0.01" value={alimentCroissanceKg} onChange={e => setAlimentCroissanceKg(Number(e.target.value))} />
+                    <label htmlFor="sim-alimentCroissanceKg" className="text-xs text-muted-foreground">kg / sujet</label>
+                    <Input id="sim-alimentCroissanceKg" aria-label="Croissance : kg / sujet" type="number" step="0.01" value={alimentCroissanceKg} onChange={e => setAlimentCroissanceKg(Number(e.target.value))} />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">Prix / kg (FCFA)</label>
-                    <Input type="number" value={prixAlimCroissance} onChange={e => setPrixAlimCroissance(Number(e.target.value))} />
+                    <label htmlFor="sim-prixAlimCroissance" className="text-xs text-muted-foreground">Prix / kg (FCFA)</label>
+                    <Input id="sim-prixAlimCroissance" aria-label="Croissance : Prix / kg (FCFA)" type="number" value={prixAlimCroissance} onChange={e => setPrixAlimCroissance(Number(e.target.value))} />
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -257,12 +257,12 @@ export default function Simulation() {
                 <div className="text-sm font-semibold text-green-700">Finition (J29+)</div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground">kg / sujet</label>
-                    <Input type="number" step="0.01" value={alimentFinitionKg} onChange={e => setAlimentFinitionKg(Number(e.target.value))} />
+                    <label htmlFor="sim-alimentFinitionKg" className="text-xs text-muted-foreground">kg / sujet</label>
+                    <Input id="sim-alimentFinitionKg" aria-label="Finition : kg / sujet" type="number" step="0.01" value={alimentFinitionKg} onChange={e => setAlimentFinitionKg(Number(e.target.value))} />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">Prix / kg (FCFA)</label>
-                    <Input type="number" value={prixAlimFinition} onChange={e => setPrixAlimFinition(Number(e.target.value))} />
+                    <label htmlFor="sim-prixAlimFinition" className="text-xs text-muted-foreground">Prix / kg (FCFA)</label>
+                    <Input id="sim-prixAlimFinition" aria-label="Finition : Prix / kg (FCFA)" type="number" value={prixAlimFinition} onChange={e => setPrixAlimFinition(Number(e.target.value))} />
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -285,16 +285,16 @@ export default function Simulation() {
             <CardContent>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground">Démarrage (L/sujet)</label>
-                  <Input type="number" step="0.1" value={eauDemarrageL} onChange={e => setEauDemarrageL(Number(e.target.value))} />
+                  <label htmlFor="sim-eauDemarrageL" className="text-xs text-muted-foreground">Démarrage (L/sujet)</label>
+                  <Input id="sim-eauDemarrageL" type="number" step="0.1" value={eauDemarrageL} onChange={e => setEauDemarrageL(Number(e.target.value))} />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Croissance (L/sujet)</label>
-                  <Input type="number" step="0.1" value={eauCroissanceL} onChange={e => setEauCroissanceL(Number(e.target.value))} />
+                  <label htmlFor="sim-eauCroissanceL" className="text-xs text-muted-foreground">Croissance (L/sujet)</label>
+                  <Input id="sim-eauCroissanceL" type="number" step="0.1" value={eauCroissanceL} onChange={e => setEauCroissanceL(Number(e.target.value))} />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Finition (L/sujet)</label>
-                  <Input type="number" step="0.1" value={eauFinitionL} onChange={e => setEauFinitionL(Number(e.target.value))} />
+                  <label htmlFor="sim-eauFinitionL" className="text-xs text-muted-foreground">Finition (L/sujet)</label>
+                  <Input id="sim-eauFinitionL" type="number" step="0.1" value={eauFinitionL} onChange={e => setEauFinitionL(Number(e.target.value))} />
                 </div>
               </div>
               <div className="mt-2 text-xs text-muted-foreground">
@@ -308,32 +308,32 @@ export default function Simulation() {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-medium">Coût prophylaxie / sujet</label>
-                  <Input type="number" value={coutVeterinaire} onChange={e => setCoutVeterinaire(Number(e.target.value))} />
+                  <label htmlFor="sim-coutVeterinaire" className="text-sm font-medium">Coût prophylaxie / sujet</label>
+                  <Input id="sim-coutVeterinaire" type="number" value={coutVeterinaire} onChange={e => setCoutVeterinaire(Number(e.target.value))} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Main-d'oeuvre totale</label>
-                  <Input type="number" value={coutMainOeuvre} onChange={e => setCoutMainOeuvre(Number(e.target.value))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium">Transport</label>
-                  <Input type="number" value={coutTransport} onChange={e => setCoutTransport(Number(e.target.value))} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Autres dépenses</label>
-                  <Input type="number" value={autresDepenses} onChange={e => setAutresDepenses(Number(e.target.value))} />
+                  <label htmlFor="sim-coutMainOeuvre" className="text-sm font-medium">Main-d'oeuvre totale</label>
+                  <Input id="sim-coutMainOeuvre" type="number" value={coutMainOeuvre} onChange={e => setCoutMainOeuvre(Number(e.target.value))} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-medium">Valeur matériel fixe</label>
-                  <Input type="number" value={valeurMateriel} onChange={e => setValeurMateriel(Number(e.target.value))} />
+                  <label htmlFor="sim-coutTransport" className="text-sm font-medium">Transport</label>
+                  <Input id="sim-coutTransport" type="number" value={coutTransport} onChange={e => setCoutTransport(Number(e.target.value))} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Loyer</label>
-                  <Input type="number" value={loyer} onChange={e => setLoyer(Number(e.target.value))} />
+                  <label htmlFor="sim-autresDepenses" className="text-sm font-medium">Autres dépenses</label>
+                  <Input id="sim-autresDepenses" type="number" value={autresDepenses} onChange={e => setAutresDepenses(Number(e.target.value))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="sim-valeurMateriel" className="text-sm font-medium">Valeur matériel fixe</label>
+                  <Input id="sim-valeurMateriel" type="number" value={valeurMateriel} onChange={e => setValeurMateriel(Number(e.target.value))} />
+                </div>
+                <div>
+                  <label htmlFor="sim-loyer" className="text-sm font-medium">Loyer</label>
+                  <Input id="sim-loyer" type="number" value={loyer} onChange={e => setLoyer(Number(e.target.value))} />
                 </div>
               </div>
             </CardContent>
@@ -343,8 +343,8 @@ export default function Simulation() {
             <CardHeader><CardTitle className="text-lg font-serif">Recettes estimées</CardTitle></CardHeader>
             <CardContent>
               <div>
-                <label className="text-sm font-medium">Prix de vente par poulet (FCFA)</label>
-                <Input type="number" value={prixVenteParPoulet} onChange={e => setPrixVenteParPoulet(Number(e.target.value))} />
+                <label htmlFor="sim-prixVenteParPoulet" className="text-sm font-medium">Prix de vente par poulet (FCFA)</label>
+                <Input id="sim-prixVenteParPoulet" type="number" value={prixVenteParPoulet} onChange={e => setPrixVenteParPoulet(Number(e.target.value))} />
               </div>
             </CardContent>
           </Card>
@@ -354,14 +354,14 @@ export default function Simulation() {
           <div className="grid gap-4 grid-cols-2">
             <Card className={`border-t-4 ${beneficeNet >= 0 ? 'border-t-green-500' : 'border-t-red-500'}`}>
               <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground flex items-center gap-1">
-                {beneficeNet >= 0 ? <TrendingUp className="h-4 w-4 text-green-600" /> : <TrendingDown className="h-4 w-4 text-red-600" />}
+                {beneficeNet >= 0 ? <TrendingUp className="h-4 w-4 text-green-700" /> : <TrendingDown className="h-4 w-4 text-red-600" />}
                 Bénéfice net estimé
               </CardTitle></CardHeader>
-              <CardContent><div className={`text-2xl font-bold ${beneficeNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatFCFA(beneficeNet)}</div></CardContent>
+              <CardContent><div className={`text-2xl font-bold ${beneficeNet >= 0 ? 'text-green-700' : 'text-red-600'}`}>{formatFCFA(beneficeNet)}</div></CardContent>
             </Card>
             <Card className="border-t-4 border-t-primary">
               <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Marge</CardTitle></CardHeader>
-              <CardContent><div className={`text-2xl font-bold ${marge >= 0 ? 'text-green-600' : 'text-red-600'}`}>{marge.toFixed(1)}%</div></CardContent>
+              <CardContent><div className={`text-2xl font-bold ${marge >= 0 ? 'text-green-700' : 'text-red-600'}`}>{marge.toFixed(1)}%</div></CardContent>
             </Card>
           </div>
 
@@ -378,7 +378,7 @@ export default function Simulation() {
               <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground">Coût prophylaxie</span><span className="font-medium text-red-600">{formatFCFA(coutVeto)}</span></div>
               <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground">Charges fixes</span><span className="font-medium text-red-600">{formatFCFA(chargesFixes)}</span></div>
               <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground font-semibold">Coût total</span><span className="font-bold text-red-600">{formatFCFA(totalCouts)}</span></div>
-              <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground">Recettes totales</span><span className="font-medium text-green-600">{formatFCFA(totalRecettes)}</span></div>
+              <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground">Recettes totales</span><span className="font-medium text-green-700">{formatFCFA(totalRecettes)}</span></div>
               <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground">Coût par sujet</span><span className="font-medium">{formatFCFA(coutParSujet)}</span></div>
               <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground">Coût par sujet vendu</span><span className="font-medium">{formatFCFA(coutParSujetVendu)}</span></div>
             </CardContent>

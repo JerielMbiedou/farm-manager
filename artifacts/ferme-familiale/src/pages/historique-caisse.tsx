@@ -76,9 +76,9 @@ export default function HistoriqueCaisse() {
       </Card>
 
       <div className="flex gap-4 flex-wrap">
-        <Input type="month" placeholder="Filtrer par mois" value={dateFilter} onChange={(e) => { setDateFilter(e.target.value); setPage(1); }} className="w-48" />
+        <Input type="month" aria-label="Filtrer par mois" placeholder="Filtrer par mois" value={dateFilter} onChange={(e) => { setDateFilter(e.target.value); setPage(1); }} className="w-48" />
         <Select value={catFilter} onValueChange={(v) => { setCatFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Catégorie" /></SelectTrigger>
+          <SelectTrigger aria-label="Filtrer par catégorie" className="w-48"><SelectValue placeholder="Catégorie" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Toutes les catégories</SelectItem>
             {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}

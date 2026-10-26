@@ -124,19 +124,22 @@ export default function SaisieRapide() {
                   <span className="text-xs text-muted-foreground ml-2">J{ageJours} · {(bande.sujetsDepart - bande.nombreDeces)} sujets</span>
                 </div>
                 <Input
-                  type="number" min="0" placeholder="0"
+                  type="number" min="0" placeholder="Décès"
+                  aria-label={`Décès du jour — ${bande.nom}`}
                   className="h-8 text-center text-sm"
                   value={entry.mortalite}
                   onChange={e => update(bande.id, "mortalite", e.target.value)}
                 />
                 <Input
-                  type="number" min="0" step="0.5" placeholder="0"
+                  type="number" min="0" step="0.5" placeholder="Aliment kg"
+                  aria-label={`Aliment consommé en kg — ${bande.nom}`}
                   className="h-8 text-center text-sm"
                   value={entry.alimentKg}
                   onChange={e => update(bande.id, "alimentKg", e.target.value)}
                 />
                 <Input
-                  type="number" min="0" placeholder="0"
+                  type="number" min="0" placeholder="Eau L"
+                  aria-label={`Eau consommée en litres — ${bande.nom}`}
                   className="h-8 text-center text-sm"
                   value={entry.eauLitres}
                   onChange={e => update(bande.id, "eauLitres", e.target.value)}
@@ -147,7 +150,7 @@ export default function SaisieRapide() {
                   disabled={entry.saving}
                   onClick={() => save(bande)}
                 >
-                  {entry.saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : entry.saved ? <Check className="h-3.5 w-3.5 text-green-600" /> : "Enregistrer"}
+                  {entry.saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : entry.saved ? <Check className="h-3.5 w-3.5 text-green-700" /> : "Enregistrer"}
                 </Button>
               </div>
             );

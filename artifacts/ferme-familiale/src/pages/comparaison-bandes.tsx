@@ -6,6 +6,7 @@ import { formatFCFA } from "@/lib/format";
 import { BarChart3, Target, Download } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 import { useSortable } from "@/lib/use-sortable";
+import { legendeLisible } from "@/lib/chart-legende";
 
 export default function ComparaisonBandes() {
   const { data: bandes, isLoading, error } = useGetComparaisonBandes();
@@ -75,7 +76,7 @@ export default function ComparaisonBandes() {
                       <XAxis dataKey="nom" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} />
                       <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} tickFormatter={(v) => `${v / 1000}k`} />
                       <Tooltip formatter={(value: number) => [formatFCFA(value)]} />
-                      <Legend />
+                      <Legend formatter={legendeLisible} />
                       <Bar dataKey="coutParSujet" fill="hsl(var(--destructive))" name="Coût/sujet" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="prixVenteMoyen" fill="hsl(var(--primary))" name="Prix vente moy." radius={[4, 4, 0, 0]} />
                     </BarChart>

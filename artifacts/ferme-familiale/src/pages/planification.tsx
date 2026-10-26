@@ -10,6 +10,7 @@ import { formatFCFA } from "@/lib/format";
 import { Calendar, Plus, ChevronLeft, ChevronRight, Bird, Package } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useSortable } from "@/lib/use-sortable";
+import { legendeLisible } from "@/lib/chart-legende";
 
 interface PlannedBande {
   id: string;
@@ -233,7 +234,7 @@ export default function Planification() {
                     <XAxis dataKey="nom" />
                     <YAxis />
                     <Tooltip />
-                    <Legend />
+                    <Legend formatter={legendeLisible} />
                     <Bar dataKey="sacs" name="Sacs d'aliment" fill="#3b82f6" />
                   </BarChart>
                 </ResponsiveContainer>

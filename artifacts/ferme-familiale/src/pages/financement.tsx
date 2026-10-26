@@ -413,7 +413,7 @@ export default function Financement() {
                   </div>
                   <div className="border-t pt-2 flex justify-between">
                     <span className="font-semibold">Solde restant dû</span>
-                    <span className={`font-bold text-lg ${s.soldeRestant > 0 ? "text-orange-600" : "text-green-700"}`}>{formatFCFA(s.soldeRestant)}</span>
+                    <span className={`font-bold text-lg ${s.soldeRestant > 0 ? "text-orange-700" : "text-green-700"}`}>{formatFCFA(s.soldeRestant)}</span>
                   </div>
                 </CardContent>
               </Card>

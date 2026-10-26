@@ -234,7 +234,7 @@ export default function Utilisateurs() {
                         onValueChange={(val) => handleRoleChange(u.id, val)}
                         disabled={isCurrentUser}
                       >
-                        <SelectTrigger className="w-[160px] h-8">
+                        <SelectTrigger aria-label={`Rôle de ${u.nom}`} className="w-[160px] h-8">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

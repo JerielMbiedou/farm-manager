@@ -264,7 +264,7 @@ export default function JournalDuJour({ bande, open, onOpenChange, onSuccess }: 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Décès aujourd'hui<span className="text-red-500 ml-1">*</span>
+                    Décès aujourd'hui<span className="text-red-600 ml-1">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input
