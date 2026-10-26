@@ -3,7 +3,7 @@ import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTabl
 import { eq, and, asc, sql } from "drizzle-orm";
 import { logFromRequest } from "./activity-log";
 import { getParam, getParamStr, getVaccinationSchedule, REFERENCE_WEIGHT_CURVE } from "../lib/parametres";
-import { ai, GEMINI_TEXT_MODEL } from "@workspace/integrations-gemini-ai";
+import { genererAvecReprise, GeminiIndisponible } from "@workspace/integrations-gemini-ai";
 import { validateBody, normalizeDesignation } from "../lib/validate";
 import {
   bandeCreateSchema,
@@ -1175,8 +1175,7 @@ Règles:
 - Si une valeur est illisible ou absente, mets 0 pour les numériques et null pour les textes
 - Retourne UNIQUEMENT le JSON, sans texte avant ou après`;
 
-    const response = await ai.models.generateContent({
-      model: GEMINI_TEXT_MODEL,
+    const response = await genererAvecReprise({
       contents: [{
         role: "user",
         parts: [
@@ -1212,6 +1211,10 @@ Règles:
     res.json({ jours: parsed.jours || [], bandeId, startDate });
   } catch (e: any) {
     req.log.error({ err: e }, "parse-fiche error");
+    if (e instanceof GeminiIndisponible) {
+      res.status(503).json({ error: "Le service de lecture (Google Gemini) est saturé en ce moment. Réessayez dans quelques minutes." });
+      return;
+    }
     const userMsg = (e.message || "").includes("JSON")
       ? "L'IA a retourné une réponse mal formatée. Réessayez avec une photo plus nette ou recadrez la fiche."
       : (e.message || "Erreur lors de l'analyse");

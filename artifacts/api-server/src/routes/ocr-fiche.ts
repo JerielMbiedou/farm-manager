@@ -1,15 +1,10 @@
 import { Router } from "express";
 import multer from "multer";
 
-let aiClient: any = null;
-let aiModel = "";
-async function getAI() {
-  if (!aiClient) {
-    const mod = await import("@workspace/integrations-gemini-ai");
-    aiClient = mod.ai;
-    aiModel = mod.GEMINI_TEXT_MODEL;
-  }
-  return aiClient;
+let gemini: typeof import("@workspace/integrations-gemini-ai") | null = null;
+async function getGemini() {
+  if (!gemini) gemini = await import("@workspace/integrations-gemini-ai");
+  return gemini;
 }
 
 const router = Router();
@@ -88,9 +83,8 @@ router.post("/", upload.single("photo"), async (req, res) => {
     const base64 = req.file.buffer.toString("base64");
     const mimeType = req.file.mimetype as "image/jpeg" | "image/png" | "image/webp";
 
-    const ai = await getAI();
-    const response = await ai.models.generateContent({
-      model: aiModel,
+    const { genererAvecReprise } = await getGemini();
+    const response = await genererAvecReprise({
       contents: [
         {
           role: "user",
@@ -132,6 +126,10 @@ router.post("/", upload.single("photo"), async (req, res) => {
     res.json(parsed);
   } catch (err: any) {
     req.log.error({ err }, "OCR error");
+    if (err?.name === "GeminiIndisponible") {
+      res.status(503).json({ error: "Le service de lecture (Google Gemini) est saturé en ce moment. Réessayez dans quelques minutes." });
+      return;
+    }
     res.status(500).json({ error: "Erreur lors de l'analyse de l'image", details: err.message });
   }
 });
