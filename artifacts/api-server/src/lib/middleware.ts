@@ -18,3 +18,21 @@ export async function requireWriteAccess(req: Request, res: Response): Promise<b
   }
   return true;
 }
+
+/**
+ * Réservé aux administrateurs. Masquer une entrée du menu ne protège rien :
+ * l'API doit refuser elle-même les autres rôles.
+ */
+export async function requireAdmin(req: Request, res: Response): Promise<boolean> {
+  const userId = (req.session as any)?.userId;
+  if (!userId) {
+    res.status(401).json({ message: "Non authentifié" });
+    return false;
+  }
+  const users = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, userId));
+  if (users[0]?.role !== "admin") {
+    res.status(403).json({ message: "Réservé aux administrateurs" });
+    return false;
+  }
+  return true;
+}

@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Request } from "express";
 import { db, activityLogTable, usersTable } from "@workspace/db";
 import { desc, eq, sql } from "drizzle-orm";
+import { requireAdmin } from "../lib/middleware";
 
 const router = Router();
 
@@ -12,6 +13,8 @@ const router = Router();
 //   - GET /api/activity-log?page=1&pageSize=25
 //        → nouveau comportement : { items, total, page, pageSize }
 router.get("/", async (req, res) => {
+  // Le journal révèle qui a fait quoi : administrateurs uniquement.
+  if (!(await requireAdmin(req, res))) return;
   const hasPagination = req.query.page !== undefined || req.query.pageSize !== undefined;
 
   if (hasPagination) {
