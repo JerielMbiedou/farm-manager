@@ -6,7 +6,9 @@ import { toast } from "@/hooks/use-toast";
 import { ConfirmDialogHost } from "@/lib/confirm-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
-import { useGetMe } from "@workspace/api-client-react";
+import { useGetMe, UserRole } from "@workspace/api-client-react";
+import { roleAutorise } from "@/lib/navigation";
+import { PageReservee } from "@/components/page-reservee";
 
 import { Layout } from "@/components/layout";
 import Login from "@/pages/login";
@@ -96,13 +98,23 @@ function Protected({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Garde de rôle : une adresse tapée à la main ne contourne pas le menu. */
+function AccesRole({ children }: { children: React.ReactNode }) {
+  const { data: user } = useGetMe();
+  const [location] = useLocation();
+  if (!roleAutorise(location, user?.role as UserRole | undefined)) return <PageReservee />;
+  return <>{children}</>;
+}
+
 /** Stable wrapper used as <Route component={...}> to avoid remounts caused by
  *  inline arrow components, while keeping the page component as a prop. */
 function makeProtectedRoute(Page: React.ComponentType) {
   const Wrapped = () => (
     <Protected>
       <Layout>
-        <Page />
+        <AccesRole>
+          <Page />
+        </AccesRole>
       </Layout>
     </Protected>
   );
