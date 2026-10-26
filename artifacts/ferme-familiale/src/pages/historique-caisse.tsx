@@ -62,12 +62,12 @@ export default function HistoriqueCaisse({ enOnglet = false }: { enOnglet?: bool
     <div className="space-y-6">
       {!enOnglet && (
         <div>
-          <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Historique de caisse</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Historique de caisse</h1>
           <p className="text-muted-foreground mt-1">Journal complet des mouvements financiers</p>
         </div>
       )}
 
-      <Card className="border-t-4 border-t-primary shadow-sm">
+      <Card className=" shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">Solde courant</CardTitle>
           <Wallet className="h-4 w-4 text-primary" />

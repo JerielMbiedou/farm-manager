@@ -111,14 +111,9 @@ export default function Finances() {
 
   return (
     <div className="space-y-8">
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[hsl(145,45%,22%)] to-[hsl(220,60%,30%)] text-white p-6 md:p-8">
-        <div className="relative z-10">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-1">Trésorerie</h1>
-          <p className="text-white/70 text-sm md:text-base">Trésorerie, amortissement et rentabilité de l'exploitation</p>
-        </div>
-        <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-10">
-          <BarChart3 className="h-24 w-24" />
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight mb-1">Trésorerie</h1>
+        <p className="text-muted-foreground">Trésorerie, amortissement et rentabilité de l'exploitation</p>
       </div>
 
       {/* KPI row */}
@@ -168,7 +163,7 @@ export default function Finances() {
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader className="pb-3 border-b">
-                <CardTitle className="text-base font-serif flex items-center gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
                   <ArrowUpRight className="h-5 w-5 text-green-700" />
                   Entrées de trésorerie
                 </CardTitle>
@@ -184,7 +179,7 @@ export default function Finances() {
 
             <Card>
               <CardHeader className="pb-3 border-b">
-                <CardTitle className="text-base font-serif flex items-center gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
                   <ArrowDownRight className="h-5 w-5 text-red-600" />
                   Sorties de trésorerie
                 </CardTitle>
@@ -226,7 +221,7 @@ export default function Finances() {
           {cashflowData && cashflowData.length > 0 && (
             <Card>
               <CardHeader className="border-b">
-                <CardTitle className="text-base font-serif flex items-center gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
                   <BarChart3 className="h-5 w-5 text-blue-600" />
                   Évolution mensuelle de la trésorerie
                 </CardTitle>
@@ -254,7 +249,7 @@ export default function Finances() {
           {f.bandesDetails?.length > 0 && (
             <Card>
               <CardHeader className="border-b">
-                <CardTitle className="text-base font-serif">Contribution par bande</CardTitle>
+                <CardTitle className="text-base">Contribution par bande</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-hidden">
@@ -296,7 +291,7 @@ export default function Finances() {
         <TabsContent value="amortissement" className="space-y-6">
           <Card>
             <CardHeader className="border-b">
-              <CardTitle className="text-base font-serif flex items-center gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-orange-700" />
                 Récupération de l'investissement construction
               </CardTitle>
@@ -351,7 +346,7 @@ export default function Finances() {
           {f.bandesDetails?.length > 0 && (
             <Card>
               <CardHeader className="border-b">
-                <CardTitle className="text-base font-serif">Contribution de chaque bande</CardTitle>
+                <CardTitle className="text-base">Contribution de chaque bande</CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
                 <Graphique resume={resumeValeurs("Contribution de chaque bande à l'amortissement", f.bandesDetails.map((b: any) => ({ nom: b.nom, valeur: b.chargesTotal })), formatFCFA)}>
@@ -436,11 +431,11 @@ export default function Finances() {
 
           {f.projectionsBandesActives?.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold font-serif flex items-center gap-2">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
                 <Bird className="h-5 w-5 text-primary" /> Projections — Bandes en cours
               </h3>
               {f.projectionsBandesActives.map((b: any) => (
-                <Card key={b.id} className="border-l-4 border-l-primary/60">
+                <Card key={b.id}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center justify-between">
                       <span>{b.nom}</span>

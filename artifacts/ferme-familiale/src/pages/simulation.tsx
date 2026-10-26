@@ -133,14 +133,14 @@ export default function Simulation() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Simulation de rentabilité</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Simulation de rentabilité</h1>
         <p className="text-muted-foreground mt-1">Estimez les coûts et recettes avant de lancer une bande</p>
       </div>
 
       {historique && historique.nbBandes > 0 && (
         <Card className="border-primary/30 bg-primary/5">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-serif flex items-center gap-2">
+            <CardTitle className="text-lg flex items-center gap-2">
               <History className="h-5 w-5 text-primary" />
               Moyennes historiques ({historique.nbBandes} bandes terminées)
             </CardTitle>
@@ -189,7 +189,7 @@ export default function Simulation() {
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="text-lg font-serif">Paramètres de production</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-lg">Paramètres de production</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -216,7 +216,7 @@ export default function Simulation() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-serif flex items-center gap-2">
+              <CardTitle className="text-lg flex items-center gap-2">
                 <Wheat className="h-5 w-5" /> Alimentation par phase
               </CardTitle>
               <CardDescription>Consommation et prix par type d'aliment (sacs de 50 kg)</CardDescription>
@@ -279,7 +279,7 @@ export default function Simulation() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-serif flex items-center gap-2">
+              <CardTitle className="text-lg flex items-center gap-2">
                 <Droplets className="h-5 w-5" /> Eau par phase
               </CardTitle>
             </CardHeader>
@@ -305,7 +305,7 @@ export default function Simulation() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-lg font-serif">Autres coûts</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-lg">Autres coûts</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -341,7 +341,7 @@ export default function Simulation() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-lg font-serif">Recettes estimées</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-lg">Recettes estimées</CardTitle></CardHeader>
             <CardContent>
               <div>
                 <label htmlFor="sim-prixVenteParPoulet" className="text-sm font-medium">Prix de vente par poulet (FCFA)</label>
@@ -353,21 +353,21 @@ export default function Simulation() {
 
         <div className="space-y-4">
           <div className="grid gap-4 grid-cols-2">
-            <Card className={`border-t-4 ${beneficeNet >= 0 ? 'border-t-green-500' : 'border-t-red-500'}`}>
+            <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground flex items-center gap-1">
                 {beneficeNet >= 0 ? <TrendingUp className="h-4 w-4 text-green-700" /> : <TrendingDown className="h-4 w-4 text-red-600" />}
                 Bénéfice net estimé
               </CardTitle></CardHeader>
               <CardContent><div className={`text-2xl font-bold ${beneficeNet >= 0 ? 'text-green-700' : 'text-red-600'}`}>{formatFCFA(beneficeNet)}</div></CardContent>
             </Card>
-            <Card className="border-t-4 border-t-primary">
+            <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Marge</CardTitle></CardHeader>
               <CardContent><div className={`text-2xl font-bold ${marge >= 0 ? 'text-green-700' : 'text-red-600'}`}>{marge.toFixed(1)}%</div></CardContent>
             </Card>
           </div>
 
           <Card>
-            <CardHeader><CardTitle className="text-lg font-serif">Résumé financier</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-lg">Résumé financier</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground">Sujets au départ</span><span className="font-medium">{nbSujets}</span></div>
               <div className="flex justify-between py-1 border-b"><span className="text-muted-foreground">Sujets vendus (estimés)</span><span className="font-medium">{sujetsVendus}</span></div>
@@ -386,7 +386,7 @@ export default function Simulation() {
           </Card>
 
           <Card className="bg-muted/30">
-            <CardHeader><CardTitle className="text-lg font-serif flex items-center gap-2"><Target className="h-5 w-5" /> Seuil de rentabilité</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Target className="h-5 w-5" /> Seuil de rentabilité</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between py-1 border-b">
                 <span className="text-muted-foreground">Poulets minimum à vendre</span>
@@ -405,7 +405,7 @@ export default function Simulation() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-lg font-serif">Besoins en aliments</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-lg">Besoins en aliments</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between py-1 border-b">
                 <span className="text-muted-foreground">Aliment démarrage</span>
@@ -431,7 +431,7 @@ export default function Simulation() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-lg font-serif">Répartition des coûts</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-lg">Répartition des coûts</CardTitle></CardHeader>
             <CardContent>
               <Graphique resume={resumeValeurs("Répartition des coûts", chartData.map((d) => ({ nom: d.name, valeur: d.value })), formatFCFA)}>
                 <ResponsiveContainer width="100%" height={300}>
@@ -452,7 +452,7 @@ export default function Simulation() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-lg font-serif">Répartition alimentation</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-lg">Répartition alimentation</CardTitle></CardHeader>
             <CardContent>
               <Graphique resume={resumeValeurs("Répartition alimentation", alimentPieData.map((d) => ({ nom: d.name, valeur: d.value })), formatFCFA)}>
                 <ResponsiveContainer width="100%" height={200}>

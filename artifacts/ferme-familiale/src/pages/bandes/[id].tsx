@@ -1922,7 +1922,7 @@ export default function BandeDetailView() {
         </Link>
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">{detail.nom}</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">{detail.nom}</h1>
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${detail.statut === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
               {detail.statut === 'active' ? 'Active' : 'Terminée'}
             </span>
@@ -2375,7 +2375,7 @@ export default function BandeDetailView() {
 
             return (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                <Card className="shadow-sm border-t-4 border-t-primary">
+                <Card className="shadow-sm">
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Sujets restants</CardTitle></CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-foreground">{detail.sujetsRestants}</div>
@@ -2388,7 +2388,7 @@ export default function BandeDetailView() {
                     )}
                   </CardContent>
                 </Card>
-                <Card className="shadow-sm border-t-4 border-t-destructive">
+                <Card className="shadow-sm">
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Coût de production</CardTitle></CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-foreground">{formatFCFA(detail.totalDepenses + detail.chargesFixesTotal)}</div>
@@ -2399,14 +2399,14 @@ export default function BandeDetailView() {
                     {coutRevientKgVif && <p className="text-xs text-muted-foreground">Revient / kg vif : {formatFCFA(coutRevientKgVif)}</p>}
                   </CardContent>
                 </Card>
-                <Card className="shadow-sm border-t-4 border-t-sidebar-primary">
+                <Card className="shadow-sm">
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Recettes brutes</CardTitle></CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-foreground">{formatFCFA(detail.totalRecettes)}</div>
                     {totalVendus > 0 && <p className="text-xs text-muted-foreground mt-1">{totalVendus} poulets vendus</p>}
                   </CardContent>
                 </Card>
-                <Card className={`shadow-sm border-t-4 ${detail.beneficeNet >= 0 ? 'border-t-green-500' : 'border-t-red-500'}`}>
+                <Card className="shadow-sm">
                   <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Bénéfice net</CardTitle></CardHeader>
                   <CardContent>
                     <div className={`text-2xl font-bold ${detail.beneficeNet >= 0 ? 'text-green-700' : 'text-red-600'}`}>{formatFCFA(detail.beneficeNet)}</div>
@@ -2443,7 +2443,7 @@ export default function BandeDetailView() {
             const total = pieData.reduce((s, d) => s + d.value, 0);
             return (
               <Card>
-                <CardHeader><CardTitle className="text-xl font-serif">Répartition des coûts</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-xl">Répartition des coûts</CardTitle></CardHeader>
                 <CardContent>
                   <div className="grid md:grid-cols-2 gap-6 items-center">
                     <Graphique>
@@ -2480,7 +2480,7 @@ export default function BandeDetailView() {
         <TabsContent value="depenses">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xl font-serif">Dépenses de Production</CardTitle>
+              <CardTitle className="text-xl">Dépenses de Production</CardTitle>
               {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => { resetForms(); setDialogType("depense"); setIsDialogOpen(true); }}><Plus className="w-4 h-4" /> Ajouter</Button>}
             </CardHeader>
             <CardContent className="p-0">
@@ -2500,7 +2500,7 @@ export default function BandeDetailView() {
         <TabsContent value="ventes" className="space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xl font-serif">Ventes de Poulets</CardTitle>
+              <CardTitle className="text-xl">Ventes de Poulets</CardTitle>
               {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => { resetForms(); setDialogType("vente"); setIsDialogOpen(true); }}><Plus className="w-4 h-4" /> Vendre</Button>}
             </CardHeader>
             <CardContent className="p-0">
@@ -2515,7 +2515,7 @@ export default function BandeDetailView() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xl font-serif">Frais de Vente</CardTitle>
+              <CardTitle className="text-xl">Frais de Vente</CardTitle>
               {!isReadOnly && <Button size="sm" variant="outline" className="gap-2" onClick={() => { resetForms(); setDialogType("depenseVente"); setIsDialogOpen(true); }}><Plus className="w-4 h-4" /> Ajouter frais</Button>}
             </CardHeader>
             <CardContent>
@@ -2552,7 +2552,7 @@ export default function BandeDetailView() {
           {mortaliteItems.length > 0 && (
             <>
               <Card>
-                <CardHeader><CardTitle className="text-xl font-serif">Courbe de mortalité</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-xl">Courbe de mortalité</CardTitle></CardHeader>
                 <CardContent>
                   <Graphique resume={[resumeSerie("Décès par jour", mortaliteItems.map((m: any) => ({ x: `J${m.ageJours}`, y: m.decesJour }))), resumeSerie("Taux de mortalité cumulé", mortaliteItems.map((m: any) => ({ x: `J${m.ageJours}`, y: m.tauxMortalite })), (v) => `${v.toLocaleString("fr-FR")} %`)].join(" ")}>
                     <ResponsiveContainer width="100%" height={250}>
@@ -2573,7 +2573,7 @@ export default function BandeDetailView() {
 
               {mortaliteParPhase.length > 0 && (
                 <Card>
-                  <CardHeader><CardTitle className="text-xl font-serif">Analyse par phase</CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="text-xl">Analyse par phase</CardTitle></CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {mortaliteParPhase.map(phase => {
@@ -2596,7 +2596,7 @@ export default function BandeDetailView() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xl font-serif flex items-center gap-2"><Skull className="h-5 w-5" /> Suivi de la mortalité</CardTitle>
+              <CardTitle className="text-xl flex items-center gap-2"><Skull className="h-5 w-5" /> Suivi de la mortalité</CardTitle>
               {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => openDialog("mortalite")}><Plus className="w-4 h-4" /> Ajouter</Button>}
             </CardHeader>
             <CardContent>
@@ -2663,7 +2663,7 @@ export default function BandeDetailView() {
         <TabsContent value="pesees" className="space-y-6">
           {(peseesItems.length > 0 || refPoids.length > 0) && (
             <Card>
-              <CardHeader><CardTitle className="text-xl font-serif">Courbe de croissance (vs référence COBB 500)</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-xl">Courbe de croissance (vs référence COBB 500)</CardTitle></CardHeader>
               <CardContent>
                 <Graphique resume={[resumeSerie("Poids moyen réel", peseesItems.map((p: any) => ({ x: `J${p.ageJours}`, y: p.poidsMoyenG })), (v) => `${v.toLocaleString("fr-FR")} g`), resumeSerie("Référence COBB 500", refPoids.map((r) => ({ x: `J${r.ageJours}`, y: r.poidsG })), (v) => `${v.toLocaleString("fr-FR")} g`)].join(" ")}>
                   <ResponsiveContainer width="100%" height={300}>
@@ -2699,7 +2699,7 @@ export default function BandeDetailView() {
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-xl font-serif flex items-center gap-2"><Scale className="h-5 w-5" /> Pesées</CardTitle>
+                <CardTitle className="text-xl flex items-center gap-2"><Scale className="h-5 w-5" /> Pesées</CardTitle>
                 {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => openDialog("pesee")}><Plus className="w-4 h-4" /> Ajouter</Button>}
               </CardHeader>
               <CardContent>
@@ -2770,7 +2770,7 @@ export default function BandeDetailView() {
             <div className="space-y-6">
               <Card className="shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-xl font-serif flex items-center gap-2"><Wheat className="h-5 w-5" /> Consommation aliment & IC</CardTitle>
+                  <CardTitle className="text-xl flex items-center gap-2"><Wheat className="h-5 w-5" /> Consommation aliment & IC</CardTitle>
                   {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => openDialog("consommation")}><Plus className="w-4 h-4" /> Ajouter</Button>}
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -2871,7 +2871,7 @@ export default function BandeDetailView() {
         <TabsContent value="vaccinations">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xl font-serif flex items-center gap-2"><Syringe className="h-5 w-5" /> Calendrier de vaccination</CardTitle>
+              <CardTitle className="text-xl flex items-center gap-2"><Syringe className="h-5 w-5" /> Calendrier de vaccination</CardTitle>
               {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => openDialog("vaccin")}><Plus className="w-4 h-4" /> Ajouter vaccin</Button>}
             </CardHeader>
             <CardContent>
@@ -2934,7 +2934,7 @@ export default function BandeDetailView() {
         <TabsContent value="eau" className="space-y-6">
           {eauItems.length > 0 && (
             <Card>
-              <CardHeader><CardTitle className="text-xl font-serif">Courbe de consommation d'eau</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-xl">Courbe de consommation d'eau</CardTitle></CardHeader>
               <CardContent>
                 <Graphique resume={resumeSerie("Eau consommée par jour", eauItems.map((e: any) => ({ x: `J${e.ageJours}`, y: e.quantiteLitres })), (v) => `${v.toLocaleString("fr-FR")} litres`)}>
                   <ResponsiveContainer width="100%" height={250}>
@@ -2954,7 +2954,7 @@ export default function BandeDetailView() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xl font-serif flex items-center gap-2"><Droplets className="h-5 w-5" /> Consommation d'eau</CardTitle>
+              <CardTitle className="text-xl flex items-center gap-2"><Droplets className="h-5 w-5" /> Consommation d'eau</CardTitle>
               {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => openDialog("eau")}><Plus className="w-4 h-4" /> Ajouter</Button>}
             </CardHeader>
             <CardContent>
@@ -3019,7 +3019,7 @@ export default function BandeDetailView() {
         <TabsContent value="traitements">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xl font-serif flex items-center gap-2"><Pill className="h-5 w-5" /> Journal des traitements</CardTitle>
+              <CardTitle className="text-xl flex items-center gap-2"><Pill className="h-5 w-5" /> Journal des traitements</CardTitle>
               {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => openDialog("traitement")}><Plus className="w-4 h-4" /> Ajouter</Button>}
             </CardHeader>
             <CardContent>
@@ -3082,7 +3082,7 @@ export default function BandeDetailView() {
         <TabsContent value="journal">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xl font-serif flex items-center gap-2"><BookOpen className="h-5 w-5" /> Journal d'observations</CardTitle>
+              <CardTitle className="text-xl flex items-center gap-2"><BookOpen className="h-5 w-5" /> Journal d'observations</CardTitle>
               {!isReadOnly && <Button size="sm" className="gap-2" onClick={() => openDialog("observation")}><Plus className="w-4 h-4" /> Ajouter</Button>}
             </CardHeader>
             <CardContent>

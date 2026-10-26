@@ -50,7 +50,7 @@ export default function ComparaisonBandes() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Comparaison des bandes</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Comparaison des bandes</h1>
         <p className="text-muted-foreground mt-1">Analyse comparative des performances entre bandes</p>
       </div>
 

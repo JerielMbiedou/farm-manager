@@ -116,7 +116,7 @@ export default function Bandes() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Bandes de poulets</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Bandes de poulets</h1>
           <p className="text-muted-foreground mt-1">Gestion des cycles de production</p>
         </div>
         {!isReadOnly && (
@@ -225,7 +225,7 @@ export default function Bandes() {
               <Card className={`h-full transition-all hover:shadow-md hover:border-primary/50 cursor-pointer ${bande.statut === 'terminee' ? 'opacity-80 bg-muted/30' : ''}`}>
                 <CardHeader className="pb-3 flex flex-row items-start justify-between">
                   <div>
-                    <CardTitle className="text-xl font-serif group-hover:text-primary transition-colors">
+                    <CardTitle className="text-xl group-hover:text-primary transition-colors">
                       {bande.nom}
                     </CardTitle>
                     <p className="text-xs text-muted-foreground mt-1">

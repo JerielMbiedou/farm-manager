@@ -184,7 +184,7 @@ export default function Financement() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Apports & prêts</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Apports & prêts</h1>
         <p className="text-muted-foreground mt-1">Suivi des apports, prêts et remboursements</p>
       </div>
 

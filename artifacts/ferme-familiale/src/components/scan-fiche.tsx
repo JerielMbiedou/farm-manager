@@ -251,7 +251,7 @@ export default function ScanFiche({ bandeId, bandeStartDate, onDataSaved }: Scan
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-serif">Scanner une fiche de suivi</DialogTitle>
+          <DialogTitle>Scanner une fiche de suivi</DialogTitle>
         </DialogHeader>
 
         {!extracted && !scanning && (

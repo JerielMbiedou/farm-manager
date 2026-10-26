@@ -110,7 +110,7 @@ export default function Planification() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold font-serif text-primary flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-primary flex items-center gap-2">
             <Calendar className="h-8 w-8" />
             Planification des bandes
           </h1>
@@ -148,7 +148,7 @@ export default function Planification() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <Button variant="outline" size="icon" aria-label="Mois précédent" onClick={() => setMoisOffset(o => o - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-          <CardTitle className="text-xl font-serif capitalize">{moisNom}</CardTitle>
+          <CardTitle className="text-xl capitalize">{moisNom}</CardTitle>
           <Button variant="outline" size="icon" aria-label="Mois suivant" onClick={() => setMoisOffset(o => o + 1)}><ChevronRight className="h-4 w-4" /></Button>
         </CardHeader>
         <CardContent>
@@ -185,7 +185,7 @@ export default function Planification() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-xl font-serif flex items-center gap-2"><Bird className="h-5 w-5" /> Bandes planifiées</CardTitle>
+              <CardTitle className="text-xl flex items-center gap-2"><Bird className="h-5 w-5" /> Bandes planifiées</CardTitle>
             </CardHeader>
             <CardContent>
               <PlansTable plans={plans} onRemove={handleRemovePlan} />
@@ -194,7 +194,7 @@ export default function Planification() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-xl font-serif flex items-center gap-2"><Package className="h-5 w-5" /> Estimation des besoins en aliments</CardTitle>
+              <CardTitle className="text-xl flex items-center gap-2"><Package className="h-5 w-5" /> Estimation des besoins en aliments</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">

@@ -95,44 +95,35 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[hsl(145,45%,22%)] to-[hsl(145,35%,30%)] text-white p-6 md:p-8">
-        <div className="absolute inset-0 opacity-10">
-          <img
-            src={`${import.meta.env.BASE_URL}images/chicks-grass.jpg`}
-            alt=""
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <div className="relative z-10">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-1">Tableau de bord</h1>
-          <p className="text-white/70 text-sm md:text-base">Vue d'ensemble de votre exploitation avicole</p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight mb-1">Tableau de bord</h1>
+        <p className="text-muted-foreground">Vue d'ensemble de votre exploitation avicole</p>
       </div>
 
       {(alerteMortaliteActive || alerteSoldeBas || summary.alerteDepassementBudget) && (
         <div className="space-y-2">
           {alerteMortaliteActive && (
-            <div className="bg-red-50 border border-red-300 text-red-900 px-4 py-3 rounded-lg flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-red-600" />
+            <div className="bg-card shadow-sm px-4 py-3 rounded-xl flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-destructive" aria-hidden="true" />
               <div className="flex-1">
                 <p className="font-semibold text-sm">Alerte mortalité — Bande {alerteMortaliteActive.bandeNom}</p>
-                <p className="text-xs mt-0.5">
+                <p className="text-xs mt-0.5 text-muted-foreground">
                   Taux journalier de {alerteMortaliteActive.tauxJour} % à J{alerteMortaliteActive.ageJours} ({alerteMortaliteActive.date}) — seuil applicable : {alerteMortaliteActive.seuilApplicable} %.
                 </p>
               </div>
             </div>
           )}
           {alerteSoldeBas && (
-            <div className="bg-orange-50 border border-orange-300 text-orange-900 px-4 py-3 rounded-lg flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 shrink-0 text-orange-700" />
+            <div className="bg-card shadow-sm px-4 py-3 rounded-xl flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-orange-700" aria-hidden="true" />
               <p className="font-medium text-sm">
                 Solde caisse bas : {formatFCFA(summary.caisseDisponible)} (seuil {formatFCFA(seuilSoldeCaisse)}).
               </p>
             </div>
           )}
           {summary.alerteDepassementBudget && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive px-4 py-3 rounded-lg flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
+            <div className="bg-card shadow-sm px-4 py-3 rounded-xl flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" aria-hidden="true" />
               <p className="font-medium text-sm">Attention : les dépenses de construction ont dépassé le budget prévu (devis).</p>
             </div>
           )}
@@ -155,8 +146,8 @@ export default function Dashboard() {
         <Card className="group hover:shadow-md transition-shadow duration-200">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total investi</CardTitle>
-            <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center">
-              <Wallet className="h-4 w-4 text-secondary" />
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Wallet className="h-4 w-4 text-primary" />
             </div>
           </CardHeader>
           <CardContent>
@@ -194,7 +185,7 @@ export default function Dashboard() {
 
       {prochainesVaccinations.length > 0 && (
         <Card className="overflow-hidden">
-          <CardHeader className="pb-3 bg-orange-50/50 border-b border-orange-100">
+          <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <div className="w-7 h-7 rounded-md bg-orange-100 flex items-center justify-center">
                 <Syringe className="h-4 w-4 text-orange-700" />
@@ -202,17 +193,18 @@ export default function Dashboard() {
               Prochaines vaccinations
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-4">
-            <div className="space-y-2">
+          <CardContent className="pt-0">
+            {/* Liste groupée : lignes séparées par un filet ; le retard se lit au badge et à la date en rouge. */}
+            <div className="divide-y">
               {prochainesVaccinations.map((v, i) => (
-                <div key={i} className={`flex items-center justify-between p-3 rounded-lg text-sm gap-3 ${v.enRetard ? "bg-red-50 border border-red-200 text-red-800" : "bg-muted/30"}`}>
+                <div key={i} className="flex items-center justify-between py-3 text-sm gap-3">
                   <div className="min-w-0 flex-1">
                     <span className="font-medium">{v.vaccinNom}</span>
                     <span className="text-muted-foreground ml-2">({v.bandeNom})</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-muted-foreground text-xs">{v.datePrevue}</span>
-                    {v.enRetard && <span className="text-xs font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">EN RETARD</span>}
+                    <span className={`text-xs ${v.enRetard ? "text-destructive font-medium" : "text-muted-foreground"}`}>{v.datePrevue}</span>
+                    {v.enRetard && <span className="text-xs font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">En retard</span>}
                     <Button
                       size="sm"
                       variant="outline"

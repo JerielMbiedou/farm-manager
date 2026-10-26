@@ -75,64 +75,71 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 40 33% 96%;
-  --foreground: 140 30% 15%;
-  --border: 40 20% 85%;
-  --input: 40 8% 55%; /* bord des champs : 3,14:1 sur les cartes (1,35:1 avant) */
-  --ring: 145 45% 25%;
+  /* Palette alignée sur les couleurs système d'Apple : fond groupé gris
+     (systemGroupedBackground #F2F2F7), cartes blanches, libellés #1D1D1F et
+     #636366, séparateurs #D1D1D6. Une seule couleur d'accent, le vert de la
+     ferme (#1E7B34, 5,33:1 sous du texte blanc), réservée aux actions
+     principales, à la sélection et aux statuts. */
+  --background: 240 24% 96%;
+  --foreground: 240 3% 12%;
+  --border: 240 6% 85%;
+  --input: 240 2% 55%; /* bord des champs #8A8A8E : 3,44:1 sur les cartes */
+  --ring: 134 61% 30%;
 
-  --card: 40 20% 99%;
-  --card-foreground: 140 30% 15%;
-  --card-border: 40 20% 90%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 3% 12%;
+  --card-border: 240 6% 90%;
 
-  --sidebar: 145 45% 20%;
-  --sidebar-foreground: 40 33% 96%;
-  --sidebar-border: 145 45% 15%;
-  --sidebar-primary: 35 65% 50%;
-  --sidebar-primary-foreground: 140 30% 15%;
-  --sidebar-accent: 145 40% 25%;
-  --sidebar-accent-foreground: 40 33% 96%;
-  --sidebar-ring: 35 65% 50%;
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 240 3% 12%;
+  --sidebar-border: 240 6% 85%;
+  --sidebar-primary: 134 61% 30%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 11% 94%;
+  --sidebar-accent-foreground: 240 3% 12%;
+  --sidebar-ring: 134 61% 30%;
 
-  --popover: 40 20% 99%;
-  --popover-foreground: 140 30% 15%;
-  --popover-border: 40 20% 90%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 3% 12%;
+  --popover-border: 240 6% 90%;
 
-  --primary: 145 45% 25%;
-  --primary-foreground: 40 33% 96%;
+  --primary: 134 61% 30%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 35 65% 50%;
-  --secondary-foreground: 140 30% 15%;
+  /* Bouton « gris » d'Apple : remplissage neutre, texte en couleur de libellé. */
+  --secondary: 240 6% 93%;
+  --secondary-foreground: 240 3% 12%;
 
-  --muted: 40 20% 90%;
-  --muted-foreground: 140 10% 36%; /* 5,06:1 sur muted, 5,77:1 sur le fond */
+  --muted: 240 6% 93%;
+  --muted-foreground: 240 1% 39%; /* #636366 : 4,77:1 sur muted, 5,37:1 sur le fond */
 
-  /* Surbrillance (options de liste, menus) : vert pâle, 11,48:1. La terracotta
-     donnait 3,30:1 sous du texte crème. */
-  --accent: 145 35% 90%;
-  --accent-foreground: 140 30% 15%;
+  /* Surbrillance (options de liste, menus) : gris système, 14:1. */
+  --accent: 240 11% 91%;
+  --accent-foreground: 240 3% 12%;
 
-  --destructive: 0 70% 50%;
-  --destructive-foreground: 40 33% 96%;
+  --destructive: 354 100% 42%; /* #D70015, rouge système à contraste renforcé : 5,38:1 */
+  --destructive-foreground: 0 0% 100%;
 
-  --chart-1: 145 45% 25%;
-  --chart-2: 35 65% 50%;
-  --chart-3: 15 65% 55%;
-  --chart-4: 140 20% 60%;
-  --chart-5: 40 40% 75%;
+  /* Graphiques : vert de la ferme puis bleu, orange, violet et cyan système. */
+  --chart-1: 134 61% 30%;
+  --chart-2: 211 100% 50%;
+  --chart-3: 16 100% 39%;
+  --chart-4: 280 68% 60%;
+  --chart-5: 199 100% 32%;
 
-  --app-font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --app-font-serif: "Fraunces", Georgia, serif;
-  --app-font-mono: "JetBrains Mono", Menlo, monospace;
-  --radius: 0.5rem; 
-  --shadow-2xs: 0 1px 2px 0 hsla(140, 30%, 15%, 0.04);
-  --shadow-xs: 0 1px 2px 0 hsla(140, 30%, 15%, 0.05);
-  --shadow-sm: 0 1px 3px 0 hsla(140, 30%, 15%, 0.07), 0 1px 2px -1px hsla(140, 30%, 15%, 0.05);
-  --shadow: 0 2px 6px -1px hsla(140, 30%, 15%, 0.08), 0 1px 3px -1px hsla(140, 30%, 15%, 0.05);
-  --shadow-md: 0 4px 8px -2px hsla(140, 30%, 15%, 0.1), 0 2px 4px -2px hsla(140, 30%, 15%, 0.06);
-  --shadow-lg: 0 10px 15px -3px hsla(140, 30%, 15%, 0.1), 0 4px 6px -4px hsla(140, 30%, 15%, 0.05);
-  --shadow-xl: 0 20px 25px -5px hsla(140, 30%, 15%, 0.1), 0 8px 10px -6px hsla(140, 30%, 15%, 0.05);
-  --shadow-2xl: 0 25px 50px -12px hsla(140, 30%, 15%, 0.2);
+  /* Police système : SF sur les appareils Apple, Roboto sur Android, Segoe sous Windows. */
+  --app-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --app-font-serif: var(--app-font-sans);
+  --app-font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 0.75rem;
+  --shadow-2xs: 0 1px 1px 0 rgb(0 0 0 / 0.03);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 10px 24px -6px rgb(0 0 0 / 0.12);
+  --shadow-xl: 0 20px 40px -10px rgb(0 0 0 / 0.14);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.2);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -154,40 +161,40 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 140 30% 10%;
-  --foreground: 40 33% 96%;
-  --border: 140 30% 20%;
-  --card: 140 30% 12%;
-  --card-foreground: 40 33% 96%;
-  --card-border: 140 30% 20%;
-  --sidebar: 140 30% 8%;
-  --sidebar-foreground: 40 33% 96%;
-  --sidebar-border: 140 30% 15%;
-  --sidebar-primary: 35 65% 50%;
-  --sidebar-primary-foreground: 140 30% 15%;
-  --sidebar-accent: 140 30% 18%;
-  --sidebar-accent-foreground: 40 33% 96%;
-  --sidebar-ring: 35 65% 50%;
-  --popover: 140 30% 12%;
-  --popover-foreground: 40 33% 96%;
-  --popover-border: 140 30% 20%;
-  --primary: 145 45% 40%;
-  --primary-foreground: 140 30% 10%;
-  --secondary: 35 65% 50%;
-  --secondary-foreground: 140 30% 15%;
-  --muted: 140 30% 20%;
-  --muted-foreground: 40 10% 70%;
-  --accent: 145 30% 22%;
-  --accent-foreground: 40 33% 96%;
-  --destructive: 0 70% 60%;
-  --destructive-foreground: 40 33% 96%;
-  --input: 140 30% 20%;
-  --ring: 145 45% 40%;
-  --chart-1: 145 45% 40%;
-  --chart-2: 35 65% 50%;
-  --chart-3: 15 65% 55%;
-  --chart-4: 140 20% 60%;
-  --chart-5: 40 40% 75%;
+  --background: 0 0% 0%;
+  --foreground: 240 11% 96%;
+  --border: 240 2% 23%;
+  --card: 240 3% 11%;
+  --card-foreground: 240 11% 96%;
+  --card-border: 240 2% 23%;
+  --sidebar: 240 3% 11%;
+  --sidebar-foreground: 240 11% 96%;
+  --sidebar-border: 240 2% 23%;
+  --sidebar-primary: 135 64% 50%;
+  --sidebar-primary-foreground: 0 0% 0%;
+  --sidebar-accent: 240 2% 18%;
+  --sidebar-accent-foreground: 240 11% 96%;
+  --sidebar-ring: 135 64% 50%;
+  --popover: 240 2% 18%;
+  --popover-foreground: 240 11% 96%;
+  --popover-border: 240 2% 23%;
+  --primary: 135 64% 50%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 240 2% 18%;
+  --secondary-foreground: 240 11% 96%;
+  --muted: 240 2% 18%;
+  --muted-foreground: 240 2% 61%;
+  --accent: 240 2% 23%;
+  --accent-foreground: 240 11% 96%;
+  --destructive: 354 100% 42%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 240 2% 49%;
+  --ring: 135 64% 50%;
+  --chart-1: 135 64% 50%;
+  --chart-2: 210 100% 52%;
+  --chart-3: 28 100% 52%;
+  --chart-4: 280 85% 65%;
+  --chart-5: 190 100% 50%;
 }
 
 @layer base {
@@ -199,8 +206,13 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  h1, h2, h3 {
-    @apply font-serif font-bold tracking-tight;
+  /* Hiérarchie à la manière d'Apple : titre de page en gras, titres de
+     section en demi-gras, une seule famille de caractères. */
+  h1 {
+    @apply font-sans font-bold tracking-tight;
+  }
+  h2, h3 {
+    @apply font-sans font-semibold tracking-tight;
   }
   h4, h5, h6 {
     @apply font-sans font-semibold tracking-tight;

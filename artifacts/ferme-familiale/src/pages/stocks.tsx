@@ -130,7 +130,7 @@ export default function Stocks() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Gestion des stocks</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Gestion des stocks</h1>
         <p className="text-muted-foreground mt-1">Suivi des aliments et produits vétérinaires</p>
       </div>
 
@@ -142,7 +142,7 @@ export default function Stocks() {
 
         <TabsContent value="aliments" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-t-4 border-t-primary">
+            <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Stock actuel</CardTitle></CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stockActuel.toFixed(1)} kg</div>
@@ -163,7 +163,7 @@ export default function Stocks() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xl font-serif">Mouvements de stock aliments</CardTitle>
+              <CardTitle className="text-xl">Mouvements de stock aliments</CardTitle>
               {!isReadOnly && (
                 <Button size="sm" className="gap-2" onClick={() => { setDialogType("aliment"); setDialogOpen(true); }}>
                   <Plus className="h-4 w-4" /> Nouveau mouvement
@@ -278,7 +278,7 @@ export default function Stocks() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xl font-serif">Mouvements médicaments / vaccins</CardTitle>
+              <CardTitle className="text-xl">Mouvements médicaments / vaccins</CardTitle>
               {!isReadOnly && (
                 <Button size="sm" className="gap-2" onClick={() => { setDialogType("medicament"); setDialogOpen(true); }}>
                   <Plus className="h-4 w-4" /> Nouveau mouvement

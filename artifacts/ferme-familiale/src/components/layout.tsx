@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { preloadBrand, getBrandSync } from "@/lib/branding";
 import { OfflineBanner } from "@/components/offline-banner";
 import { setPageTitle } from "@/lib/page-title";
-import { MENU, entreePour } from "@/lib/navigation";
+import { MENU, entreePour, roleAutorise } from "@/lib/navigation";
 import logoMbiedou from "@assets/logos/v7_medallion_hen_chicks.png";
 
 // lg de Tailwind : au-delà, la barre latérale est toujours affichée.
@@ -42,10 +42,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!roleAutorise(location, user?.role as UserRole | undefined)) { setPageTitle("Accès réservé"); return; }
     // La fiche d'une bande (/bandes/:id) pose son propre titre (nom + onglet).
     if (/^\/bandes\/[^/]+/.test(location)) return;
     setPageTitle(entreePour(location)?.label ?? "");
-  }, [location, fermeNom]);
+  }, [location, fermeNom, user?.role]);
 
   useEffect(() => {
     if (!isLoading && !user && location !== "/login" && location !== "/") {
@@ -125,7 +126,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         // la touche Tab et les lecteurs d'écran parcouraient ses liens invisibles.
         inert={!isDesktop && !isMobileMenuOpen}
         className={`
-        fixed inset-y-0 left-0 z-40 w-[260px] bg-sidebar text-sidebar-foreground transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-40 w-[260px] bg-sidebar text-sidebar-foreground border-r border-sidebar-border transform transition-transform duration-300 ease-in-out
         lg:relative lg:translate-x-0 flex flex-col
         ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
@@ -134,25 +135,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <img
               src={logoMbiedou}
               alt="Logo Ferme Mbiedou"
-              className="w-11 h-11 rounded-full object-cover shrink-0 ring-2 ring-sidebar-primary/30"
+              className="w-11 h-11 rounded-full object-cover shrink-0"
             />
             <div>
-              <p className="text-lg font-bold tracking-tight text-sidebar-primary leading-tight">
+              <p className="text-[1.0625rem] font-semibold tracking-tight leading-tight">
                 {fermeNom}
               </p>
-              <p className="text-xs text-sidebar-foreground/75 leading-tight">Gestion avicole</p>
+              <p className="text-xs text-muted-foreground leading-tight">Gestion avicole</p>
             </div>
           </div>
         </div>
 
-        <div className="mx-4 mb-3 p-3 rounded-lg bg-sidebar-accent/50 border border-sidebar-accent">
+        <div className="mx-3 mb-3 p-3 rounded-xl bg-sidebar-accent">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground text-sm font-bold shrink-0">
               {userInitials}
             </div>
             <div className="min-w-0">
               <div className="text-sm font-semibold truncate">{user.nom}</div>
-              <div className="text-xs text-sidebar-foreground/75">{roleName}</div>
+              <div className="text-xs text-muted-foreground">{roleName}</div>
             </div>
           </div>
         </div>
@@ -161,7 +162,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {filteredGroups.map((group, gi) => (
             <div key={group.label} className={gi > 0 ? "mt-4" : ""}>
               <div className="px-3 py-1.5">
-                <span className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/75">{group.label}</span>
+                <span className="text-xs font-semibold text-muted-foreground">{group.label}</span>
               </div>
               <div className="space-y-0.5">
                 {group.items.map((item) => {
@@ -170,12 +171,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   return (
                     <Link key={item.href} href={item.href} aria-current={isActive ? "page" : undefined} onClick={() => setIsMobileMenuOpen(false)}>
                       <div className={`
-                        flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer
+                        flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 cursor-pointer
                         ${isActive 
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm" 
-                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"}
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold" 
+                          : "text-sidebar-foreground hover:bg-sidebar-accent"}
                       `}>
-                        <Icon className="h-[18px] w-[18px] shrink-0" />
+                        {/* Comme une barre latérale Apple : icône dans la couleur d'accent, blanche sur la ligne sélectionnée. */}
+                        <Icon className={`h-[18px] w-[18px] shrink-0 ${isActive ? "" : "text-sidebar-primary"}`} />
                         <span className="text-[0.8125rem] flex-1">{item.label}</span>
                       </div>
                     </Link>
@@ -186,13 +188,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="p-3 mt-auto border-t border-sidebar-accent/50">
+        <div className="p-3 mt-auto border-t border-sidebar-border">
           <button 
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground transition-all duration-150 text-[0.8125rem]"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-destructive hover:bg-sidebar-accent transition-colors duration-150 text-[0.8125rem]"
             onClick={handleLogout}
           >
             <LogOut className="h-[18px] w-[18px]" />
-            Se deconnecter
+            Se déconnecter
           </button>
         </div>
       </aside>

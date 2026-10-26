@@ -138,7 +138,7 @@ export default function Utilisateurs() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight font-serif text-foreground">Gestion des utilisateurs</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Gestion des utilisateurs</h1>
           <p className="text-muted-foreground mt-1">Gérez les comptes et les droits d'accès</p>
         </div>
         {currentUser?.role === "admin" && (
