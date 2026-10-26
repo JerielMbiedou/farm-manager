@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { formatFCFA } from "@/lib/format";
+import { Graphique, resumeSerie, resumeValeurs } from "@/components/graphique";
 import {
   TrendingUp, TrendingDown, Wallet, Construction, ArrowUpRight, ArrowDownRight,
   Building2, BarChart3, Target, AlertCircle, CheckCircle2, Clock, Bird, BookOpen,
@@ -231,18 +232,21 @@ export default function Finances() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
-                <ResponsiveContainer width="100%" height={300}>
+                <Graphique resume={[resumeSerie("Entrées", cashflowData.map((m: any) => ({ x: m.mois, y: m.entrees })), formatFCFA), resumeSerie("Sorties", cashflowData.map((m: any) => ({ x: m.mois, y: m.sorties })), formatFCFA), resumeSerie("Solde cumulé", cashflowData.map((m: any) => ({ x: m.mois, y: m.soldeFinal })), formatFCFA)].join(" ")}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    {/* Entrées et sorties se distinguent aussi par le trait (plein / tirets), pas seulement par le vert et le rouge. */}
                   <LineChart data={cashflowData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
-                    <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v: number) => formatFCFA(v)} />
-                    <Legend formatter={legendeLisible} wrapperStyle={{ fontSize: 12 }} />
-                    <Line type="monotone" dataKey="entrees" name="Entrées" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="sorties" name="Sorties" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="soldeFinal" name="Solde cumulé" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
+                      <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(v: number) => formatFCFA(v)} />
+                      <Legend formatter={legendeLisible} wrapperStyle={{ fontSize: 12 }} />
+                      <Line type="monotone" dataKey="entrees" name="Entrées" legendType="plainline" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="sorties" name="Sorties" legendType="plainline" stroke="#dc2626" strokeDasharray="6 4" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="soldeFinal" name="Solde cumulé" legendType="plainline" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Graphique>
               </CardContent>
             </Card>
           )}
@@ -350,19 +354,21 @@ export default function Finances() {
                 <CardTitle className="text-base font-serif">Contribution de chaque bande</CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={f.bandesDetails.map((b: any) => ({ nom: b.nom, contribution: b.chargesTotal }))}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="nom" tick={{ fontSize: 11 }} />
-                    <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v: number) => [formatFCFA(v), "Contribution amortissement"]} />
-                    <Bar dataKey="contribution" radius={[6, 6, 0, 0]}>
-                      {f.bandesDetails.map((_: any, i: number) => (
-                        <Cell key={i} fill={`hsl(${25 + i * 15}, 80%, ${45 + i * 5}%)`} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <Graphique resume={resumeValeurs("Contribution de chaque bande à l'amortissement", f.bandesDetails.map((b: any) => ({ nom: b.nom, valeur: b.chargesTotal })), formatFCFA)}>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={f.bandesDetails.map((b: any) => ({ nom: b.nom, contribution: b.chargesTotal }))}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="nom" tick={{ fontSize: 11 }} />
+                      <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(v: number) => [formatFCFA(v), "Contribution amortissement"]} />
+                      <Bar dataKey="contribution" radius={[6, 6, 0, 0]}>
+                        {f.bandesDetails.map((_: any, i: number) => (
+                          <Cell key={i} fill={`hsl(${25 + i * 15}, 80%, ${45 + i * 5}%)`} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Graphique>
               </CardContent>
             </Card>
           )}

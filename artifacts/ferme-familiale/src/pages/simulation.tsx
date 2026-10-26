@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatFCFA } from "@/lib/format";
+import { Graphique, resumeValeurs } from "@/components/graphique";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -432,42 +433,46 @@ export default function Simulation() {
           <Card>
             <CardHeader><CardTitle className="text-lg font-serif">Répartition des coûts</CardTitle></CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
-                  <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number) => formatFCFA(value)} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={index} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <Graphique resume={resumeValeurs("Répartition des coûts", chartData.map((d) => ({ nom: d.name, valeur: d.value })), formatFCFA)}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={chartData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                    <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(value: number) => formatFCFA(value)} />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                      {chartData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </Graphique>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader><CardTitle className="text-lg font-serif">Répartition alimentation</CardTitle></CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={alimentPieData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={70}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {alimentPieData.map((entry, index) => (
-                      <Cell key={index} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => formatFCFA(value)} />
-                </PieChart>
-              </ResponsiveContainer>
+              <Graphique resume={resumeValeurs("Répartition alimentation", alimentPieData.map((d) => ({ nom: d.name, valeur: d.value })), formatFCFA)}>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={alimentPieData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={70}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {alimentPieData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => formatFCFA(value)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Graphique>
             </CardContent>
           </Card>
         </div>

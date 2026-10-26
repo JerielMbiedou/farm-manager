@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { formatFCFA } from "@/lib/format";
+import { Graphique, resumeValeurs } from "@/components/graphique";
 import { Wallet, Receipt, Construction, Bird, AlertTriangle, Syringe, TrendingUp, ArrowRight, Check, Calendar, Scale, Activity } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { Link } from "wouter";
@@ -394,15 +395,17 @@ export default function Dashboard() {
             <CardContent className="pt-4">
               <div className="h-[250px]">
                 {summary.depensesParCategorie && summary.depensesParCategorie.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={summary.depensesParCategorie}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                      <XAxis dataKey="categorie" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} />
-                      <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} tickFormatter={(value) => `${value / 1000}k`} />
-                      <Tooltip formatter={(value: number) => [formatFCFA(value), "Montant"]} cursor={{ fill: "hsl(var(--muted)/0.5)" }} />
-                      <Bar dataKey="montant" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <Graphique className="h-full" resume={resumeValeurs("Dépenses par catégorie", summary.depensesParCategorie.map((d: any) => ({ nom: d.categorie, valeur: d.montant })), formatFCFA)}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={summary.depensesParCategorie}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis dataKey="categorie" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} />
+                        <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} tickFormatter={(value) => `${value / 1000}k`} />
+                        <Tooltip formatter={(value: number) => [formatFCFA(value), "Montant"]} cursor={{ fill: "hsl(var(--muted)/0.5)" }} />
+                        <Bar dataKey="montant" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Graphique>
                 ) : (
                   <div className="h-full flex items-center justify-center text-muted-foreground text-sm">Aucune donnée disponible</div>
                 )}

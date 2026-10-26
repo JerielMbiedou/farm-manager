@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { formatFCFA } from "@/lib/format";
+import { Graphique, resumeValeurs } from "@/components/graphique";
 import { BarChart3, Target, Download } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 import { useSortable } from "@/lib/use-sortable";
@@ -71,17 +72,19 @@ export default function ComparaisonBandes() {
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                      <XAxis dataKey="nom" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} />
-                      <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} tickFormatter={(v) => `${v / 1000}k`} />
-                      <Tooltip formatter={(value: number) => [formatFCFA(value)]} />
-                      <Legend formatter={legendeLisible} />
-                      <Bar dataKey="coutParSujet" fill="hsl(var(--destructive))" name="Coût/sujet" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="prixVenteMoyen" fill="hsl(var(--primary))" name="Prix vente moy." radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <Graphique className="h-full" resume={chartData.map((b) => `${b.nom} : coût par sujet ${formatFCFA(b.coutParSujet)}, prix de vente moyen ${formatFCFA(b.prixVenteMoyen)}`).join(". ") + "."}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis dataKey="nom" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} />
+                        <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} tickFormatter={(v) => `${v / 1000}k`} />
+                        <Tooltip formatter={(value: number) => [formatFCFA(value)]} />
+                        <Legend formatter={legendeLisible} />
+                        <Bar dataKey="coutParSujet" fill="hsl(var(--destructive))" name="Coût/sujet" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="prixVenteMoyen" fill="hsl(var(--primary))" name="Prix vente moy." radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Graphique>
                 </div>
               </CardContent>
             </Card>
@@ -95,15 +98,17 @@ export default function ComparaisonBandes() {
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                      <XAxis dataKey="nom" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} />
-                      <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} tickFormatter={(v) => `${v / 1000}k`} />
-                      <Tooltip formatter={(value: number) => [formatFCFA(value), "Bénéfice"]} />
-                      <Bar dataKey="beneficeNet" fill="hsl(var(--chart-2))" name="Bénéfice net" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <Graphique className="h-full" resume={resumeValeurs("Bénéfice net par bande", chartData.map((b) => ({ nom: b.nom, valeur: b.beneficeNet })), formatFCFA)}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis dataKey="nom" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} />
+                        <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} fontSize={11} tickFormatter={(v) => `${v / 1000}k`} />
+                        <Tooltip formatter={(value: number) => [formatFCFA(value), "Bénéfice"]} />
+                        <Bar dataKey="beneficeNet" fill="hsl(var(--chart-2))" name="Bénéfice net" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Graphique>
                 </div>
               </CardContent>
             </Card>

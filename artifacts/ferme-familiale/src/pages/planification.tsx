@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useListBandes } from "@workspace/api-client-react";
 import { formatFCFA } from "@/lib/format";
+import { Graphique } from "@/components/graphique";
 import { Calendar, Plus, ChevronLeft, ChevronRight, Bird, Package } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useSortable } from "@/lib/use-sortable";
@@ -229,16 +230,18 @@ export default function Planification() {
               </Table>
 
               {chartData.length > 1 && (
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="nom" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend formatter={legendeLisible} />
-                    <Bar dataKey="sacs" name="Sacs d'aliment" fill="#3b82f6" />
-                  </BarChart>
-                </ResponsiveContainer>
+                <Graphique>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="nom" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend formatter={legendeLisible} />
+                      <Bar dataKey="sacs" name="Sacs d'aliment" fill="#3b82f6" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Graphique>
               )}
             </CardContent>
           </Card>

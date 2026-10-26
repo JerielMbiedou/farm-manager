@@ -43,6 +43,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { formatFCFA } from "@/lib/format";
+import { Graphique, resumeSerie } from "@/components/graphique";
 import { getAgeJours } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -2445,14 +2446,16 @@ export default function BandeDetailView() {
                 <CardHeader><CardTitle className="text-xl font-serif">Répartition des coûts</CardTitle></CardHeader>
                 <CardContent>
                   <div className="grid md:grid-cols-2 gap-6 items-center">
-                    <ResponsiveContainer width="100%" height={280}>
-                      <PieChart>
-                        <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={110} dataKey="value" paddingAngle={2} label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                          {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="white" strokeWidth={2} />)}
-                        </Pie>
-                        <Tooltip formatter={(v: number) => formatFCFA(v)} />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    <Graphique>
+                      <ResponsiveContainer width="100%" height={280}>
+                        <PieChart>
+                          <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={110} dataKey="value" paddingAngle={2} label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                            {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="white" strokeWidth={2} />)}
+                          </Pie>
+                          <Tooltip formatter={(v: number) => formatFCFA(v)} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </Graphique>
                     <div className="space-y-2">
                       {pieData.map((entry, i) => (
                         <div key={entry.name} className="flex items-center justify-between gap-3 py-1.5 border-b last:border-0">
@@ -2551,18 +2554,20 @@ export default function BandeDetailView() {
               <Card>
                 <CardHeader><CardTitle className="text-xl font-serif">Courbe de mortalité</CardTitle></CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <ComposedChart data={mortaliteItems.map((m: any) => ({ jour: `J${m.ageJours}`, deces: m.decesJour, cumules: m.decesCumules, taux: m.tauxMortalite }))}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="jour" />
-                      <YAxis yAxisId="left" />
-                      <YAxis yAxisId="right" orientation="right" unit="%" />
-                      <Tooltip />
-                      <Legend formatter={legendeLisible} />
-                      <Bar yAxisId="left" dataKey="deces" name="Décès / jour" fill="#ef4444" />
-                      <Line yAxisId="right" type="monotone" dataKey="taux" name="Taux cumulé %" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
+                  <Graphique resume={[resumeSerie("Décès par jour", mortaliteItems.map((m: any) => ({ x: `J${m.ageJours}`, y: m.decesJour }))), resumeSerie("Taux de mortalité cumulé", mortaliteItems.map((m: any) => ({ x: `J${m.ageJours}`, y: m.tauxMortalite })), (v) => `${v.toLocaleString("fr-FR")} %`)].join(" ")}>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <ComposedChart data={mortaliteItems.map((m: any) => ({ jour: `J${m.ageJours}`, deces: m.decesJour, cumules: m.decesCumules, taux: m.tauxMortalite }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="jour" />
+                        <YAxis yAxisId="left" />
+                        <YAxis yAxisId="right" orientation="right" unit="%" />
+                        <Tooltip />
+                        <Legend formatter={legendeLisible} />
+                        <Bar yAxisId="left" dataKey="deces" name="Décès / jour" fill="#ef4444" />
+                        <Line yAxisId="right" type="monotone" dataKey="taux" name="Taux cumulé %" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </Graphique>
                 </CardContent>
               </Card>
 
@@ -2660,31 +2665,33 @@ export default function BandeDetailView() {
             <Card>
               <CardHeader><CardTitle className="text-xl font-serif">Courbe de croissance (vs référence COBB 500)</CardTitle></CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={(() => {
-                    const allDays = new Set<number>();
-                    peseesItems.forEach((p: any) => allDays.add(p.ageJours));
-                    refPoids.forEach(r => allDays.add(r.ageJours));
-                    const sortedDays = Array.from(allDays).sort((a, b) => a - b);
-                    return sortedDays.map(day => {
-                      const pesee = peseesItems.find((p: any) => p.ageJours === day) as any;
-                      const ref = refPoids.find(r => r.ageJours === day);
-                      return {
-                        jour: `J${day}`,
-                        poids: pesee ? pesee.poidsMoyenG : null,
-                        reference: ref ? ref.poidsG : null,
-                      };
-                    });
-                  })()}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="jour" />
-                    <YAxis unit="g" />
-                    <Tooltip />
-                    <Legend formatter={legendeLisible} />
-                    <Line type="monotone" dataKey="poids" name="Poids réel (g)" stroke="#22c55e" strokeWidth={2} dot={{ r: 4 }} connectNulls />
-                    <Line type="monotone" dataKey="reference" name="Référence COBB 500 (g)" stroke="#3b82f6" strokeDasharray="5 5" strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                  </LineChart>
-                </ResponsiveContainer>
+                <Graphique resume={[resumeSerie("Poids moyen réel", peseesItems.map((p: any) => ({ x: `J${p.ageJours}`, y: p.poidsMoyenG })), (v) => `${v.toLocaleString("fr-FR")} g`), resumeSerie("Référence COBB 500", refPoids.map((r) => ({ x: `J${r.ageJours}`, y: r.poidsG })), (v) => `${v.toLocaleString("fr-FR")} g`)].join(" ")}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={(() => {
+                      const allDays = new Set<number>();
+                      peseesItems.forEach((p: any) => allDays.add(p.ageJours));
+                      refPoids.forEach(r => allDays.add(r.ageJours));
+                      const sortedDays = Array.from(allDays).sort((a, b) => a - b);
+                      return sortedDays.map(day => {
+                        const pesee = peseesItems.find((p: any) => p.ageJours === day) as any;
+                        const ref = refPoids.find(r => r.ageJours === day);
+                        return {
+                          jour: `J${day}`,
+                          poids: pesee ? pesee.poidsMoyenG : null,
+                          reference: ref ? ref.poidsG : null,
+                        };
+                      });
+                    })()}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="jour" />
+                      <YAxis unit="g" />
+                      <Tooltip />
+                      <Legend formatter={legendeLisible} />
+                      <Line type="monotone" dataKey="poids" name="Poids réel (g)" legendType="plainline" stroke="#22c55e" strokeWidth={2} dot={{ r: 4 }} connectNulls />
+                      <Line type="monotone" dataKey="reference" name="Référence COBB 500 (g)" legendType="plainline" stroke="#3b82f6" strokeDasharray="5 5" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Graphique>
               </CardContent>
             </Card>
           )}
@@ -2929,16 +2936,18 @@ export default function BandeDetailView() {
             <Card>
               <CardHeader><CardTitle className="text-xl font-serif">Courbe de consommation d'eau</CardTitle></CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <ComposedChart data={eauItems.map((e: any) => ({ jour: `J${e.ageJours}`, litres: e.quantiteLitres }))}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="jour" />
-                    <YAxis unit="L" />
-                    <Tooltip />
-                    <Legend formatter={legendeLisible} />
-                    <Area type="monotone" dataKey="litres" name="Eau (L)" fill="#3b82f6" fillOpacity={0.2} stroke="#3b82f6" strokeWidth={2} />
-                  </ComposedChart>
-                </ResponsiveContainer>
+                <Graphique resume={resumeSerie("Eau consommée par jour", eauItems.map((e: any) => ({ x: `J${e.ageJours}`, y: e.quantiteLitres })), (v) => `${v.toLocaleString("fr-FR")} litres`)}>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <ComposedChart data={eauItems.map((e: any) => ({ jour: `J${e.ageJours}`, litres: e.quantiteLitres }))}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="jour" />
+                      <YAxis unit="L" />
+                      <Tooltip />
+                      <Legend formatter={legendeLisible} />
+                      <Area type="monotone" dataKey="litres" name="Eau (L)" fill="#3b82f6" fillOpacity={0.2} stroke="#3b82f6" strokeWidth={2} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </Graphique>
               </CardContent>
             </Card>
           )}
