@@ -15,6 +15,7 @@ import { Trash2, Shield, Users, UserPlus } from "lucide-react";
 import { useSortable } from "@/lib/use-sortable";
 import { DataPagination } from "@/components/data-pagination";
 import { confirmAction } from "@/lib/confirm-dialog";
+import { SortableHead } from "@/components/sortable-head";
 
 type UserInfo = {
   id: number;
@@ -210,10 +211,10 @@ export default function Utilisateurs() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30">
-                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("nom")}>Nom <span className="text-xs text-muted-foreground">{sortIcon("nom")}</span></TableHead>
-                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("username")}>Identifiant <span className="text-xs text-muted-foreground">{sortIcon("username")}</span></TableHead>
-                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("role")}>Rôle <span className="text-xs text-muted-foreground">{sortIcon("role")}</span></TableHead>
-                <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("createdAt")}>Inscription <span className="text-xs text-muted-foreground">{sortIcon("createdAt")}</span></TableHead>
+                <SortableHead icon={sortIcon("nom")} onSort={() => toggleSort("nom")}>Nom</SortableHead>
+                <SortableHead icon={sortIcon("username")} onSort={() => toggleSort("username")}>Identifiant</SortableHead>
+                <SortableHead icon={sortIcon("role")} onSort={() => toggleSort("role")}>Rôle</SortableHead>
+                <SortableHead icon={sortIcon("createdAt")} onSort={() => toggleSort("createdAt")}>Inscription</SortableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

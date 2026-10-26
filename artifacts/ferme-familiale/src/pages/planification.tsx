@@ -11,6 +11,7 @@ import { Calendar, Plus, ChevronLeft, ChevronRight, Bird, Package } from "lucide
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useSortable } from "@/lib/use-sortable";
 import { legendeLisible } from "@/lib/chart-legende";
+import { SortableHead } from "@/components/sortable-head";
 
 interface PlannedBande {
   id: string;
@@ -271,11 +272,11 @@ function PlansTable({ plans, onRemove }: { plans: PlannedBande[]; onRemove: (id:
     <Table>
       <TableHeader>
         <TableRow className="bg-muted/30">
-          <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("nom")}>Nom <span className="text-xs text-muted-foreground">{sortIcon("nom")}</span></TableHead>
-          <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("dateDebut")}>Début <span className="text-xs text-muted-foreground">{sortIcon("dateDebut")}</span></TableHead>
-          <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("sujets")}>Sujets <span className="text-xs text-muted-foreground">{sortIcon("sujets")}</span></TableHead>
-          <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("dureeJours")}>Durée <span className="text-xs text-muted-foreground">{sortIcon("dureeJours")}</span></TableHead>
-          <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("finEstimee")}>Fin estimée <span className="text-xs text-muted-foreground">{sortIcon("finEstimee")}</span></TableHead>
+          <SortableHead icon={sortIcon("nom")} onSort={() => toggleSort("nom")}>Nom</SortableHead>
+          <SortableHead icon={sortIcon("dateDebut")} onSort={() => toggleSort("dateDebut")}>Début</SortableHead>
+          <SortableHead className="text-right" icon={sortIcon("sujets")} onSort={() => toggleSort("sujets")}>Sujets</SortableHead>
+          <SortableHead className="text-right" icon={sortIcon("dureeJours")} onSort={() => toggleSort("dureeJours")}>Durée</SortableHead>
+          <SortableHead className="text-right" icon={sortIcon("finEstimee")} onSort={() => toggleSort("finEstimee")}>Fin estimée</SortableHead>
           <TableHead className="text-right w-20">Actions</TableHead>
         </TableRow>
       </TableHeader>

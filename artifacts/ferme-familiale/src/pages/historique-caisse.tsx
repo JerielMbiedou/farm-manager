@@ -8,6 +8,7 @@ import { formatFCFA } from "@/lib/format";
 import { Wallet, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { DataPagination } from "@/components/data-pagination";
 import { useSortable } from "@/lib/use-sortable";
+import { SortableHead } from "@/components/sortable-head";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -90,11 +91,11 @@ export default function HistoriqueCaisse() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("date")} data-testid="th-date">Date <span className="text-xs text-muted-foreground">{sortIcon("date")}</span></TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("type")}>Type <span className="text-xs text-muted-foreground">{sortIcon("type")}</span></TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("categorie")}>Catégorie <span className="text-xs text-muted-foreground">{sortIcon("categorie")}</span></TableHead>
-              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("designation")}>Désignation <span className="text-xs text-muted-foreground">{sortIcon("designation")}</span></TableHead>
-              <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("montant")}>Montant <span className="text-xs text-muted-foreground">{sortIcon("montant")}</span></TableHead>
+              <SortableHead icon={sortIcon("date")} onSort={() => toggleSort("date")} data-testid="th-date">Date</SortableHead>
+              <SortableHead icon={sortIcon("type")} onSort={() => toggleSort("type")}>Type</SortableHead>
+              <SortableHead icon={sortIcon("categorie")} onSort={() => toggleSort("categorie")}>Catégorie</SortableHead>
+              <SortableHead icon={sortIcon("designation")} onSort={() => toggleSort("designation")}>Désignation</SortableHead>
+              <SortableHead className="text-right" icon={sortIcon("montant")} onSort={() => toggleSort("montant")}>Montant</SortableHead>
               <TableHead className="text-right">Solde après</TableHead>
             </TableRow>
           </TableHeader>

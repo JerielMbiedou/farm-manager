@@ -7,6 +7,7 @@ import { BarChart3, Target, Download } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 import { useSortable } from "@/lib/use-sortable";
 import { legendeLisible } from "@/lib/chart-legende";
+import { SortableHead } from "@/components/sortable-head";
 
 export default function ComparaisonBandes() {
   const { data: bandes, isLoading, error } = useGetComparaisonBandes();
@@ -120,16 +121,16 @@ export default function ComparaisonBandes() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("nom")}>Bande <span className="text-xs text-muted-foreground">{sortIcon("nom")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("sujetsDepart")}>Sujets départ <span className="text-xs text-muted-foreground">{sortIcon("sujetsDepart")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("tauxMortalite")}>Mortalité <span className="text-xs text-muted-foreground">{sortIcon("tauxMortalite")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("totalVendus")}>Vendus <span className="text-xs text-muted-foreground">{sortIcon("totalVendus")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("dureeJours")}>Durée (j) <span className="text-xs text-muted-foreground">{sortIcon("dureeJours")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("coutParSujet")}>Coût/sujet <span className="text-xs text-muted-foreground">{sortIcon("coutParSujet")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("prixVenteMoyen")}>Prix vente moy. <span className="text-xs text-muted-foreground">{sortIcon("prixVenteMoyen")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("beneficeNet")}>Bénéfice net <span className="text-xs text-muted-foreground">{sortIcon("beneficeNet")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("seuilNombrePoulets")}>Seuil (nb poulets) <span className="text-xs text-muted-foreground">{sortIcon("seuilNombrePoulets")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("seuilPrixMin")}>Prix min seuil <span className="text-xs text-muted-foreground">{sortIcon("seuilPrixMin")}</span></TableHead>
+                      <SortableHead icon={sortIcon("nom")} onSort={() => toggleSort("nom")}>Bande</SortableHead>
+                      <SortableHead className="text-right" icon={sortIcon("sujetsDepart")} onSort={() => toggleSort("sujetsDepart")}>Sujets départ</SortableHead>
+                      <SortableHead className="text-right" icon={sortIcon("tauxMortalite")} onSort={() => toggleSort("tauxMortalite")}>Mortalité</SortableHead>
+                      <SortableHead className="text-right" icon={sortIcon("totalVendus")} onSort={() => toggleSort("totalVendus")}>Vendus</SortableHead>
+                      <SortableHead className="text-right" icon={sortIcon("dureeJours")} onSort={() => toggleSort("dureeJours")}>Durée (j)</SortableHead>
+                      <SortableHead className="text-right" icon={sortIcon("coutParSujet")} onSort={() => toggleSort("coutParSujet")}>Coût/sujet</SortableHead>
+                      <SortableHead className="text-right" icon={sortIcon("prixVenteMoyen")} onSort={() => toggleSort("prixVenteMoyen")}>Prix vente moy.</SortableHead>
+                      <SortableHead className="text-right" icon={sortIcon("beneficeNet")} onSort={() => toggleSort("beneficeNet")}>Bénéfice net</SortableHead>
+                      <SortableHead className="text-right" icon={sortIcon("seuilNombrePoulets")} onSort={() => toggleSort("seuilNombrePoulets")}>Seuil (nb poulets)</SortableHead>
+                      <SortableHead className="text-right" icon={sortIcon("seuilPrixMin")} onSort={() => toggleSort("seuilPrixMin")}>Prix min seuil</SortableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

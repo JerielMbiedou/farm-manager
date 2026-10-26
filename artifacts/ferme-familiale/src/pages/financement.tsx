@@ -21,6 +21,7 @@ import { format } from "date-fns";
 import { useSortable } from "@/lib/use-sortable";
 import { DataPagination } from "@/components/data-pagination";
 import { confirmAction } from "@/lib/confirm-dialog";
+import { SortableHead } from "@/components/sortable-head";
 
 const financementSchema = z.object({
   nom: z.string().min(2, "Le nom est requis"),
@@ -461,12 +462,12 @@ function FinancementsTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">
-            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{sortIcon("date")}</span></TableHead>
-            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("nom")}>Membre <span className="text-xs text-muted-foreground">{sortIcon("nom")}</span></TableHead>
-            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("type")}>Type <span className="text-xs text-muted-foreground">{sortIcon("type")}</span></TableHead>
-            <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("tauxInteret")}>Taux <span className="text-xs text-muted-foreground">{sortIcon("tauxInteret")}</span></TableHead>
+            <SortableHead icon={sortIcon("date")} onSort={() => toggleSort("date")}>Date</SortableHead>
+            <SortableHead icon={sortIcon("nom")} onSort={() => toggleSort("nom")}>Membre</SortableHead>
+            <SortableHead icon={sortIcon("type")} onSort={() => toggleSort("type")}>Type</SortableHead>
+            <SortableHead className="text-right" icon={sortIcon("tauxInteret")} onSort={() => toggleSort("tauxInteret")}>Taux</SortableHead>
             <TableHead>Échéance</TableHead>
-            <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("montant")}>Montant <span className="text-xs text-muted-foreground">{sortIcon("montant")}</span></TableHead>
+            <SortableHead className="text-right" icon={sortIcon("montant")} onSort={() => toggleSort("montant")}>Montant</SortableHead>
             {!isReadOnly && <TableHead className="text-right">Actions</TableHead>}
           </TableRow>
         </TableHeader>

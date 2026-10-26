@@ -23,6 +23,7 @@ import { Plus, Trash2, Pencil, ArrowLeft, Construction, Package2, CheckCircle2, 
 import { exportConstructionPDF, exportConstructionExcel } from "@/lib/export";
 import { matchesText, downloadCSV, safeFilenameSlug } from "@/lib/csv";
 import { X } from "lucide-react";
+import { GroupToggle } from "@/components/group-toggle";
 
 const API = "/api";
 
@@ -396,7 +397,7 @@ function DepenseGroupSection({
     <>
       <TableRow className="bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors" onClick={onToggle}>
         <TableCell className="w-10 px-3">
-          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <GroupToggle collapsed={isCollapsed} label={label} onToggle={onToggle} />
         </TableCell>
         <TableCell colSpan={2} className="font-semibold">
           <div className="flex items-center gap-2">
@@ -1155,17 +1156,17 @@ function ChantiersTab() {
               </div>
               <div className="space-y-2">
                 {enCours.map(c => (
-                  <div key={c.id} className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/30 cursor-pointer transition-colors group" onClick={() => setSelectedId(c.id)}>
+                  <button type="button" key={c.id} className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/30 transition-colors group w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setSelectedId(c.id)}>
                     <Construction className="h-5 w-5 text-orange-700 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium">{c.nom}</div>
-                      {c.description && <div className="text-xs text-muted-foreground truncate">{c.description}</div>}
-                      <div className="text-xs text-muted-foreground mt-0.5">
+                    <span className="block flex-1 min-w-0">
+                      <span className="block font-medium">{c.nom}</span>
+                      {c.description && <span className="block text-xs text-muted-foreground truncate">{c.description}</span>}
+                      <span className="block text-xs text-muted-foreground mt-0.5">
                         {c.nbDepenses} dépense(s) · Réel : {formatFCFA(c.totalReel)}{c.totalPrevu > 0 ? ` · Budget : ${formatFCFA(c.totalPrevu)}` : ""}
-                      </div>
-                    </div>
+                      </span>
+                    </span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -1178,14 +1179,14 @@ function ChantiersTab() {
               </div>
               <div className="space-y-2">
                 {clotures.map(c => (
-                  <div key={c.id} className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/30 cursor-pointer transition-colors group opacity-75" onClick={() => setSelectedId(c.id)}>
+                  <button type="button" key={c.id} className="flex items-center gap-3 p-4 border rounded-lg hover:bg-muted/30 transition-colors group opacity-75 w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setSelectedId(c.id)}>
                     <Lock className="h-5 w-5 text-green-700 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium">{c.nom}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">Coût final : {formatFCFA(c.totalReel)} · Clôturé le {c.dateCloture ? format(new Date(c.dateCloture + "T00:00:00"), "dd/MM/yyyy") : "—"}</div>
-                    </div>
+                    <span className="block flex-1 min-w-0">
+                      <span className="block font-medium">{c.nom}</span>
+                      <span className="block text-xs text-muted-foreground mt-0.5">Coût final : {formatFCFA(c.totalReel)} · Clôturé le {c.dateCloture ? format(new Date(c.dateCloture + "T00:00:00"), "dd/MM/yyyy") : "—"}</span>
+                    </span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

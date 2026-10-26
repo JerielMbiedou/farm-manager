@@ -20,6 +20,7 @@ import { Plus, Trash2, Wheat, Pill, AlertTriangle, Package, ArrowDownCircle, Arr
 import { useSortable } from "@/lib/use-sortable";
 import { DataPagination } from "@/components/data-pagination";
 import { confirmAction } from "@/lib/confirm-dialog";
+import { SortableHead } from "@/components/sortable-head";
 
 const alimentSchema = z.object({
   designation: z.string().min(1, "La désignation est requise"),
@@ -570,11 +571,11 @@ function AlimentsTable({ items, isReadOnly, onDelete }: { items: AlimentRow[]; i
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/30">
-            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{sortIcon("date")}</span></TableHead>
-            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("type")}>Type <span className="text-xs text-muted-foreground">{sortIcon("type")}</span></TableHead>
-            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("designation")}>Désignation <span className="text-xs text-muted-foreground">{sortIcon("designation")}</span></TableHead>
-            <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("quantiteKg")}>Quantité (kg) <span className="text-xs text-muted-foreground">{sortIcon("quantiteKg")}</span></TableHead>
-            <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("prixUnitaire")}>Prix U. <span className="text-xs text-muted-foreground">{sortIcon("prixUnitaire")}</span></TableHead>
+            <SortableHead icon={sortIcon("date")} onSort={() => toggleSort("date")}>Date</SortableHead>
+            <SortableHead icon={sortIcon("type")} onSort={() => toggleSort("type")}>Type</SortableHead>
+            <SortableHead icon={sortIcon("designation")} onSort={() => toggleSort("designation")}>Désignation</SortableHead>
+            <SortableHead className="text-right" icon={sortIcon("quantiteKg")} onSort={() => toggleSort("quantiteKg")}>Quantité (kg)</SortableHead>
+            <SortableHead className="text-right" icon={sortIcon("prixUnitaire")} onSort={() => toggleSort("prixUnitaire")}>Prix U.</SortableHead>
             <TableHead>Fournisseur</TableHead>
             {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
           </TableRow>
@@ -654,11 +655,11 @@ function MedicamentsTable({ items, isReadOnly, onDelete }: { items: MedicamentRo
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/30">
-            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{sortIcon("date")}</span></TableHead>
-            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("type")}>Type <span className="text-xs text-muted-foreground">{sortIcon("type")}</span></TableHead>
-            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("nom")}>Produit <span className="text-xs text-muted-foreground">{sortIcon("nom")}</span></TableHead>
-            <TableHead className="text-right cursor-pointer select-none" onClick={() => toggleSort("quantite")}>Quantité <span className="text-xs text-muted-foreground">{sortIcon("quantite")}</span></TableHead>
-            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("datePeremption")}>Péremption <span className="text-xs text-muted-foreground">{sortIcon("datePeremption")}</span></TableHead>
+            <SortableHead icon={sortIcon("date")} onSort={() => toggleSort("date")}>Date</SortableHead>
+            <SortableHead icon={sortIcon("type")} onSort={() => toggleSort("type")}>Type</SortableHead>
+            <SortableHead icon={sortIcon("nom")} onSort={() => toggleSort("nom")}>Produit</SortableHead>
+            <SortableHead className="text-right" icon={sortIcon("quantite")} onSort={() => toggleSort("quantite")}>Quantité</SortableHead>
+            <SortableHead icon={sortIcon("datePeremption")} onSort={() => toggleSort("datePeremption")}>Péremption</SortableHead>
             <TableHead>Fournisseur</TableHead>
             {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
           </TableRow>

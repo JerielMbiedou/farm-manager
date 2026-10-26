@@ -94,6 +94,8 @@ function normalizeStr(s: string): string {
 // Phases d'élevage : valeurs par défaut, écrasées par /api/parametres au montage (BLOC 3).
 import { getPhasesSync, preloadBrand, type PhaseConfig } from "@/lib/branding";
 import { legendeLisible } from "@/lib/chart-legende";
+import { SortableHead } from "@/components/sortable-head";
+import { GroupToggle } from "@/components/group-toggle";
 
 const DEFAULT_PHASES: PhaseConfig[] = [
   { nom: "Demarrage", label: "Démarrage", min: 1, max: 15, color: "#3b82f6" },
@@ -363,7 +365,7 @@ function DepensesGroupedTable({
                       onClick={() => setCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }))}
                     >
                       <TableCell className="w-10 px-3">
-                        {isCollapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                        <GroupToggle collapsed={!!isCollapsed} label={label} onToggle={() => setCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }))} />
                       </TableCell>
                       <TableCell colSpan={3} className="font-semibold">
                         <div className="flex items-center gap-2">
@@ -412,7 +414,7 @@ function DepensesGroupedTable({
                     onClick={() => setCollapsed(prev => ({ ...prev, __charges_fixes: !prev.__charges_fixes }))}
                   >
                     <TableCell className="w-10 px-3">
-                      {isCollapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                      <GroupToggle collapsed={!!isCollapsed} label="Charges fixes" onToggle={() => setCollapsed(prev => ({ ...prev, __charges_fixes: !prev.__charges_fixes }))} />
                     </TableCell>
                     <TableCell colSpan={3} className="font-semibold">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -573,7 +575,7 @@ function VentesGroupedTable({
                       onClick={() => setCollapsed(prev => ({ ...prev, [dateKey]: !prev[dateKey] }))}
                     >
                       <TableCell className="w-10 px-3">
-                        {isCollapsed ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                        <GroupToggle collapsed={!!isCollapsed} label={`Ventes du ${dateLabel}`} onToggle={() => setCollapsed(prev => ({ ...prev, [dateKey]: !prev[dateKey] }))} />
                       </TableCell>
                       <TableCell colSpan={2} className="font-semibold">
                         <div className="flex items-center gap-2">
@@ -2589,11 +2591,11 @@ export default function BandeDetailView() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead className="cursor-pointer select-none" onClick={() => mortaliteSorted.toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{mortaliteSorted.sortIcon("date")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => mortaliteSorted.toggleSort("ageJours")}>Jour <span className="text-xs text-muted-foreground">{mortaliteSorted.sortIcon("ageJours")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => mortaliteSorted.toggleSort("decesJour")}>Décès <span className="text-xs text-muted-foreground">{mortaliteSorted.sortIcon("decesJour")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => mortaliteSorted.toggleSort("decesCumules")}>Cumulés <span className="text-xs text-muted-foreground">{mortaliteSorted.sortIcon("decesCumules")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => mortaliteSorted.toggleSort("tauxMortalite")}>Taux % <span className="text-xs text-muted-foreground">{mortaliteSorted.sortIcon("tauxMortalite")}</span></TableHead>
+                      <SortableHead icon={mortaliteSorted.sortIcon("date")} onSort={() => mortaliteSorted.toggleSort("date")}>Date</SortableHead>
+                      <SortableHead className="text-right" icon={mortaliteSorted.sortIcon("ageJours")} onSort={() => mortaliteSorted.toggleSort("ageJours")}>Jour</SortableHead>
+                      <SortableHead className="text-right" icon={mortaliteSorted.sortIcon("decesJour")} onSort={() => mortaliteSorted.toggleSort("decesJour")}>Décès</SortableHead>
+                      <SortableHead className="text-right" icon={mortaliteSorted.sortIcon("decesCumules")} onSort={() => mortaliteSorted.toggleSort("decesCumules")}>Cumulés</SortableHead>
+                      <SortableHead className="text-right" icon={mortaliteSorted.sortIcon("tauxMortalite")} onSort={() => mortaliteSorted.toggleSort("tauxMortalite")}>Taux %</SortableHead>
                       {!isReadOnly && <TableHead className="text-right w-24">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -2690,13 +2692,13 @@ export default function BandeDetailView() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">
-                        <TableHead className="cursor-pointer select-none" onClick={() => peseesSorted.toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{peseesSorted.sortIcon("date")}</span></TableHead>
-                        <TableHead className="text-right cursor-pointer select-none" onClick={() => peseesSorted.toggleSort("ageJours")}>Jour <span className="text-xs text-muted-foreground">{peseesSorted.sortIcon("ageJours")}</span></TableHead>
-                        <TableHead className="text-right cursor-pointer select-none" onClick={() => peseesSorted.toggleSort("poidsMoyenG")}>Poids (g) <span className="text-xs text-muted-foreground">{peseesSorted.sortIcon("poidsMoyenG")}</span></TableHead>
+                        <SortableHead icon={peseesSorted.sortIcon("date")} onSort={() => peseesSorted.toggleSort("date")}>Date</SortableHead>
+                        <SortableHead className="text-right" icon={peseesSorted.sortIcon("ageJours")} onSort={() => peseesSorted.toggleSort("ageJours")}>Jour</SortableHead>
+                        <SortableHead className="text-right" icon={peseesSorted.sortIcon("poidsMoyenG")} onSort={() => peseesSorted.toggleSort("poidsMoyenG")}>Poids (g)</SortableHead>
                         <TableHead className="text-right">Min / Max</TableHead>
-                        <TableHead className="text-right cursor-pointer select-none" onClick={() => peseesSorted.toggleSort("cv")}>CV <span className="text-xs text-muted-foreground">{peseesSorted.sortIcon("cv")}</span></TableHead>
+                        <SortableHead className="text-right" icon={peseesSorted.sortIcon("cv")} onSort={() => peseesSorted.toggleSort("cv")}>CV</SortableHead>
                         <TableHead className="text-right">Objectif</TableHead>
-                        <TableHead className="text-right cursor-pointer select-none" onClick={() => peseesSorted.toggleSort("ecart")}>Écart <span className="text-xs text-muted-foreground">{peseesSorted.sortIcon("ecart")}</span></TableHead>
+                        <SortableHead className="text-right" icon={peseesSorted.sortIcon("ecart")} onSort={() => peseesSorted.toggleSort("ecart")}>Écart</SortableHead>
                         {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
                       </TableRow>
                     </TableHeader>
@@ -2808,8 +2810,8 @@ export default function BandeDetailView() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/30">
-                          <TableHead className="cursor-pointer select-none" onClick={() => consommationSorted.toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{consommationSorted.sortIcon("date")}</span></TableHead>
-                          <TableHead className="text-right cursor-pointer select-none" onClick={() => consommationSorted.toggleSort("quantiteKg")}>Quantité (kg) <span className="text-xs text-muted-foreground">{consommationSorted.sortIcon("quantiteKg")}</span></TableHead>
+                          <SortableHead icon={consommationSorted.sortIcon("date")} onSort={() => consommationSorted.toggleSort("date")}>Date</SortableHead>
+                          <SortableHead className="text-right" icon={consommationSorted.sortIcon("quantiteKg")} onSort={() => consommationSorted.toggleSort("quantiteKg")}>Quantité (kg)</SortableHead>
                           {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
                         </TableRow>
                       </TableHeader>
@@ -2862,11 +2864,11 @@ export default function BandeDetailView() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead className="cursor-pointer select-none" onClick={() => vaccinationsSorted.toggleSort("jourPrevu")}>Jour <span className="text-xs text-muted-foreground">{vaccinationsSorted.sortIcon("jourPrevu")}</span></TableHead>
-                      <TableHead className="cursor-pointer select-none" onClick={() => vaccinationsSorted.toggleSort("nom")}>Vaccin <span className="text-xs text-muted-foreground">{vaccinationsSorted.sortIcon("nom")}</span></TableHead>
-                      <TableHead className="cursor-pointer select-none" onClick={() => vaccinationsSorted.toggleSort("datePrevue")}>Date prévue <span className="text-xs text-muted-foreground">{vaccinationsSorted.sortIcon("datePrevue")}</span></TableHead>
-                      <TableHead className="cursor-pointer select-none" onClick={() => vaccinationsSorted.toggleSort("fait")}>Statut <span className="text-xs text-muted-foreground">{vaccinationsSorted.sortIcon("fait")}</span></TableHead>
-                      <TableHead className="cursor-pointer select-none" onClick={() => vaccinationsSorted.toggleSort("dateFait")}>Date fait <span className="text-xs text-muted-foreground">{vaccinationsSorted.sortIcon("dateFait")}</span></TableHead>
+                      <SortableHead icon={vaccinationsSorted.sortIcon("jourPrevu")} onSort={() => vaccinationsSorted.toggleSort("jourPrevu")}>Jour</SortableHead>
+                      <SortableHead icon={vaccinationsSorted.sortIcon("nom")} onSort={() => vaccinationsSorted.toggleSort("nom")}>Vaccin</SortableHead>
+                      <SortableHead icon={vaccinationsSorted.sortIcon("datePrevue")} onSort={() => vaccinationsSorted.toggleSort("datePrevue")}>Date prévue</SortableHead>
+                      <SortableHead icon={vaccinationsSorted.sortIcon("fait")} onSort={() => vaccinationsSorted.toggleSort("fait")}>Statut</SortableHead>
+                      <SortableHead icon={vaccinationsSorted.sortIcon("dateFait")} onSort={() => vaccinationsSorted.toggleSort("dateFait")}>Date fait</SortableHead>
                       {!isReadOnly && <TableHead className="text-right w-24">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -2957,9 +2959,9 @@ export default function BandeDetailView() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead className="cursor-pointer select-none" onClick={() => eauSorted.toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{eauSorted.sortIcon("date")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => eauSorted.toggleSort("ageJours")}>Jour <span className="text-xs text-muted-foreground">{eauSorted.sortIcon("ageJours")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => eauSorted.toggleSort("quantiteLitres")}>Litres <span className="text-xs text-muted-foreground">{eauSorted.sortIcon("quantiteLitres")}</span></TableHead>
+                      <SortableHead icon={eauSorted.sortIcon("date")} onSort={() => eauSorted.toggleSort("date")}>Date</SortableHead>
+                      <SortableHead className="text-right" icon={eauSorted.sortIcon("ageJours")} onSort={() => eauSorted.toggleSort("ageJours")}>Jour</SortableHead>
+                      <SortableHead className="text-right" icon={eauSorted.sortIcon("quantiteLitres")} onSort={() => eauSorted.toggleSort("quantiteLitres")}>Litres</SortableHead>
                       {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -3008,10 +3010,10 @@ export default function BandeDetailView() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead className="cursor-pointer select-none" onClick={() => traitementsSorted.toggleSort("date")}>Date <span className="text-xs text-muted-foreground">{traitementsSorted.sortIcon("date")}</span></TableHead>
-                      <TableHead className="text-right cursor-pointer select-none" onClick={() => traitementsSorted.toggleSort("ageJours")}>Jour <span className="text-xs text-muted-foreground">{traitementsSorted.sortIcon("ageJours")}</span></TableHead>
-                      <TableHead className="cursor-pointer select-none" onClick={() => traitementsSorted.toggleSort("produit")}>Produit <span className="text-xs text-muted-foreground">{traitementsSorted.sortIcon("produit")}</span></TableHead>
-                      <TableHead className="cursor-pointer select-none" onClick={() => traitementsSorted.toggleSort("type")}>Type <span className="text-xs text-muted-foreground">{traitementsSorted.sortIcon("type")}</span></TableHead>
+                      <SortableHead icon={traitementsSorted.sortIcon("date")} onSort={() => traitementsSorted.toggleSort("date")}>Date</SortableHead>
+                      <SortableHead className="text-right" icon={traitementsSorted.sortIcon("ageJours")} onSort={() => traitementsSorted.toggleSort("ageJours")}>Jour</SortableHead>
+                      <SortableHead icon={traitementsSorted.sortIcon("produit")} onSort={() => traitementsSorted.toggleSort("produit")}>Produit</SortableHead>
+                      <SortableHead icon={traitementsSorted.sortIcon("type")} onSort={() => traitementsSorted.toggleSort("type")}>Type</SortableHead>
                       <TableHead>Dosage</TableHead><TableHead>Observations</TableHead>
                       {!isReadOnly && <TableHead className="text-right w-16"></TableHead>}
                     </TableRow>
