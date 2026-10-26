@@ -38,7 +38,7 @@
 | `PORT` | Injecté par Render | ✅ Auto |
 | `FRONTEND_URL` | URL de l'app | ⚠️ Manuel |
 | `GEMINI_API_KEY` | Clé Gemini | ⚠️ Manuel |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | ✅ Auto |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | ✅ Auto |
 | `SEED_DEMO_DATA` | `false` | ✅ Auto |
 
 ### Après déploiement

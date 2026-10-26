@@ -3,7 +3,7 @@ import { db, bandesTable, bandeDepensesTable, bandeVentesTable, chargesFixesTabl
 import { eq, and, asc, sql } from "drizzle-orm";
 import { logFromRequest } from "./activity-log";
 import { getParam, getParamStr, getVaccinationSchedule, REFERENCE_WEIGHT_CURVE } from "../lib/parametres";
-import { ai } from "@workspace/integrations-gemini-ai";
+import { ai, GEMINI_TEXT_MODEL } from "@workspace/integrations-gemini-ai";
 import { validateBody, normalizeDesignation } from "../lib/validate";
 import {
   bandeCreateSchema,
@@ -1176,7 +1176,7 @@ Règles:
 - Retourne UNIQUEMENT le JSON, sans texte avant ou après`;
 
     const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
+      model: GEMINI_TEXT_MODEL,
       contents: [{
         role: "user",
         parts: [

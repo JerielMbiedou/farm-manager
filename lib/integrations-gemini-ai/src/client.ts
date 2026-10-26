@@ -16,6 +16,13 @@ if (!apiKey) {
   );
 }
 
+// Modèle texte + vision utilisé par l'app (lecture des fiches de suivi).
+// GEMINI_MODEL permet d'en changer sans toucher au code. Google retire
+// régulièrement d'anciennes versions : gemini-2.5-flash n'est plus ouvert
+// aux nouveaux projets (cf. ai.google.dev/gemini-api/docs/models).
+// `||` plutôt que `??` : une variable vide doit aussi retomber sur le défaut.
+export const GEMINI_TEXT_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+
 export const ai = new GoogleGenAI({
   apiKey,
   // Si baseUrl est défini → proxy (Replit). Sinon → API Google directe.

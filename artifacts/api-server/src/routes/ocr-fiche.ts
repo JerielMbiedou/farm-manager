@@ -2,10 +2,12 @@ import { Router } from "express";
 import multer from "multer";
 
 let aiClient: any = null;
+let aiModel = "";
 async function getAI() {
   if (!aiClient) {
     const mod = await import("@workspace/integrations-gemini-ai");
     aiClient = mod.ai;
+    aiModel = mod.GEMINI_TEXT_MODEL;
   }
   return aiClient;
 }
@@ -88,7 +90,7 @@ router.post("/", upload.single("photo"), async (req, res) => {
 
     const ai = await getAI();
     const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
+      model: aiModel,
       contents: [
         {
           role: "user",
